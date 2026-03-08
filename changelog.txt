@@ -1,0 +1,2 @@
+1.0.0
+- First Versión of Playtime Speed Launcher
