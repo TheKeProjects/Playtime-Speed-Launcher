@@ -11,7 +11,7 @@
 ## Features
 
 ### Chapter Selection
-Browse all five Poppy Playtime chapters in a card-based UI. The currently selected chapter's title, install status, and detected build version are shown at a glance.
+Browse all five Poppy Playtime chapters. The currently selected chapter's title, install status, and detected build version are shown at a glance.
 
 | Chapter | Title |
 |---------|-------|
@@ -19,7 +19,7 @@ Browse all five Poppy Playtime chapters in a card-based UI. The currently select
 | 2 | Fly in a Web |
 | 3 | Deep Sleep |
 | 4 | The Dark Ride |
-| 5 | Coming Soon |
+| 5 | Broken Things |
 
 ---
 

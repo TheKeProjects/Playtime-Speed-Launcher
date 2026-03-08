@@ -20,7 +20,6 @@
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
-  <!-- Bundle .NET runtime but use system Windows App Runtime (avoids SxS conflict) -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
