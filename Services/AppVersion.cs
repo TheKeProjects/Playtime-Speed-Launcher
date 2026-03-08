@@ -10,7 +10,7 @@ public static class AppVersion
     public const string GITHUB_BRANCH = "main";
 
     // TODO: Set to the actual GameBanana tool ID when published (0 = disabled)
-    public const int GB_TOOL_ID = 0;
+    public static readonly int GB_TOOL_ID = 0;
 
     public static string GetDisplayVersion()  => $"v{CURRENT_VERSION}";
     public static string GetGitHubRepoUrl()   => $"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}";

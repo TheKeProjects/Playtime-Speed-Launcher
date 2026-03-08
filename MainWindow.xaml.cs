@@ -93,6 +93,7 @@ public sealed partial class MainWindow : Window
         // Updates overlay static strings
         UpdatesHeaderText.Text         = Loc.Get("updates_header");
         UpdateCurrentVersionLabel.Text = Loc.Get("updates_current_version");
+        UpdateCurrentVersionText.Text  = AppVersion.GetDisplayVersion();
         UpdateCheckHint.Text           = Loc.Get("updates_check_hint");
         UpdateDetailsLabel.Text        = Loc.Get("updates_details_label");
         UpdateLatestVersionLabel.Text  = Loc.Get("updates_latest_version");

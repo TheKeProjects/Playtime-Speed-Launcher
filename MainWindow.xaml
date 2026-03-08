@@ -362,10 +362,9 @@
                                         <TextBlock x:Name="UpdateCurrentVersionLabel"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
                                                    FontSize="10" Foreground="#2A5A7A"/>
-                                        <TextBlock FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="20" FontWeight="Bold" Foreground="#00CCAA">
-                                            <Run Text="v"/><Run Text="1.0.0"/>
-                                        </TextBlock>
+                                        <TextBlock x:Name="UpdateCurrentVersionText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="20" FontWeight="Bold" Foreground="#00CCAA"/>
                                         <TextBlock x:Name="UpdateCheckHint"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
                                                    FontSize="10" Foreground="#1A3A50"
