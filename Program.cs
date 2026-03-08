@@ -14,6 +14,14 @@ public static class Program
         Bootstrap.Initialize(0x00010006);
 
         WinRT.ComWrappersSupport.InitializeComWrappers();
-        Microsoft.UI.Xaml.Application.Start(_ => new App());
+        Microsoft.UI.Xaml.Application.Start(p =>
+        {
+            // Install DispatcherQueueSynchronizationContext so that 'await' in async
+            // event handlers resumes on the UI thread (required for unpackaged WinUI 3).
+            var context = new Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext(
+                Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
+            SynchronizationContext.SetSynchronizationContext(context);
+            _ = new App();
+        });
     }
 }

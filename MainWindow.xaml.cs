@@ -1456,10 +1456,11 @@ public sealed partial class MainWindow : Window
         DownloadProgressPanel.Visibility = Visibility.Visible;
 
         var progress = new Progress<int>(pct =>
-        {
-            UpdateDownloadProgressBar.Value  = pct;
-            UpdateDownloadProgressText.Text  = Loc.Get("updates_downloading", pct);
-        });
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                UpdateDownloadProgressBar.Value = pct;
+                UpdateDownloadProgressText.Text = Loc.Get("updates_downloading", pct);
+            }));
 
         bool ok;
         if (_isGbInstall && _gbUpdateInfo != null)
