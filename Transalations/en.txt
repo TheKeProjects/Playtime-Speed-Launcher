@@ -1,0 +1,141 @@
+# Playtime Speed Launcher — English
+
+# Main buttons
+play_button = PLAY CHAPTER
+settings_tooltip = Settings
+back = BACK
+add_install = ADD
+
+# Settings
+settings_title = [ SETTINGS ]
+sound_effects = Sound effects
+language_label = Language
+
+# Intro
+intro_skip = [ click to skip ]
+
+# Chapters
+coming_soon = COMING SOON
+ch1_title = A TIGHT SQUEEZE
+ch1_desc = As a former employee of Playtime Co., you finally return to the factory many years after everyone inside disappeared.
+ch2_title = FLY IN A WEB
+ch2_desc = Delve deeper into the dark secrets of Playtime Co. as you escape from Mommy Long Legs' grasp in the Game Station.
+ch3_title = DEEP SLEEP
+ch3_desc = Descend into the Game Station and face the horrors lurking in the deepest levels of the abandoned factory.
+ch4_title = THE DARK RIDE
+ch4_desc = Venture through the dark corridors of the factory in search of the truth about Playtime Co.'s experiments.
+ch5_title = BROKEN THINGS
+ch5_desc = The next chapter in the Poppy Playtime saga is in development.
+patch = Patch
+
+# Versions overlay
+versions_header = [ VERSIONS  ·  CHAPTER {0} ]
+show_installers = SHOW INSTALLERS
+hide_installers = HIDE INSTALLERS
+section_historic = HISTORIC VERSIONS
+section_custom = CUSTOM INSTALLATIONS
+
+# Install rows
+auto_name = Automatic
+auto_subtitle = Automatic Steam version
+selected_label = Selected!
+select_btn = SELECT
+downloading = DOWNLOADING...
+install_btn = INSTALL
+install_with_size = INSTALL  —  {0}
+
+# Chapter info
+version_prefix = VERSION:
+version_auto_steam = Automatic Steam version
+version_not_installed = Not installed
+version_none = —
+status_installed = ● INSTALLED
+status_not_found = ○ Not found
+status_coming_soon = — Coming soon
+
+# Edit panel
+edit_install_title = EDIT INSTALLATION
+name_placeholder = Installation name
+icon_btn = ICON
+save_btn = SAVE
+name_label = NAME
+icon_label = ICON
+
+# SteamCMD dialogs
+steamcmd_not_found_title = SteamCMD not found
+steamcmd_not_found_content = SteamCMD is required to download historic versions.\n\nDownload it now? (~4 MB, official from Valve)\nOr choose 'Browse' if you already have it installed.
+steamcmd_download_auto = Download automatically
+steamcmd_find = Browse on my PC
+cancel = Cancel
+downloading_steamcmd_title = Downloading SteamCMD…
+starting = Starting…
+steamcmd_initializing = Starting SteamCMD…
+steamcmd_in_progress = SteamCMD in progress…
+
+# Files not found
+files_not_found_title = Files not found
+files_not_found_content = SteamCMD finished but no downloaded files were found.\n\nThe login may have failed. Check the log above and try again.\n\nIf the files are in another folder, select it manually.
+select_folder_manually = Select folder manually
+close = Close
+
+# Credentials dialog
+credentials_version_label = Version to download:
+detected_user = User detected from Steam:
+username_placeholder = Steam username
+password_placeholder = Password  (empty = use saved Steam session)
+start_download = Start download
+install_dialog_title = Install  ·  {0}
+
+# Download complete dialog
+files_downloaded_msg = Files downloaded successfully.\nCustomize the name and icon before saving.
+version_name_placeholder = Version name
+choose_icon = CHOOSE ICON
+select_folder = Select folder
+later = Later
+download_ready_title = Download ready  ·  {0}
+
+# Progress
+moving_files = Moving files…
+moving_files_dest = Moving files to destination…
+cleaning_temp = Cleaning up temporary files…
+registering = Registering installation…
+preparing_version_title = Preparing version…
+
+# Steam Guard dialog
+steamguard_title = Steam confirmation
+steamguard_content = Steam will send a notification to your phone.\n\nApprove it in the Steam app to continue the download.
+understood = Got it
+
+# Updates
+updates_header = [ UPDATES ]
+updates_current_version = Current version
+updates_check_hint = Click to check for updates
+updates_checking = Checking...
+updates_available_title = Update available!
+updates_available_msg = New version {0} is ready. Click here to install.
+updates_up_to_date_title = Up to date ✓
+updates_up_to_date_msg = You have the latest version installed.
+updates_error_title = Check failed
+updates_error_msg = Could not check for updates. Try again later.
+updates_gb_title = GameBanana Update Available!
+updates_gb_msg = New version {0} available. Click here to install.
+updates_details_label = NEW VERSION DETAILS
+updates_latest_version = Latest version:
+updates_file_name = File name:
+updates_file_size = File size:
+updates_whats_new = WHAT'S NEW:
+updates_install_ready = Version {0} ready to install
+updates_install_subtitle = {0}  |  {1}
+updates_download_btn = DOWNLOAD & UPDATE
+updates_cancel_btn = CANCEL
+updates_downloading = Downloading...  {0}%
+updates_close = BACK
+
+# Errors
+error_title = Error
+error_no_exe = No executable found in:
+error_steamcmd_msg = SteamCMD error:
+error_unexpected = Unexpected error:
+error_register = Error registering the version:
+error_download_steamcmd = Error downloading SteamCMD:
+error_move = Error moving files:
