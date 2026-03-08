@@ -208,7 +208,7 @@ public partial class MainWindow : Window
 
     private void PlayIntro()
     {
-        var videoPath = IOPath.Combine(AppContext.BaseDirectory, "Assets", "Videos", "Introduccion.mp4");
+        var videoPath = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Videos", "Introduccion.mp4");
         if (!File.Exists(videoPath))
         {
             IntroOverlay.Visibility = Visibility.Collapsed;
@@ -255,7 +255,7 @@ public partial class MainWindow : Window
         uint vol    = (uint)(_sfxVolume * 0xFFFF);
         uint stereo = (vol & 0xFFFF) | ((vol & 0xFFFF) << 16);
         waveOutSetVolume(0, stereo);
-        var path = IOPath.Combine(AppContext.BaseDirectory, "Assets", "Sounds", fileName);
+        var path = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Sounds", fileName);
         if (File.Exists(path))
             PlaySoundW(path, 0, SND_ASYNC | SND_FILENAME | SND_NODEFAULT | (noStop ? SND_NOSTOP : 0));
     }
@@ -279,7 +279,7 @@ public partial class MainWindow : Window
 
     private void BuildCards()
     {
-        var bannerDir = IOPath.Combine(AppContext.BaseDirectory, "Assets", "Banners");
+        var bannerDir = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Banners");
         for (int i = 0; i < _chapters.Count; i++)
         {
             var chapter = _chapters[i];
@@ -491,8 +491,8 @@ public partial class MainWindow : Window
             HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
         };
         var customIcon = inst?.IconPath;
-        var steamImg   = IOPath.Combine(AppContext.BaseDirectory, "Assets", "Images", "Steam.jpg");
-        var chapterImg = IOPath.Combine(AppContext.BaseDirectory, "Assets", "Images", $"Chapter {chapterNum}.png");
+        var steamImg   = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", "Steam.jpg");
+        var chapterImg = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", $"Chapter {chapterNum}.png");
         iconBorder.Child =
             !isAuto && customIcon is not null && File.Exists(customIcon)
                 ? new Image { Source = new BitmapImage(new Uri(customIcon)), Stretch = Stretch.UniformToFill }
@@ -694,7 +694,7 @@ public partial class MainWindow : Window
             Background = new SolidColorBrush(Color.FromArgb(255, 14, 42, 78)),
             HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
         };
-        var chapterImgPreset = IOPath.Combine(AppContext.BaseDirectory, "Assets", "Images", $"Chapter {chapterNum}.png");
+        var chapterImgPreset = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", $"Chapter {chapterNum}.png");
         iconBorder.Child = File.Exists(chapterImgPreset)
             ? (UIElement)new Image { Source = new BitmapImage(new Uri(chapterImgPreset)), Stretch = Stretch.UniformToFill }
             : new TextBlock
@@ -1049,7 +1049,7 @@ public partial class MainWindow : Window
             Width = 40, Height = 40, CornerRadius = new CornerRadius(4),
             Background = new SolidColorBrush(Color.FromArgb(255, 20, 38, 55)),
         };
-        var defaultChapterImg = IOPath.Combine(AppContext.BaseDirectory, "Assets", "Images", $"Chapter {chapterNum}.png");
+        var defaultChapterImg = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", $"Chapter {chapterNum}.png");
         if (File.Exists(defaultChapterImg))
             iconPreview.Child = new Image { Source = new BitmapImage(new Uri(defaultChapterImg)), Stretch = Stretch.UniformToFill };
 

@@ -9,7 +9,7 @@ public static class LocalizationService
     private static string _currentLang = "es";
 
     private static readonly string TranslationsDir =
-        Path.Combine(AppContext.BaseDirectory, "Transalations");
+        Path.Combine(ResourceExtractor.TempDir, "Transalations");
 
     private static readonly string DataDir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SpeedrunLauncher");
