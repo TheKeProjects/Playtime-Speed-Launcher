@@ -11,7 +11,7 @@
 ## Features
 
 ### Chapter Selection
-Browse all five Poppy Playtime chapters in a card-based UI. The currently selected chapter's title, install status, and detected build version are shown at a glance.
+Browse all five Poppy Playtime chapters. The currently selected chapter's title, install status, and detected build version are shown at a glance.
 
 | Chapter | Title |
 |---------|-------|
@@ -117,4 +117,5 @@ Artificial intelligence was used during development to help with code implementa
 ---
 
 Made by **An Average Developer**
+
 
