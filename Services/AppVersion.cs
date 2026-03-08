@@ -5,7 +5,7 @@ public static class AppVersion
     public const string CURRENT_VERSION = "1.0.0";
 
     // TODO: Update these when the GitHub repository is created
-    public const string GITHUB_OWNER  = "An-Average-Developer";
+    public const string GITHUB_OWNER  = "TheKeProjects";
     public const string GITHUB_REPO   = "Playtime-Speed-Launcher";
     public const string GITHUB_BRANCH = "main";
 
