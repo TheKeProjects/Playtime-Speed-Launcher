@@ -7,15 +7,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
 <ApplicationIcon>icon.ico</ApplicationIcon>
-    <AssemblyName>Playtime Speed Launcher</AssemblyName>
+    <AssemblyName>PlaytimeSpeedLauncher</AssemblyName>
     <RootNamespace>SpeedrunLauncher</RootNamespace>
     <Version>1.0.0</Version>
     <Authors>An Average Developer</Authors>
-    <Product>Playtime Speed Launcher</Product>
+    <Product>PlaytimeSpeedLauncher</Product>
     <Description>A Launcher for Speedruners of Poppy Playtime</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <PublishReadyToRun>true</PublishReadyToRun>
