@@ -45,6 +45,11 @@ public partial class MainWindow : Window
     private bool _showingInstallView  = false;
     private bool _isGbInstall         = false;
 
+    // ── LiveSplit ──────────────────────────────────────────────────────────────
+    private readonly LiveSplitService _liveSplitService = new();
+    private LiveSplitInfo? _liveSplitInfo         = null;
+    private bool           _isLiveSplitDownloading = false;
+
     // ── Palette ───────────────────────────────────────────────────────────────
     private static readonly Color Teal       = Color.FromArgb(255,   0, 204, 170);
     private static readonly Color TealDim    = Color.FromArgb(120,   0, 204, 170);
@@ -61,6 +66,7 @@ public partial class MainWindow : Window
         SetupWindow();
         _ = DetectVersionsAsync();
         _ = DetectUpdatesAsync();
+        _ = DetectLiveSplitAsync();
         PlayIntro();
         Loaded += (_, _) =>
             Dispatcher.BeginInvoke(DispatcherPriority.Background,
@@ -135,6 +141,15 @@ public partial class MainWindow : Window
 
         OpenUpdatesBtnText.Text        = Loc.Get("updates_header");
         OpenUpdatesBtnBadge.Text       = "↑ UPDATE";
+
+        OpenLiveSplitBtnText.Text      = "LiveSplit";
+        OpenLiveSplitBtnBadge.Text     = "↑ UPDATE";
+        CloseLiveSplitBtnText.Text     = Loc.Get("back");
+        LiveSplitInstalledVersionLabel.Text = Loc.Get("livesplit_installed_version");
+        LiveSplitLatestVersionLabel.Text    = Loc.Get("livesplit_latest_version");
+        RefreshLiveSplitButton();
+        if (LiveSplitOverlay.Visibility == Visibility.Visible)
+            RefreshLiveSplitOverlay();
         UpdatesHeaderText.Text         = Loc.Get("updates_header");
         UpdateCurrentVersionLabel.Text = Loc.Get("updates_current_version");
         UpdateCurrentVersionText.Text  = AppVersion.GetDisplayVersion();
@@ -778,7 +793,7 @@ public partial class MainWindow : Window
             var capPreset = preset; var capCh = chapterNum;
             installBtn.Click += async (_, _) =>
             {
-                try { await StartPresetInstallAsync(capPreset, capCh); }
+                try { await PickInstallModeAsync(capPreset, capCh); }
                 catch (Exception ex) { ShowErrorAsync($"{Loc.Get("error_unexpected")}\n{ex.Message}"); }
             };
             right.Children.Add(installBtn);
@@ -839,6 +854,361 @@ public partial class MainWindow : Window
     }
 
     // ── Preset install flow (SteamCMD) ────────────────────────────────────────
+
+    private async Task PickInstallModeAsync(ChapterPreset preset, int chapterNum)
+    {
+        var monoFont = new FontFamily("Cascadia Code, Consolas, Courier New");
+        var dimColor = new SolidColorBrush(Color.FromArgb(160, 120, 160, 190));
+        var tealDim  = new SolidColorBrush(Color.FromArgb(160, 0, 204, 170));
+
+        var panel = new StackPanel { MinWidth = 400 };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("credentials_version_label"),
+            FontFamily = monoFont, FontSize = 11,
+            Foreground = dimColor,
+            Margin = new Thickness(0, 0, 0, 6),
+        });
+        panel.Children.Add(new Border
+        {
+            Background   = new SolidColorBrush(Color.FromArgb(50, 0, 204, 170)),
+            CornerRadius = new CornerRadius(4),
+            Padding      = new Thickness(10, 6, 10, 6),
+            Margin       = new Thickness(0, 0, 0, 16),
+            Child        = new TextBlock
+            {
+                Text = preset.Command,
+                FontFamily = monoFont, FontSize = 10,
+                Foreground = new SolidColorBrush(Teal),
+            },
+        });
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("install_mode_label"),
+            FontFamily = monoFont, FontSize = 11,
+            Foreground = dimColor,
+            Margin = new Thickness(0, 0, 0, 10),
+        });
+
+        // AUTO description
+        var autoDesc = new Border
+        {
+            Background   = new SolidColorBrush(Color.FromArgb(20, 0, 204, 170)),
+            BorderBrush  = new SolidColorBrush(Color.FromArgb(50, 0, 204, 170)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(3),
+            Padding      = new Thickness(10, 8, 10, 8),
+            Margin       = new Thickness(0, 0, 0, 6),
+        };
+        var autoDescStack = new StackPanel();
+        autoDescStack.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("install_mode_auto_title"),
+            FontFamily = monoFont, FontSize = 11, FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Teal),
+        });
+        autoDescStack.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("install_mode_auto_desc"),
+            FontFamily = monoFont, FontSize = 10,
+            Foreground = dimColor,
+            Margin = new Thickness(0, 3, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+        });
+        autoDesc.Child = autoDescStack;
+        panel.Children.Add(autoDesc);
+
+        // MANUAL description
+        var manualDesc = new Border
+        {
+            Background   = new SolidColorBrush(Color.FromArgb(20, 80, 130, 200)),
+            BorderBrush  = new SolidColorBrush(Color.FromArgb(50, 80, 130, 200)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(3),
+            Padding      = new Thickness(10, 8, 10, 8),
+        };
+        var manualDescStack = new StackPanel();
+        manualDescStack.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("install_mode_manual_title"),
+            FontFamily = monoFont, FontSize = 11, FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Color.FromArgb(255, 80, 160, 230)),
+        });
+        manualDescStack.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("install_mode_manual_desc"),
+            FontFamily = monoFont, FontSize = 10,
+            Foreground = dimColor,
+            Margin = new Thickness(0, 3, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+        });
+        manualDesc.Child = manualDescStack;
+        panel.Children.Add(manualDesc);
+
+        var result = await WpfDialog.ShowAsync(this,
+            Loc.Get("install_dialog_title", TranslatePresetName(preset.Name)),
+            panel,
+            primaryText:   Loc.Get("install_mode_auto_btn"),
+            secondaryText: Loc.Get("install_mode_manual_btn"),
+            closeText:     Loc.Get("cancel"));
+
+        if (result == WpfDialogResult.Primary)
+            await StartPresetInstallAsync(preset, chapterNum);
+        else if (result == WpfDialogResult.Secondary)
+            await StartPresetInstallManualAsync(preset, chapterNum);
+    }
+
+    private async Task StartPresetInstallManualAsync(ChapterPreset preset, int chapterNum)
+    {
+        // Steam Console uses the Steam install's own steamapps/content folder
+        var steamDir    = SteamCmdRunner.GetSteamInstallPath();
+        var depotFolder = IOPath.Combine(
+            steamDir ?? IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Steam"),
+            "steamapps", "content", $"app_{preset.AppId}", $"depot_{preset.DepotId}");
+        Directory.CreateDirectory(depotFolder);
+
+        var command  = $"download_depot {preset.AppId} {preset.DepotId} {preset.ManifestId}";
+        var monoFont = new FontFamily("Cascadia Code, Consolas, Courier New");
+        var dimColor = new SolidColorBrush(Color.FromArgb(200, 160, 200, 230));
+        var tealDim  = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170));
+
+        // ── Build the instructions dialog with a checkbox-gated OK button ──────
+        bool instrAccepted = false;
+        await Task.Run(() => { }).ContinueWith(_ => { }, TaskScheduler.FromCurrentSynchronizationContext());
+
+        var dlg = new Window
+        {
+            Owner                     = this,
+            WindowStartupLocation     = WindowStartupLocation.CenterOwner,
+            WindowStyle               = WindowStyle.None,
+            ResizeMode                = ResizeMode.NoResize,
+            SizeToContent             = SizeToContent.WidthAndHeight,
+            ShowInTaskbar             = false,
+            Background                = new SolidColorBrush(Color.FromRgb(9, 20, 30)),
+        };
+
+        // Steps list: (number, text, extra content or null)
+        void AddStep(StackPanel parent, string num, string text, UIElement? extra = null)
+        {
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var numTb = new TextBlock
+            {
+                Text = num, FontFamily = monoFont, FontSize = 11, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Teal), VerticalAlignment = VerticalAlignment.Top,
+            };
+            Grid.SetColumn(numTb, 0);
+            var col = new StackPanel();
+            col.Children.Add(new TextBlock
+            {
+                Text = text, FontFamily = monoFont, FontSize = 11,
+                Foreground = dimColor, TextWrapping = TextWrapping.Wrap,
+            });
+            if (extra != null) col.Children.Add(extra);
+            Grid.SetColumn(col, 1);
+            row.Children.Add(numTb);
+            row.Children.Add(col);
+            parent.Children.Add(row);
+        }
+
+        var steps = new StackPanel { MinWidth = 440, MaxWidth = 520 };
+
+        // Step 1 — open Steam console
+        AddStep(steps, "1.", Loc.Get("install_manual_step1"));
+
+        // Step 2 — paste command
+        AddStep(steps, "2.", Loc.Get("install_manual_step2"),
+            new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(40, 0, 204, 170)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(60, 0, 204, 170)),
+                BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(0, 6, 0, 0),
+                Child = new TextBlock
+                {
+                    Text = command, FontFamily = monoFont, FontSize = 11,
+                    Foreground = new SolidColorBrush(Teal), TextWrapping = TextWrapping.Wrap,
+                },
+            });
+
+        // Step 3 — wait for download, folder info
+        AddStep(steps, "3.", Loc.Get("install_manual_step3"),
+            new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(25, 80, 130, 200)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(50, 80, 130, 200)),
+                BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(0, 6, 0, 0),
+                Child = new TextBlock
+                {
+                    Text = depotFolder, FontFamily = monoFont, FontSize = 9,
+                    Foreground = new SolidColorBrush(Color.FromArgb(255, 80, 160, 230)),
+                    TextWrapping = TextWrapping.Wrap,
+                },
+            });
+
+        // Step 4 — move the downloaded folder
+        AddStep(steps, "4.", Loc.Get("install_manual_step4"));
+
+        // Step 5 — add manually via ADD button
+        AddStep(steps, "5.", Loc.Get("install_manual_step5"));
+
+        // Checkbox — gates the OK button
+        var checkbox = new CheckBox
+        {
+            Content = new TextBlock
+            {
+                Text = Loc.Get("install_manual_confirm"),
+                FontFamily = monoFont, FontSize = 11,
+                Foreground = dimColor, TextWrapping = TextWrapping.Wrap,
+            },
+            Foreground = new SolidColorBrush(Teal),
+            Margin = new Thickness(0, 6, 0, 0),
+            Cursor = Cursors.Hand,
+        };
+        steps.Children.Add(checkbox);
+
+        // ── Dialog layout (title bar + scroll content + footer) ──
+        var okBtn = new Button
+        {
+            Height = 36, MinWidth = 160, IsEnabled = false,
+            Background = new SolidColorBrush(Color.FromRgb(0, 80, 60)),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(180, 0, 180, 130)),
+            BorderThickness = new Thickness(1), Padding = new Thickness(12, 0, 12, 0),
+            Content = new TextBlock
+            {
+                Text = Loc.Get("install_manual_open_btn"),
+                FontFamily = monoFont, FontSize = 11, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromRgb(0, 204, 170)),
+            },
+            Cursor = Cursors.Hand,
+        };
+        ButtonHelper.SetCornerRadius(okBtn, new CornerRadius(3));
+
+        var cancelBtn = new Button
+        {
+            Height = 36, MinWidth = 100, Margin = new Thickness(0, 0, 8, 0),
+            Background = new SolidColorBrush(Color.FromRgb(10, 24, 37)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(13, 37, 53)),
+            BorderThickness = new Thickness(1), Padding = new Thickness(12, 0, 12, 0),
+            Content = new TextBlock
+            {
+                Text = Loc.Get("cancel"),
+                FontFamily = monoFont, FontSize = 11, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromArgb(200, 58, 106, 138)),
+            },
+            Cursor = Cursors.Hand,
+        };
+        ButtonHelper.SetCornerRadius(cancelBtn, new CornerRadius(3));
+
+        checkbox.Checked   += (_, _) => okBtn.IsEnabled = true;
+        checkbox.Unchecked += (_, _) => okBtn.IsEnabled = false;
+        okBtn.Click     += (_, _) => { instrAccepted = true; dlg.Close(); };
+        cancelBtn.Click += (_, _) => dlg.Close();
+
+        var titleBar = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(6, 15, 24)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(13, 32, 48)),
+            BorderThickness = new Thickness(0, 0, 0, 1), Height = 48,
+            Padding = new Thickness(20, 0, 20, 0),
+            Child = new TextBlock
+            {
+                Text = Loc.Get("install_manual_title"),
+                FontFamily = monoFont, FontSize = 14, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromRgb(0, 204, 170)),
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+
+        var footer = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(6, 15, 24)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(13, 32, 48)),
+            BorderThickness = new Thickness(0, 1, 0, 0), Height = 52,
+            Padding = new Thickness(14, 0, 14, 0),
+            Child = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                Children = { cancelBtn, okBtn },
+            },
+        };
+
+        var contentBorder = new Border { Padding = new Thickness(20, 16, 20, 16), Child = steps };
+
+        var mainGrid = new Grid();
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        Grid.SetRow(titleBar, 0);
+        Grid.SetRow(contentBorder, 1);
+        Grid.SetRow(footer, 2);
+        mainGrid.Children.Add(titleBar);
+        mainGrid.Children.Add(contentBorder);
+        mainGrid.Children.Add(footer);
+
+        dlg.Content = new Border
+        {
+            BorderBrush = new SolidColorBrush(Color.FromRgb(21, 48, 72)),
+            BorderThickness = new Thickness(1),
+            Child = mainGrid,
+        };
+
+        dlg.ShowDialog();
+        if (!instrAccepted) return;
+
+        // Copy command to clipboard and open Steam Console + the depot folder
+        try { Clipboard.SetText(command); } catch { }
+        Process.Start(new ProcessStartInfo { FileName = "steam://open/console", UseShellExecute = true });
+        Process.Start(new ProcessStartInfo { FileName = "explorer.exe", Arguments = $"\"{depotFolder}\"" });
+
+        // "Continue when done" dialog
+        var waitPanel = new StackPanel { MinWidth = 360 };
+        waitPanel.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("install_manual_waiting"),
+            FontFamily   = monoFont, FontSize = 11,
+            Foreground   = dimColor,
+            TextWrapping = TextWrapping.Wrap,
+        });
+
+        var waitResult = await WpfDialog.ShowAsync(this,
+            Loc.Get("install_manual_title"), waitPanel,
+            primaryText: Loc.Get("steamguard_phone_continue"),
+            closeText:   Loc.Get("cancel"));
+
+        if (waitResult != WpfDialogResult.Primary) return;
+
+        var depotPath = SteamDetector.FindDepotDownloadPath(preset.AppId, preset.DepotId, null);
+        if (depotPath is null)
+        {
+            var notFoundContent = new TextBlock
+            {
+                Text = Loc.Get("files_not_found_content"),
+                TextWrapping = TextWrapping.Wrap,
+                FontFamily   = monoFont, FontSize = 12,
+                Foreground   = new SolidColorBrush(Color.FromArgb(255, 160, 180, 200)),
+            };
+            var notFoundResult = WpfDialog.Show(this,
+                Loc.Get("files_not_found_title"), notFoundContent,
+                primaryText: Loc.Get("select_folder_manually"),
+                closeText:   Loc.Get("close"));
+
+            if (notFoundResult != WpfDialogResult.Primary) return;
+
+            var picker = new OpenFolderDialog();
+            if (picker.ShowDialog(this) != true) return;
+            depotPath = picker.FolderName;
+        }
+
+        try { await MoveAndRegisterAsync(preset, chapterNum, depotPath); }
+        catch (Exception ex) { ShowErrorAsync($"{Loc.Get("error_register")}\n{ex.Message}"); }
+    }
 
     private async Task StartPresetInstallAsync(ChapterPreset preset, int chapterNum)
     {
@@ -1552,5 +1922,170 @@ public partial class MainWindow : Window
     {
         UpdatesOverlay.Visibility = Visibility.Collapsed;
         if (_showingInstallView) ShowUpdateCheckView();
+    }
+
+    // ── LiveSplit ──────────────────────────────────────────────────────────────
+
+    private async Task DetectLiveSplitAsync()
+    {
+        _liveSplitInfo = await _liveSplitService.CheckAsync();
+
+        _ = Dispatcher.BeginInvoke(new Action(() =>
+        {
+            RefreshLiveSplitButton();
+
+            if (_liveSplitInfo.IsUpdateAvailable)
+                StartLiveSplitUpdateAnimation();
+
+            if (LiveSplitOverlay.Visibility == Visibility.Visible)
+                RefreshLiveSplitOverlay();
+        }));
+    }
+
+    private void RefreshLiveSplitButton()
+    {
+        if (_liveSplitInfo == null) return;
+
+        if (_liveSplitInfo.IsInstalled && !_liveSplitInfo.IsUpdateAvailable)
+        {
+            OpenLiveSplitBtnText.Foreground = new SolidColorBrush(Color.FromRgb(0, 120, 90));
+        }
+        else
+        {
+            OpenLiveSplitBtnText.Foreground = new SolidColorBrush(Color.FromRgb(58, 106, 138));
+        }
+    }
+
+    private void StartLiveSplitUpdateAnimation()
+    {
+        OpenLiveSplitBtnBadge.Visibility = Visibility.Visible;
+
+        OpenLiveSplitBtnText.Foreground = new SolidColorBrush(Color.FromRgb(220, 80, 30));
+
+        var badgeAnim = new DoubleAnimation
+        {
+            From           = 1.0,
+            To             = 0.55,
+            Duration       = TimeSpan.FromMilliseconds(600),
+            AutoReverse    = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+        };
+        OpenLiveSplitBtnBadge.BeginAnimation(UIElement.OpacityProperty, badgeAnim);
+    }
+
+    private void OpenLiveSplitBtn_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsOverlay.Visibility = Visibility.Collapsed;
+        RefreshLiveSplitOverlay();
+        LiveSplitOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void RefreshLiveSplitOverlay()
+    {
+        var info = _liveSplitInfo;
+
+        LiveSplitProgressPanel.Visibility = Visibility.Collapsed;
+        _isLiveSplitDownloading           = false;
+
+        // Subtitle
+        if (info == null)
+        {
+            LiveSplitSubtitleText.Text = Loc.Get("livesplit_checking");
+            LiveSplitActionBtn.Visibility = Visibility.Collapsed;
+        }
+        else if (!info.IsInstalled)
+        {
+            LiveSplitSubtitleText.Text    = Loc.Get("livesplit_not_installed");
+            LiveSplitActionBtnText.Text   = Loc.Get("livesplit_install_btn");
+            LiveSplitActionBtn.Visibility = Visibility.Visible;
+        }
+        else if (info.IsUpdateAvailable)
+        {
+            LiveSplitSubtitleText.Text    = Loc.Get("livesplit_update_available");
+            LiveSplitActionBtnText.Text   = Loc.Get("livesplit_update_btn");
+            LiveSplitActionBtn.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            LiveSplitSubtitleText.Text    = Loc.Get("livesplit_up_to_date");
+            LiveSplitActionBtnText.Text   = Loc.Get("livesplit_launch_btn");
+            LiveSplitActionBtn.Visibility = Visibility.Visible;
+        }
+
+        // Version texts
+        LiveSplitInstalledVersionText.Text = (info?.IsInstalled ?? false)
+            ? (string.IsNullOrEmpty(info!.InstalledVersion) ? "—" : info.InstalledVersion)
+            : Loc.Get("livesplit_none");
+        LiveSplitLatestVersionText.Text = string.IsNullOrEmpty(info?.LatestVersion)
+            ? "—"
+            : info.LatestVersion;
+
+        // Install path
+        if (info?.IsInstalled == true && !string.IsNullOrEmpty(info.InstallPath))
+        {
+            LiveSplitPathText.Text         = info.InstallPath;
+            LiveSplitPathBorder.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            LiveSplitPathBorder.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private async void LiveSplitActionBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isLiveSplitDownloading || _liveSplitInfo == null) return;
+
+        // If installed and up to date → launch
+        if (_liveSplitInfo.IsInstalled && !_liveSplitInfo.IsUpdateAvailable)
+        {
+            LiveSplitService.Launch(_liveSplitInfo.InstallPath!);
+            LiveSplitOverlay.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        _isLiveSplitDownloading          = true;
+        LiveSplitActionBtn.Visibility    = Visibility.Collapsed;
+        LiveSplitProgressPanel.Visibility = Visibility.Visible;
+        LiveSplitProgressText.Text       = Loc.Get("livesplit_downloading", 0);
+        LiveSplitProgressBar.Value       = 0;
+
+        var progress = new Progress<int>(pct =>
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                LiveSplitProgressBar.Value  = pct;
+                LiveSplitProgressText.Text  = Loc.Get("livesplit_downloading", pct);
+            })));
+
+        var ok = await _liveSplitService.DownloadAndInstallAsync(
+            _liveSplitInfo, LiveSplitService.DefaultInstallDir, progress);
+
+        _isLiveSplitDownloading = false;
+
+        if (ok)
+        {
+            _liveSplitInfo = await _liveSplitService.CheckAsync();
+            _ = Dispatcher.BeginInvoke(new Action(() =>
+            {
+                OpenLiveSplitBtnBadge.Visibility = Visibility.Collapsed;
+                OpenLiveSplitBtnBadge.BeginAnimation(UIElement.OpacityProperty, null);
+                RefreshLiveSplitButton();
+                RefreshLiveSplitOverlay();
+            }));
+        }
+        else
+        {
+            _ = Dispatcher.BeginInvoke(new Action(() =>
+            {
+                LiveSplitProgressPanel.Visibility = Visibility.Collapsed;
+                LiveSplitActionBtn.Visibility     = Visibility.Visible;
+            }));
+        }
+    }
+
+    private void CloseLiveSplitBtn_Click(object sender, RoutedEventArgs e)
+    {
+        LiveSplitOverlay.Visibility = Visibility.Collapsed;
     }
 }

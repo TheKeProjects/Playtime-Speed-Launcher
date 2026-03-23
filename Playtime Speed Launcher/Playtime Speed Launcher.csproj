@@ -6,10 +6,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-<ApplicationIcon>icon.ico</ApplicationIcon>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
     <AssemblyName>PlaytimeSpeedLauncher</AssemblyName>
     <RootNamespace>SpeedrunLauncher</RootNamespace>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>An Average Developer</Authors>
     <Product>PlaytimeSpeedLauncher</Product>
     <Description>A Launcher for Speedruners of Poppy Playtime</Description>

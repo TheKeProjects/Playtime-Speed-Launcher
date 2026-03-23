@@ -61,6 +61,24 @@ save_btn = SAVE
 name_label = NAME
 icon_label = ICON
 
+# Install mode selection
+install_mode_label = Choose an installation method:
+install_mode_auto_title = AUTO
+install_mode_auto_desc = Runs SteamCMD in the background. Handles Steam Guard automatically via a popup.
+install_mode_manual_title = MANUAL
+install_mode_manual_desc = Opens the Steam Console (no login needed). Copy and paste the command — no Steam Guard required.
+install_mode_auto_btn = AUTO
+install_mode_manual_btn = MANUAL
+install_manual_title = [ MANUAL INSTALL ]
+install_manual_step1 = Open the Steam Console (it will open automatically when you click the button below).
+install_manual_step2 = Paste the command below into the Steam Console and press Enter:
+install_manual_step3 = Wait for the download to finish. Files will be saved to:
+install_manual_step4 = Once the download is complete, move the downloaded folder to your desired installation location.
+install_manual_step5 = Come back to this app, open the versions panel for this chapter, and use the ADD button to register the version manually.
+install_manual_confirm = I have read and understood all the steps above.
+install_manual_open_btn = OPEN CONSOLE & FOLDER
+install_manual_waiting = Waiting for the download to finish in the Steam Console.\n\nOnce it completes, click Continue.
+
 # SteamCMD dialogs
 steamcmd_not_found_title = SteamCMD not found
 steamcmd_not_found_content = SteamCMD is required to download historic versions.\n\nDownload it now? (~4 MB, official from Valve)\nOr choose 'Browse' if you already have it installed.
@@ -134,6 +152,19 @@ updates_download_btn = DOWNLOAD & UPDATE
 updates_cancel_btn = CANCEL
 updates_downloading = Downloading...  {0}%
 updates_close = BACK
+
+# LiveSplit
+livesplit_checking = Checking...
+livesplit_not_installed = Not installed
+livesplit_up_to_date = Installed ✓
+livesplit_update_available = Update available!
+livesplit_installed_version = Installed version
+livesplit_latest_version = Latest version
+livesplit_install_btn = DOWNLOAD & INSTALL
+livesplit_update_btn = DOWNLOAD & UPDATE
+livesplit_launch_btn = LAUNCH LIVESPLIT
+livesplit_downloading = Downloading...  {0}%
+livesplit_none = —
 
 # Errors
 error_title = Error

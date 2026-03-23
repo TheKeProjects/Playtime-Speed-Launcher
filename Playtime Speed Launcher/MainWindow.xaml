@@ -318,6 +318,40 @@
 
                         <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
 
+                        <!-- LiveSplit row -->
+                        <Button x:Name="OpenLiveSplitBtn"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                local:ButtonHelper.CornerRadius="4"
+                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                Padding="12,10" Margin="0,0,0,16"
+                                Click="OpenLiveSplitBtn_Click">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Image Width="18" Height="18"
+                                           Source="{StaticResource LiveSplitIcon}"
+                                           VerticalAlignment="Center"
+                                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    <TextBlock x:Name="OpenLiveSplitBtnText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                </StackPanel>
+                                <TextBlock x:Name="OpenLiveSplitBtnBadge"
+                                           Grid.Column="1"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="10" FontWeight="Bold" Foreground="#CC4422"
+                                           VerticalAlignment="Center"
+                                           Visibility="Collapsed"/>
+                            </Grid>
+                        </Button>
+
+                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
+
                         <Grid Margin="0,0,0,8">
                             <TextBlock x:Name="SoundEffectsLabel"
                                        Text="Efectos de sonido"
@@ -699,6 +733,142 @@
                                            FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
                             </Button>
                         </Grid>
+                    </Border>
+
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ── LIVESPLIT OVERLAY ── -->
+        <Grid x:Name="LiveSplitOverlay"
+              Grid.RowSpan="6"
+              Visibility="Collapsed"
+              Background="#BB000000">
+            <Border Width="500" Background="#09141E"
+                    BorderBrush="#153048" BorderThickness="1"
+                    CornerRadius="4"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="48"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="52"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <Border Grid.Row="0" Background="#060F18"
+                            BorderBrush="#0D2030" BorderThickness="0,0,0,1">
+                        <TextBlock Text="[ LIVESPLIT ]"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="13" FontWeight="Bold" Foreground="#00CCAA"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- Content -->
+                    <StackPanel Grid.Row="1" Margin="28,22,28,18">
+
+                        <!-- Logo + title row -->
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Image Grid.Column="0" Width="44" Height="44"
+                                   Source="{StaticResource LiveSplitIcon}"
+                                   VerticalAlignment="Center" Margin="0,0,16,0"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="LiveSplit"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="15" FontWeight="Bold" Foreground="#00CCAA"/>
+                                <TextBlock x:Name="LiveSplitSubtitleText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="11" Foreground="#3A6A8A"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Version info grid -->
+                        <Border Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                CornerRadius="3" Padding="14,10" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock x:Name="LiveSplitInstalledVersionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="10" Foreground="#2A4A6A" Margin="0,0,0,3"/>
+                                    <TextBlock x:Name="LiveSplitInstalledVersionText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="12" FontWeight="Bold" Foreground="#8AAABB"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock x:Name="LiveSplitLatestVersionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="10" Foreground="#2A4A6A" Margin="0,0,0,3"/>
+                                    <TextBlock x:Name="LiveSplitLatestVersionText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="12" FontWeight="Bold" Foreground="#8AAABB"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Install path (visible when installed) -->
+                        <Border x:Name="LiveSplitPathBorder"
+                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                CornerRadius="3" Padding="14,8" Margin="0,0,0,12"
+                                Visibility="Collapsed">
+                            <TextBlock x:Name="LiveSplitPathText"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="10" Foreground="#2A5A7A"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Border>
+
+                        <!-- Action button: Install / Update / Launch -->
+                        <Button x:Name="LiveSplitActionBtn"
+                                Height="40" HorizontalAlignment="Stretch"
+                                local:ButtonHelper.CornerRadius="3"
+                                Background="#00503C" BorderBrush="#00B482" BorderThickness="1"
+                                Margin="0,4,0,0"
+                                Click="LiveSplitActionBtn_Click"
+                                Visibility="Collapsed">
+                            <TextBlock x:Name="LiveSplitActionBtnText"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="11" FontWeight="Bold" Foreground="#00CCAA"/>
+                        </Button>
+
+                        <!-- Download progress (shown during download) -->
+                        <StackPanel x:Name="LiveSplitProgressPanel"
+                                    Visibility="Collapsed"
+                                    Margin="0,4,0,0">
+                            <TextBlock x:Name="LiveSplitProgressText"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="11" Foreground="#00CCAA"
+                                       Margin="0,0,0,8"/>
+                            <ProgressBar x:Name="LiveSplitProgressBar"
+                                         Value="0" Maximum="100"
+                                         Height="6"/>
+                        </StackPanel>
+
+                    </StackPanel>
+
+                    <!-- Footer -->
+                    <Border Grid.Row="2" Background="#060F18"
+                            BorderBrush="#0D2030" BorderThickness="0,1,0,0">
+                        <Button x:Name="CloseLiveSplitBtn"
+                                Height="36" MinWidth="120"
+                                local:ButtonHelper.CornerRadius="3"
+                                Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Margin="0,0,14,0"
+                                Click="CloseLiveSplitBtn_Click">
+                            <TextBlock x:Name="CloseLiveSplitBtnText"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                        </Button>
                     </Border>
 
                 </Grid>

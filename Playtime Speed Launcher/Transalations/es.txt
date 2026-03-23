@@ -61,6 +61,24 @@ save_btn = GUARDAR
 name_label = NOMBRE
 icon_label = ÍCONO
 
+# Selección de modo de instalación
+install_mode_label = Elige un método de instalación:
+install_mode_auto_title = AUTO
+install_mode_auto_desc = Ejecuta SteamCMD en segundo plano. Gestiona Steam Guard automáticamente mediante una ventana emergente.
+install_mode_manual_title = MANUAL
+install_mode_manual_desc = Abre la Consola de Steam (sin necesidad de iniciar sesión). Copia y pega el comando — no requiere Steam Guard.
+install_mode_auto_btn = AUTO
+install_mode_manual_btn = MANUAL
+install_manual_title = [ INSTALACIÓN MANUAL ]
+install_manual_step1 = Abre la Consola de Steam (se abrirá automáticamente al hacer clic en el botón de abajo).
+install_manual_step2 = Pega el siguiente comando en la Consola de Steam y presiona Enter:
+install_manual_step3 = Espera a que termine la descarga. Los archivos se guardarán en:
+install_manual_step4 = Una vez completada la descarga, mueve la carpeta descargada a la ubicación de instalación que prefieras.
+install_manual_step5 = Vuelve a esta app, abre el panel de versiones del capítulo y usa el botón AÑADIR para registrar la versión manualmente.
+install_manual_confirm = He leído y entendido todos los pasos anteriores.
+install_manual_open_btn = ABRIR CONSOLA Y CARPETA
+install_manual_waiting = Esperando a que termine la descarga en la Consola de Steam.\n\nCuando termine, haz clic en Continuar.
+
 # Diálogos de SteamCMD
 steamcmd_not_found_title = SteamCMD no encontrado
 steamcmd_not_found_content = SteamCMD es necesario para descargar versiones históricas.\n\n¿Descargarlo ahora? (~4 MB, oficial de Valve)\nO elige 'Buscar' si ya lo tienes instalado.
@@ -134,6 +152,19 @@ updates_download_btn = DESCARGAR Y ACTUALIZAR
 updates_cancel_btn = CANCELAR
 updates_downloading = Descargando...  {0}%
 updates_close = VOLVER
+
+# LiveSplit
+livesplit_checking = Comprobando...
+livesplit_not_installed = No instalado
+livesplit_up_to_date = Instalado ✓
+livesplit_update_available = ¡Actualización disponible!
+livesplit_installed_version = Versión instalada
+livesplit_latest_version = Última versión
+livesplit_install_btn = DESCARGAR E INSTALAR
+livesplit_update_btn = DESCARGAR Y ACTUALIZAR
+livesplit_launch_btn = ABRIR LIVESPLIT
+livesplit_downloading = Descargando...  {0}%
+livesplit_none = —
 
 # Errores
 error_title = Error

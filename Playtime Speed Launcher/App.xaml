@@ -44,6 +44,72 @@
             <Style TargetType="Slider">
                 <Setter Property="Foreground" Value="#00CCAA"/>
             </Style>
+
+            <!-- LiveSplit logo icon (converted from LiveSplitInstaller.svg) -->
+            <DrawingImage x:Key="LiveSplitIcon">
+                <DrawingImage.Drawing>
+                    <DrawingGroup>
+                        <!-- Background hexagon -->
+                        <GeometryDrawing Brush="#FF404040">
+                            <GeometryDrawing.Geometry>
+                                <PathGeometry Figures="M320.733,150.5 C395.427,21.125 604.573,21.125 679.267,150.5 L918.29,564.5 C992.985,693.875 888.412,875 739.023,875 L260.977,875 C111.588,875 7.015,693.875 81.71,564.5 Z"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                        <!-- Shadow overlay -->
+                        <GeometryDrawing Brush="#20000000">
+                            <GeometryDrawing.Geometry>
+                                <PathGeometry Figures="M786.297,335.88 L620.208,169.792 L379.792,410.208 L620.208,650.624 L592.674,710.104 L412.362,529.792 L171.946,770.208 L276.738,875 L739.023,875 C888.412,875 992.985,693.875 918.29,564.5 Z"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                        <!-- Red circle (top) -->
+                        <GeometryDrawing>
+                            <GeometryDrawing.Brush>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#FFD73F4A" Offset="0"/>
+                                    <GradientStop Color="#FFC22B36" Offset="1"/>
+                                </LinearGradientBrush>
+                            </GeometryDrawing.Brush>
+                            <GeometryDrawing.Geometry>
+                                <EllipseGeometry Center="500,290" RadiusX="170" RadiusY="170"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                        <!-- Green circle (bottom-right) -->
+                        <GeometryDrawing>
+                            <GeometryDrawing.Brush>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#FF3FCD46" Offset="0"/>
+                                    <GradientStop Color="#FF27BB2E" Offset="1"/>
+                                </LinearGradientBrush>
+                            </GeometryDrawing.Brush>
+                            <GeometryDrawing.Geometry>
+                                <EllipseGeometry Center="707.846,650" RadiusX="170" RadiusY="170"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                        <!-- Blue circle (bottom-left) -->
+                        <GeometryDrawing>
+                            <GeometryDrawing.Brush>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#FF3F5CD7" Offset="0"/>
+                                    <GradientStop Color="#FF2B48C2" Offset="1"/>
+                                </LinearGradientBrush>
+                            </GeometryDrawing.Brush>
+                            <GeometryDrawing.Geometry>
+                                <EllipseGeometry Center="292.154,650" RadiusX="170" RadiusY="170"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                        <!-- White border stroke on hexagon -->
+                        <GeometryDrawing Brush="Transparent">
+                            <GeometryDrawing.Pen>
+                                <Pen Brush="White" Thickness="40"/>
+                            </GeometryDrawing.Pen>
+                            <GeometryDrawing.Geometry>
+                                <PathGeometry Figures="M320.733,150.5 C395.427,21.125 604.573,21.125 679.267,150.5 L918.29,564.5 C992.985,693.875 888.412,875 739.023,875 L260.977,875 C111.588,875 7.015,693.875 81.71,564.5 Z"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                    </DrawingGroup>
+                </DrawingImage.Drawing>
+            </DrawingImage>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>
