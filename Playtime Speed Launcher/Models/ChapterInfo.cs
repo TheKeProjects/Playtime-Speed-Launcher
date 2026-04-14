@@ -71,8 +71,8 @@ public class ChapterInfo
         new ChapterInfo
         {
             Number = 4,
-            Title = "EL VIAJE OSCURO",
-            SubTitle = "Chapter 4: The Dark Ride",
+            Title = "REFUGIO",
+            SubTitle = "Chapter 4: Safe Haven",
             Description = "Aventúrate por los oscuros pasillos de la fábrica en busca de la verdad sobre los experimentos de Playtime Co.",
             SteamFolderName = "Poppy Playtime",
             SubFolderName = "Playtime_Chapter4",
@@ -86,7 +86,7 @@ public class ChapterInfo
         {
             Number = 5,
             Title = "COSAS ROTAS",
-            SubTitle = "Chapter 5: Coming Soon",
+            SubTitle = "Chapter 5: Broken Things",
             Description = "El siguiente capítulo de la saga de Poppy Playtime está en desarrollo.",
             SteamFolderName = "Poppy Playtime",
             SubFolderName = "Chapter5",
