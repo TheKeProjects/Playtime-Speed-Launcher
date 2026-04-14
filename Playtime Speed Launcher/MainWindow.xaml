@@ -26,6 +26,21 @@
         <!-- ── TOP STATUS BAR ── -->
         <Border Grid.Row="0" Background="#08111A"
                 BorderBrush="#0D2030" BorderThickness="0,0,0,1"/>
+        <StackPanel Grid.Row="0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Margin="12,0,0,0">
+            <Image x:Name="TrophyImage"
+                   Width="16" Height="16"
+                   VerticalAlignment="Center"
+                   RenderOptions.BitmapScalingMode="HighQuality"/>
+            <TextBlock Text="Approved by SPEEDRUN.COM"
+                       FontFamily="Cascadia Code, Consolas, Courier New"
+                       FontSize="10" Foreground="#00CC66"
+                       VerticalAlignment="Center"
+                       Margin="6,0,0,0"/>
+        </StackPanel>
         <TextBlock Grid.Row="0"
                    x:Name="VersionLabel"
                    Text="v1.0.0"

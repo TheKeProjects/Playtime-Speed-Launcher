@@ -35,6 +35,7 @@ public class ChapterInfo
                 new() { Name = "Any% <1.1",     AppId = 1721470, DepotId = 1721471, ManifestId = "8897518061680100138", DownloadSize = "5,79 GB" },
                 new() { Name = "NMG <1.1",      AppId = 1721470, DepotId = 1721471, ManifestId = "5760656490992572463", DownloadSize = "5,79 GB" },
                 new() { Name = "NMG/Any% 1.2",  AppId = 1721470, DepotId = 1721471, ManifestId = "1908539100791719856", DownloadSize = "5,79 GB" },
+                new() { Name = "Parche 1.3",    AppId = 1721470, DepotId = 1721471, ManifestId = "1791252873090904500", DownloadSize = "5,79 GB" },
             ],
         },
         new ChapterInfo

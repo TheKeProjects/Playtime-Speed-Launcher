@@ -61,6 +61,9 @@ public partial class MainWindow : Window
     {
         Loc.LoadSaved();
         InitializeComponent();
+        var trophyPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "GoldTrophy.png");
+        if (System.IO.File.Exists(trophyPath))
+            TrophyImage.Source = new BitmapImage(new Uri(trophyPath));
         InitLangSelector();
         ApplyLanguage();
         SetupWindow();
