@@ -367,6 +367,28 @@
 
                         <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
 
+                        <!-- Open with Steam row -->
+                        <Button x:Name="CopyForSteamBtn"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                local:ButtonHelper.CornerRadius="4"
+                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                Padding="12,10" Margin="0,0,0,16"
+                                Click="CopyForSteamBtn_Click">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image x:Name="SteamBtnIcon"
+                                       Width="18" Height="18"
+                                       VerticalAlignment="Center"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock x:Name="CopyForSteamBtnText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
+
                         <Grid Margin="0,0,0,8">
                             <TextBlock x:Name="SoundEffectsLabel"
                                        Text="Efectos de sonido"

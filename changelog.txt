@@ -1,2 +1,2 @@
-1.0.4
-- Fixed the name for the chapter 4
+1.0.5
+- Added an option to open the launcher from steam

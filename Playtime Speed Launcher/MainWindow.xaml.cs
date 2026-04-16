@@ -64,6 +64,9 @@ public partial class MainWindow : Window
         var trophyPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "GoldTrophy.png");
         if (System.IO.File.Exists(trophyPath))
             TrophyImage.Source = new BitmapImage(new Uri(trophyPath));
+        var steamIconPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "Steam.jpg");
+        if (System.IO.File.Exists(steamIconPath))
+            SteamBtnIcon.Source = new BitmapImage(new Uri(steamIconPath));
         InitLangSelector();
         ApplyLanguage();
         SetupWindow();
@@ -147,6 +150,7 @@ public partial class MainWindow : Window
 
         OpenLiveSplitBtnText.Text      = "LiveSplit";
         OpenLiveSplitBtnBadge.Text     = "↑ UPDATE";
+        CopyForSteamBtnText.Text       = Loc.Get("steam_launch_btn");
         CloseLiveSplitBtnText.Text     = Loc.Get("back");
         LiveSplitInstalledVersionLabel.Text = Loc.Get("livesplit_installed_version");
         LiveSplitLatestVersionLabel.Text    = Loc.Get("livesplit_latest_version");
@@ -1679,6 +1683,59 @@ public partial class MainWindow : Window
 
     private void CloseSettingsBtn_Click(object sender, RoutedEventArgs e) =>
         SettingsOverlay.Visibility = Visibility.Collapsed;
+
+    private void CopyForSteamBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var exePath = Environment.ProcessPath ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+        if (string.IsNullOrEmpty(exePath)) return;
+        try { Clipboard.SetText($"\"{exePath}\" %command%"); } catch { }
+        ShowTutorialVideoPopup();
+    }
+
+    private void ShowTutorialVideoPopup()
+    {
+        var videoPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Videos", "Tutorial.mp4");
+        if (!File.Exists(videoPath)) return;
+
+        var media = new MediaElement
+        {
+            Source = new Uri(videoPath),
+            LoadedBehavior = MediaState.Manual,
+            UnloadedBehavior = MediaState.Close,
+            Stretch = Stretch.Uniform,
+        };
+        media.Loaded     += (_, _) => media.Play();
+        media.MediaEnded += (_, _) => { media.Position = TimeSpan.Zero; media.Play(); };
+
+        var hint = new TextBlock
+        {
+            Text = "Click to close",
+            Foreground = new SolidColorBrush(Color.FromArgb(180, 0, 204, 170)),
+            FontSize = 11,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 4, 0, 6),
+        };
+
+        var panel = new StackPanel();
+        panel.Children.Add(media);
+        panel.Children.Add(hint);
+
+        var popup = new Window
+        {
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            Width = 960,
+            Height = 570,
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = new SolidColorBrush(Color.FromRgb(9, 12, 30)),
+            ShowInTaskbar = false,
+            Content = panel,
+        };
+        popup.MouseDown += (_, _) => popup.Close();
+        popup.KeyDown   += (_, e) => { if (e.Key == Key.Escape) popup.Close(); };
+        popup.Show();
+    }
 
     private void VersionBtn_Click(object sender, RoutedEventArgs e) => OpenVersionsOverlay();
 

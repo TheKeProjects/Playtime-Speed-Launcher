@@ -153,6 +153,9 @@ updates_cancel_btn = CANCEL
 updates_downloading = Downloading...  {0}%
 updates_close = BACK
 
+# Steam
+steam_launch_btn = OPEN LAUNCHER WITH STEAM
+
 # LiveSplit
 livesplit_checking = Checking...
 livesplit_not_installed = Not installed
