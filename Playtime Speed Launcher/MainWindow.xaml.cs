@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -35,7 +35,11 @@ public partial class MainWindow : Window
         ["en"] = "English",
     };
 
-    private bool _popupWasOpen = false;
+    private bool _popupWasOpen    = false;
+    private int  _saveCardChapter = 0;
+
+    // ── Global hotkey ─────────────────────────────────────────────────────────
+    private HotkeyOverlay? _hotkeyOverlay;
 
     // ── Update system ─────────────────────────────────────────────────────────
     private readonly UpdateService _updateService = new();
@@ -171,6 +175,14 @@ public partial class MainWindow : Window
         CancelInstallBtnText.Text      = Loc.Get("updates_cancel_btn");
         CloseUpdatesBtnText.Text       = Loc.Get("updates_close");
 
+        SaveCardHeaderText.Text        = Loc.Get("save_card_header");
+        SaveCardDeleteBtnText.Text     = Loc.Get("save_card_delete_btn");
+        SaveCardSaveBtnText.Text       = Loc.Get("save_card_save_btn");
+        CloseSaveCardBtnText.Text      = Loc.Get("back");
+
+        CheckpointSelectHeaderText.Text   = Loc.Get("checkpoint_select_header");
+        CloseCheckpointSelectBtnText.Text = Loc.Get("back");
+
         CardsPanel.Children.Clear();
         _cards.Clear();
         BuildCards();
@@ -265,6 +277,58 @@ public partial class MainWindow : Window
 
     // ── Sound ─────────────────────────────────────────────────────────────────
 
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool RegisterHotKey(nint hWnd, int id, uint fsModifiers, uint vk);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool UnregisterHotKey(nint hWnd, int id);
+
+    private const uint MOD_CONTROL = 0x0002;
+    private const uint MOD_SHIFT   = 0x0004;
+    private const uint VK_RETURN   = 0x0D;
+    private const int  HOTKEY_ID   = 9001;
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        var helper = new System.Windows.Interop.WindowInteropHelper(this);
+        var source = System.Windows.Interop.HwndSource.FromHwnd(helper.Handle);
+        source?.AddHook(WndProc);
+        RegisterHotKey(helper.Handle, HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, VK_RETURN);
+    }
+
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        base.OnClosing(e);
+        UnregisterHotKey(new System.Windows.Interop.WindowInteropHelper(this).Handle, HOTKEY_ID);
+        _hotkeyOverlay?.Close();
+    }
+
+    private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
+    {
+        if (msg == 0x0312 && (int)wParam == HOTKEY_ID)
+        {
+            ToggleHotkeyOverlay();
+            handled = true;
+        }
+        return 0;
+    }
+
+    private void ToggleHotkeyOverlay()
+    {
+        if (_hotkeyOverlay is { IsVisible: true })
+        {
+            _hotkeyOverlay.Close();
+        }
+        else
+        {
+            var exePaths = _chapters.Take(3).Select(c => c.GameExePath).ToArray();
+            _hotkeyOverlay = new HotkeyOverlay(exePaths);
+            _hotkeyOverlay.Closed += (_, _) => _hotkeyOverlay = null;
+            _hotkeyOverlay.Show();
+        }
+    }
+
     [System.Runtime.InteropServices.DllImport("winmm.dll",
         CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern bool PlaySoundW(string pszSound, nint hmod, uint fdwSound);
@@ -355,6 +419,44 @@ public partial class MainWindow : Window
             Foreground = new SolidColorBrush(Color.FromArgb(230, 230, 240, 255)),
             TextWrapping = TextWrapping.Wrap,
         });
+
+        if (chapter.Number == 1 || chapter.Number == 2 || chapter.Number == 3 || chapter.Number >= 4)
+        {
+            var saveBtn = new Button
+            {
+                Background = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(10, 5, 10, 5),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 8, 0, 0),
+                Tag = chapter.Number,
+            };
+            ButtonHelper.SetCornerRadius(saveBtn, new CornerRadius(3));
+            var saveBtnContent = new StackPanel { Orientation = Orientation.Horizontal };
+            saveBtnContent.Children.Add(new TextBlock
+            {
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                Text = "",
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            saveBtnContent.Children.Add(new TextBlock
+            {
+                Text = "+",
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize = 12, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(4, 0, 0, 0),
+            });
+            saveBtn.Content = saveBtnContent;
+            saveBtn.MouseDown += (s, ev) => ev.Handled = true;
+            saveBtn.Click += SaveCardOpenBtn_Click;
+            bottom.Children.Add(saveBtn);
+        }
+
         grid.Children.Add(bottom);
 
         if (!chapter.IsAvailable)
@@ -1683,6 +1785,208 @@ public partial class MainWindow : Window
 
     private void CloseSettingsBtn_Click(object sender, RoutedEventArgs e) =>
         SettingsOverlay.Visibility = Visibility.Collapsed;
+
+    private void SaveCardOpenBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is int chapterNum)
+            _saveCardChapter = chapterNum;
+
+        if (_saveCardChapter == 1 || _saveCardChapter == 2 || _saveCardChapter == 3)
+        {
+            PopulateCheckpointList();
+            CheckpointSelectOverlay.Visibility = Visibility.Visible;
+            return;
+        }
+
+        if (_saveCardChapter == 4)
+        {
+            SaveCardSaveBtnText.Text        = Loc.Get("ch4_load_btn");
+            SaveCardSaveBtnPlus.Visibility  = Visibility.Collapsed;
+        }
+        else if (_saveCardChapter == 5)
+        {
+            SaveCardSaveBtnText.Text        = Loc.Get("ch5_load_btn");
+            SaveCardSaveBtnPlus.Visibility  = Visibility.Collapsed;
+        }
+        else
+        {
+            SaveCardSaveBtnText.Text        = Loc.Get("save_card_save_btn");
+            SaveCardSaveBtnPlus.Visibility  = Visibility.Visible;
+        }
+
+        SaveCardOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void PopulateCheckpointList()
+    {
+        CheckpointListPanel.Children.Clear();
+        var savesDir = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Saves", $"Chapter {_saveCardChapter}");
+        if (!Directory.Exists(savesDir)) return;
+
+        var folders = Directory.GetDirectories(savesDir)
+            .OrderBy(d =>
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(IOPath.GetFileName(d), @"^\[(\d+)\]");
+                return m.Success ? int.Parse(m.Groups[1].Value) : 999;
+            });
+
+        var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var (savFileName, destDir) = _saveCardChapter switch
+        {
+            1 => ("Chap1Checkpoint.sav", IOPath.Combine(localApp, "Poppy_Playtime",       "Saved", "SaveGames")),
+            2 => ("Chap2Checkpoint.sav", IOPath.Combine(localApp, "Playtime_Prototype4",  "Saved", "SaveGames")),
+            3 => ("Playtime.sav",        IOPath.Combine(localApp, "Playtime_Chapter3",    "Saved", "SaveGames")),
+            _ => (string.Empty, string.Empty),
+        };
+        if (string.IsNullOrEmpty(savFileName)) return;
+
+        bool first = true;
+        foreach (var folder in folders)
+        {
+            var savFile = IOPath.Combine(folder, savFileName);
+            if (!File.Exists(savFile)) continue;
+
+            var checkpointName = IOPath.GetFileName(folder);
+            var btn = new Button
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Background = new SolidColorBrush(Color.FromArgb(0xFF, 0x0A, 0x18, 0x25)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0x0D, 0x25, 0x35)),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(14, 9, 14, 9),
+                Margin = first ? new Thickness(0) : new Thickness(0, 6, 0, 0),
+                Tag = (savFile, IOPath.Combine(destDir, savFileName)),
+            };
+            ButtonHelper.SetCornerRadius(btn, new CornerRadius(4));
+            btn.Click += CheckpointBtn_Click;
+
+            var content = new StackPanel { Orientation = Orientation.Horizontal };
+            content.Children.Add(new TextBlock
+            {
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                Text = "",
+                FontSize = 13,
+                Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0x00, 0xCC, 0xAA)),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            content.Children.Add(new TextBlock
+            {
+                Text = checkpointName,
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize = 11,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0xCC, 0xDD, 0xEE)),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(10, 0, 0, 0),
+            });
+            btn.Content = content;
+            CheckpointListPanel.Children.Add(btn);
+            first = false;
+        }
+    }
+
+    private void CheckpointBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not (string sourcePath, string destPath)) return;
+
+        try
+        {
+            Directory.CreateDirectory(IOPath.GetDirectoryName(destPath)!);
+            File.Copy(sourcePath, destPath, overwrite: true);
+        }
+        catch { }
+
+        CheckpointSelectOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void CloseCheckpointSelectBtn_Click(object sender, RoutedEventArgs e) =>
+        CheckpointSelectOverlay.Visibility = Visibility.Collapsed;
+
+    private void SaveCardDeleteBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string folder, pattern;
+
+        if (_saveCardChapter == 4)
+        {
+            folder  = IOPath.Combine(localApp, "ch4_pro", "Saved", "SaveGames");
+            pattern = "SaveGame_*";
+        }
+        else if (_saveCardChapter == 5)
+        {
+            folder  = IOPath.Combine(localApp, "ch5_pro", "Saved", "SaveGames");
+            pattern = "PoppySave_*";
+        }
+        else
+        {
+            SaveCardOverlay.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        try
+        {
+            if (Directory.Exists(folder))
+            {
+                foreach (var file in Directory.GetFiles(folder, pattern))
+                    File.Delete(file);
+            }
+        }
+        catch { }
+
+        SaveCardOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void SaveCardSaveBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_saveCardChapter == 4)
+        {
+            var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var destDir  = IOPath.Combine(localApp, "ch4_pro", "Saved", "SaveGames");
+            var srcDir   = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Saves", "Chapter 4");
+
+            try
+            {
+                if (Directory.Exists(destDir))
+                    foreach (var f in Directory.GetFiles(destDir, "SaveGame_*"))
+                        File.Delete(f);
+
+                if (Directory.Exists(srcDir))
+                {
+                    Directory.CreateDirectory(destDir);
+                    foreach (var f in Directory.GetFiles(srcDir))
+                        File.Copy(f, IOPath.Combine(destDir, IOPath.GetFileName(f)), overwrite: true);
+                }
+            }
+            catch { }
+        }
+        else if (_saveCardChapter == 5)
+        {
+            var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var destDir  = IOPath.Combine(localApp, "ch5_pro", "Saved", "SaveGames");
+            var srcDir   = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Saves", "Chapter 5");
+
+            try
+            {
+                if (Directory.Exists(destDir))
+                    foreach (var f in Directory.GetFiles(destDir, "PoppySave_*"))
+                        File.Delete(f);
+
+                if (Directory.Exists(srcDir))
+                {
+                    Directory.CreateDirectory(destDir);
+                    foreach (var f in Directory.GetFiles(srcDir))
+                        File.Copy(f, IOPath.Combine(destDir, IOPath.GetFileName(f)), overwrite: true);
+                }
+            }
+            catch { }
+        }
+
+        SaveCardOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void CloseSaveCardBtn_Click(object sender, RoutedEventArgs e) =>
+        SaveCardOverlay.Visibility = Visibility.Collapsed;
 
     private void CopyForSteamBtn_Click(object sender, RoutedEventArgs e)
     {

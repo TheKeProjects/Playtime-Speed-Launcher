@@ -10,6 +10,9 @@ public static class ResourceExtractor
 
     public static void Extract()
     {
+        if (Directory.Exists(TempDir))
+            Directory.Delete(TempDir, recursive: true);
+
         var asm = Assembly.GetExecutingAssembly();
 
         foreach (var name in asm.GetManifestResourceNames())
