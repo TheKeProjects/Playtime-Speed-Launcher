@@ -11,7 +11,7 @@ public static class SteamDetector
         [1] = ["Poppy Playtime"],
         [2] = ["Poppy Playtime Chapter 2", "Poppy Playtime - Chapter 2"],
         [3] = ["Poppy Playtime Chapter 3", "Poppy Playtime - Chapter 3"],
-        [4] = ["Poppy Playtime Chapter 4", "Poppy Playtime - Chapter 4", "Poppy Playtime The Dark Ride"],
+        [4] = ["Poppy Playtime Chapter 4", "Poppy Playtime - Chapter 4"],
         [5] = ["Poppy Playtime Chapter 5", "Poppy Playtime - Chapter 5"],
     };
 

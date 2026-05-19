@@ -1,5 +1,2 @@
-1.1.0
-- Added checkpoint system for Chapters 1, 2, and 3
-- Added an in-game checkpoint loader (Ctrl + Alt + Enter)
-- Added all checkpoints to Chapters 4 and 5
-- Updated the image for Chapter 5
+1.1.1
+- Fixed checkpoint 27 from Chapter 2
