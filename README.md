@@ -18,7 +18,7 @@ Browse all five Poppy Playtime chapters. The currently selected chapter's title,
 | 1 | A Tight Squeeze |
 | 2 | Fly in a Web |
 | 3 | Deep Sleep |
-| 4 | Safe Heaven |
+| 4 | Safe Haven |
 | 5 | Broken Things |
 
 ---
