@@ -191,8 +191,31 @@ hotkey_header   = [ CARGAR CHECKPOINT ]
 hotkey_hint     = Esc · cerrar
 hotkey_load_btn = CARGAR
 
+# Controles (sección en configuración)
+controls_section       = CONTROLES
+checkpoint_hotkey_label = Atajo checkpoint loader
+hotkey_press_keys      = Presiona teclas...
+
+# Toast de inicio de juego
+game_toast_hint = Abre el checkpoint loader con:
+
 # Chapter 4 save card
 ch4_load_btn = CARGAR 100%
 
 # Chapter 5 save card
 ch5_load_btn = CARGAR 100%
+
+# Reporte de errores
+bug_report_btn         = REPORTAR ERROR
+bug_report_title       = [ REPORTAR UN ERROR ]
+bug_report_name_label  = Tu nombre (opcional)
+bug_report_etitle_label = Título del error *
+bug_report_desc_label  = Descripción *
+bug_report_image_label = Captura de pantalla (opcional)
+bug_report_image_btn   = ADJUNTAR IMAGEN
+bug_report_image_none  = Sin imagen seleccionada
+bug_report_send_btn    = ENVIAR REPORTE
+bug_report_sending     = ENVIANDO...
+bug_report_success     = ¡Reporte enviado! Gracias.
+bug_report_err_empty   = Por favor completa el título y la descripción.
+bug_report_err_send    = No se pudo enviar. Revisa tu conexión.

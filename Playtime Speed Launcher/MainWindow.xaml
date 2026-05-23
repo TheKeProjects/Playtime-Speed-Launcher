@@ -177,6 +177,26 @@
         <Border Grid.Row="5" Background="#08111A"
                 BorderBrush="#0D2030" BorderThickness="0,1,0,0"/>
 
+        <Button x:Name="BugReportButton"
+                Grid.Row="5"
+                Height="24"
+                HorizontalAlignment="Left" VerticalAlignment="Center"
+                Margin="12,0,0,0"
+                local:ButtonHelper.CornerRadius="3"
+                Background="#0C0814" BorderBrush="#28104A" BorderThickness="1"
+                Click="BugReportButton_Click">
+            <StackPanel Orientation="Horizontal" Margin="8,0,8,0">
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE730;"
+                           FontSize="10" Foreground="#6633AA"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="BugReportBtnText"
+                           Text="REPORTAR ERROR"
+                           FontFamily="Cascadia Code, Consolas, Courier New"
+                           FontSize="9" FontWeight="Bold" Foreground="#5522AA"
+                           Margin="5,0,0,0"/>
+            </StackPanel>
+        </Button>
+
         <!-- ── VERSIONS OVERLAY ── -->
         <Grid x:Name="VersionsOverlay"
               Grid.RowSpan="6"
@@ -495,6 +515,32 @@
                                 </Popup>
 
                             </StackPanel>
+                        </Grid>
+                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
+
+                        <TextBlock x:Name="ControlsSectionLabel"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="9" FontWeight="Bold"
+                                   Foreground="#00CCAA"
+                                   Margin="0,0,0,10"/>
+
+                        <Grid>
+                            <TextBlock x:Name="CheckpointHotkeyLabel"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="12" Foreground="#8AAABB"
+                                       VerticalAlignment="Center"/>
+                            <Button x:Name="CheckpointHotkeyBtn"
+                                    Height="30" MinWidth="130"
+                                    HorizontalAlignment="Right"
+                                    local:ButtonHelper.CornerRadius="4"
+                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                    Padding="10,0,10,0"
+                                    Click="CheckpointHotkeyBtn_Click">
+                                <TextBlock x:Name="CheckpointHotkeyText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="10" Foreground="#8AAABB"
+                                           VerticalAlignment="Center"/>
+                            </Button>
                         </Grid>
                     </StackPanel>
                     <Border Grid.Row="2" Background="#060F18"
@@ -1051,6 +1097,155 @@
                                        FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
                         </Button>
                     </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ── BUG REPORT OVERLAY ── -->
+        <Grid x:Name="BugReportOverlay"
+              Grid.RowSpan="6"
+              Visibility="Collapsed"
+              Background="#BB000000">
+            <Border Width="480" Background="#09141E"
+                    BorderBrush="#2A1050" BorderThickness="1"
+                    CornerRadius="4"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="48"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="52"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <Border Grid.Row="0" Background="#07101A"
+                            BorderBrush="#1A0838" BorderThickness="0,0,0,1">
+                        <TextBlock x:Name="BugReportHeaderText"
+                                   Text="[ REPORTAR ERROR ]"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="13" FontWeight="Bold" Foreground="#9944CC"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- Form -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="24,16,24,16">
+
+                            <!-- Name (optional) -->
+                            <TextBlock x:Name="BugNameLabel"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="9" FontWeight="Bold" Foreground="#5522AA"
+                                       Margin="0,0,0,4"/>
+                            <TextBox x:Name="BugNameBox"
+                                     FontFamily="Cascadia Code, Consolas, Courier New"
+                                     FontSize="11"
+                                     Background="#080C18" Foreground="#AABBCC"
+                                     BorderBrush="#1E1040" BorderThickness="1"
+                                     CaretBrush="#9944CC"
+                                     Padding="8,6"
+                                     Margin="0,0,0,14"/>
+
+                            <!-- Error title (required) -->
+                            <TextBlock x:Name="BugETitleLabel"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="9" FontWeight="Bold" Foreground="#9944CC"
+                                       Margin="0,0,0,4"/>
+                            <TextBox x:Name="BugETitleBox"
+                                     FontFamily="Cascadia Code, Consolas, Courier New"
+                                     FontSize="11"
+                                     Background="#080C18" Foreground="#CCEEFF"
+                                     BorderBrush="#2A1050" BorderThickness="1"
+                                     CaretBrush="#9944CC"
+                                     Padding="8,6"
+                                     Margin="0,0,0,14"/>
+
+                            <!-- Description (required) -->
+                            <TextBlock x:Name="BugDescLabel"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="9" FontWeight="Bold" Foreground="#9944CC"
+                                       Margin="0,0,0,4"/>
+                            <TextBox x:Name="BugDescBox"
+                                     FontFamily="Cascadia Code, Consolas, Courier New"
+                                     FontSize="11"
+                                     Background="#080C18" Foreground="#AABBCC"
+                                     BorderBrush="#2A1050" BorderThickness="1"
+                                     CaretBrush="#9944CC"
+                                     Padding="8,6"
+                                     Height="90"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Margin="0,0,0,14"/>
+
+                            <!-- Image (optional) -->
+                            <TextBlock x:Name="BugImageLabel"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="9" FontWeight="Bold" Foreground="#5522AA"
+                                       Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="BugImageBtn"
+                                        Height="30" MinWidth="140"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#0A0818" BorderBrush="#2A1050" BorderThickness="1"
+                                        Click="BugImageBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xEB9F;"
+                                                   FontSize="12" Foreground="#7733BB"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="BugImageBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" FontWeight="Bold" Foreground="#5522AA"
+                                                   Margin="6,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock x:Name="BugImageFileName"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="9" Foreground="#2A1050"
+                                           VerticalAlignment="Center"
+                                           Margin="10,0,0,0"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxWidth="210"/>
+                            </StackPanel>
+
+                            <!-- Status message -->
+                            <TextBlock x:Name="BugStatusText"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="10" Foreground="#CC4422"
+                                       Margin="0,12,0,0"
+                                       TextWrapping="Wrap"
+                                       Visibility="Collapsed"/>
+
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Footer -->
+                    <Border Grid.Row="2" Background="#07101A"
+                            BorderBrush="#1A0838" BorderThickness="0,1,0,0">
+                        <Grid Margin="14,0">
+                            <Button x:Name="SendBugReportBtn"
+                                    Height="36" MinWidth="160"
+                                    local:ButtonHelper.CornerRadius="3"
+                                    Background="#1A0830" BorderBrush="#5A2A90" BorderThickness="1"
+                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Click="SendBugReportBtn_Click">
+                                <TextBlock x:Name="SendBugReportBtnText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="11" FontWeight="Bold" Foreground="#9944CC"/>
+                            </Button>
+                            <Button x:Name="CloseBugReportBtn"
+                                    Height="36" MinWidth="120"
+                                    local:ButtonHelper.CornerRadius="3"
+                                    Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1"
+                                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                                    Click="CloseBugReportBtn_Click">
+                                <TextBlock x:Name="CloseBugReportBtnText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
                 </Grid>
             </Border>
         </Grid>

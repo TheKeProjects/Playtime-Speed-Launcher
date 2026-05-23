@@ -1,2 +1,5 @@
-1.1.1
-- Fixed checkpoint 27 from Chapter 2
+1.2.0
+- Added an integrated error reporting system to the launcher (bottom-left corner)
+- Fixed the camera when opening the checkpoint loader
+- Added a popup in Poppy Playtime Chapters 1–3 showing the keybind combination to open the checkpoint loader
+- Added a setting to customize the checkpoint loader keybind

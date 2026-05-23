@@ -191,8 +191,31 @@ hotkey_header   = [ LOAD CHECKPOINT ]
 hotkey_hint     = Esc · close
 hotkey_load_btn = LOAD
 
+# Controls (section in settings)
+controls_section       = CONTROLS
+checkpoint_hotkey_label = Checkpoint loader shortcut
+hotkey_press_keys      = Press keys...
+
+# Game launch toast
+game_toast_hint = Open checkpoint loader with:
+
 # Chapter 4 save card
 ch4_load_btn = LOAD 100%
 
 # Chapter 5 save card
 ch5_load_btn = LOAD 100%
+
+# Bug report
+bug_report_btn         = REPORT BUG
+bug_report_title       = [ REPORT A BUG ]
+bug_report_name_label  = Your name (optional)
+bug_report_etitle_label = Error title *
+bug_report_desc_label  = Description *
+bug_report_image_label = Screenshot (optional)
+bug_report_image_btn   = ATTACH IMAGE
+bug_report_image_none  = No image selected
+bug_report_send_btn    = SEND REPORT
+bug_report_sending     = SENDING...
+bug_report_success     = Report sent! Thank you.
+bug_report_err_empty   = Please fill in the title and description.
+bug_report_err_send    = Could not send the report. Check your connection.

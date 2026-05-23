@@ -39,7 +39,16 @@ public partial class MainWindow : Window
     private int  _saveCardChapter = 0;
 
     // ── Global hotkey ─────────────────────────────────────────────────────────
-    private HotkeyOverlay? _hotkeyOverlay;
+    private HotkeyOverlay?  _hotkeyOverlay;
+    private uint             _hotkeyModifiers = MOD_CONTROL | MOD_SHIFT;
+    private uint             _hotkeyVk        = VK_RETURN;
+    private bool             _capturingHotkey;
+    private KeyEventHandler? _hotkeyCapture;
+
+    // ── Game watcher ──────────────────────────────────────────────────────────
+    private readonly bool[] _gameWasRunning        = new bool[3];
+    private bool             _gameWatcherInitialized;
+    private Window?          _gameToast;
 
     // ── Update system ─────────────────────────────────────────────────────────
     private readonly UpdateService _updateService = new();
@@ -48,6 +57,9 @@ public partial class MainWindow : Window
     private bool _isDownloading      = false;
     private bool _showingInstallView  = false;
     private bool _isGbInstall         = false;
+
+    // ── Bug report ────────────────────────────────────────────────────────────
+    private string? _bugImagePath = null;
 
     // ── LiveSplit ──────────────────────────────────────────────────────────────
     private readonly LiveSplitService _liveSplitService = new();
@@ -78,6 +90,7 @@ public partial class MainWindow : Window
         _ = DetectUpdatesAsync();
         _ = DetectLiveSplitAsync();
         PlayIntro();
+        StartGameWatcher();
         Loaded += (_, _) =>
             Dispatcher.BeginInvoke(DispatcherPriority.Background,
                 new Action(() => AttachButtonSounds(this)));
@@ -146,7 +159,10 @@ public partial class MainWindow : Window
         IntroSkipText.Text        = Loc.Get("intro_skip");
         AddInstallBtnText.Text    = Loc.Get("add_install");
         CloseVersionsBtnText.Text = Loc.Get("back");
-        LanguageLabel.Text        = Loc.Get("language_label");
+        LanguageLabel.Text         = Loc.Get("language_label");
+        ControlsSectionLabel.Text  = Loc.Get("controls_section");
+        CheckpointHotkeyLabel.Text = Loc.Get("checkpoint_hotkey_label");
+        RefreshHotkeyButton();
         ToolTipService.SetToolTip(SettingsButton, Loc.Get("settings_tooltip"));
 
         OpenUpdatesBtnText.Text        = Loc.Get("updates_header");
@@ -182,6 +198,17 @@ public partial class MainWindow : Window
 
         CheckpointSelectHeaderText.Text   = Loc.Get("checkpoint_select_header");
         CloseCheckpointSelectBtnText.Text = Loc.Get("back");
+
+        BugReportBtnText.Text      = Loc.Get("bug_report_btn");
+        BugReportHeaderText.Text   = Loc.Get("bug_report_title");
+        BugNameLabel.Text          = Loc.Get("bug_report_name_label");
+        BugETitleLabel.Text        = Loc.Get("bug_report_etitle_label");
+        BugDescLabel.Text          = Loc.Get("bug_report_desc_label");
+        BugImageLabel.Text         = Loc.Get("bug_report_image_label");
+        BugImageBtnText.Text       = Loc.Get("bug_report_image_btn");
+        BugImageFileName.Text      = Loc.Get("bug_report_image_none");
+        SendBugReportBtnText.Text  = Loc.Get("bug_report_send_btn");
+        CloseBugReportBtnText.Text = Loc.Get("back");
 
         CardsPanel.Children.Clear();
         _cards.Clear();
@@ -283,10 +310,16 @@ public partial class MainWindow : Window
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool UnregisterHotKey(nint hWnd, int id);
 
+    private const uint MOD_ALT     = 0x0001;
     private const uint MOD_CONTROL = 0x0002;
     private const uint MOD_SHIFT   = 0x0004;
+    private const uint MOD_WIN     = 0x0008;
     private const uint VK_RETURN   = 0x0D;
     private const int  HOTKEY_ID   = 9001;
+
+    private static readonly string HotkeyFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "hotkey.cfg");
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -294,7 +327,9 @@ public partial class MainWindow : Window
         var helper = new System.Windows.Interop.WindowInteropHelper(this);
         var source = System.Windows.Interop.HwndSource.FromHwnd(helper.Handle);
         source?.AddHook(WndProc);
-        RegisterHotKey(helper.Handle, HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, VK_RETURN);
+        LoadHotkey();
+        RegisterHotKey(helper.Handle, HOTKEY_ID, _hotkeyModifiers, _hotkeyVk);
+        RefreshHotkeyButton();
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
@@ -322,11 +357,284 @@ public partial class MainWindow : Window
         }
         else
         {
+            if (IntroOverlay.Visibility == Visibility.Visible)
+                HideIntro();
+
             var exePaths = _chapters.Take(3).Select(c => c.GameExePath).ToArray();
             _hotkeyOverlay = new HotkeyOverlay(exePaths);
             _hotkeyOverlay.Closed += (_, _) => _hotkeyOverlay = null;
             _hotkeyOverlay.Show();
+            _hotkeyOverlay.Activate();
         }
+    }
+
+    // ── Hotkey configuration ──────────────────────────────────────────────────
+
+    private void LoadHotkey()
+    {
+        try
+        {
+            if (!File.Exists(HotkeyFile)) return;
+            var parts = File.ReadAllText(HotkeyFile).Trim().Split(',');
+            if (parts.Length == 2
+                && uint.TryParse(parts[0], out var mod)
+                && uint.TryParse(parts[1], out var vk))
+            {
+                _hotkeyModifiers = mod;
+                _hotkeyVk        = vk;
+            }
+        }
+        catch { }
+    }
+
+    private void SaveHotkey()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(HotkeyFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(HotkeyFile, $"{_hotkeyModifiers},{_hotkeyVk}");
+        }
+        catch { }
+    }
+
+    private static string FormatHotkey(uint modifiers, uint vk)
+    {
+        var parts = new List<string>();
+        if ((modifiers & MOD_CONTROL) != 0) parts.Add("Ctrl");
+        if ((modifiers & MOD_ALT)     != 0) parts.Add("Alt");
+        if ((modifiers & MOD_SHIFT)   != 0) parts.Add("Shift");
+        if ((modifiers & MOD_WIN)     != 0) parts.Add("Win");
+        var key = KeyInterop.KeyFromVirtualKey((int)vk);
+        parts.Add(KeyToString(key));
+        return string.Join(" + ", parts);
+    }
+
+    private static string KeyToString(Key key) => key switch
+    {
+        Key.Return => "Enter",
+        Key.Back   => "Backspace",
+        Key.Escape => "Esc",
+        Key.Space  => "Space",
+        Key.Prior  => "PgUp",
+        Key.Next   => "PgDn",
+        Key.Delete => "Del",
+        Key.Insert => "Ins",
+        Key.Left   => "←",
+        Key.Right  => "→",
+        Key.Up     => "↑",
+        Key.Down   => "↓",
+        _ => key.ToString(),
+    };
+
+    private void RefreshHotkeyButton()
+    {
+        CheckpointHotkeyText.Text       = FormatHotkey(_hotkeyModifiers, _hotkeyVk);
+        CheckpointHotkeyBtn.BorderBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        CheckpointHotkeyText.Foreground = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+    }
+
+    private void CheckpointHotkeyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_capturingHotkey)
+        {
+            _capturingHotkey = false;
+            if (_hotkeyCapture != null)
+            {
+                RemoveHandler(UIElement.PreviewKeyDownEvent, _hotkeyCapture);
+                _hotkeyCapture = null;
+            }
+            RefreshHotkeyButton();
+            return;
+        }
+
+        _capturingHotkey = true;
+        CheckpointHotkeyText.Text       = Loc.Get("hotkey_press_keys");
+        CheckpointHotkeyText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170));
+        CheckpointHotkeyBtn.BorderBrush = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170));
+
+        _hotkeyCapture = CaptureHotkeyKeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _hotkeyCapture, true);
+    }
+
+    private void CaptureHotkeyKeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key is Key.LeftCtrl or Key.RightCtrl
+                or Key.LeftShift or Key.RightShift
+                or Key.LeftAlt or Key.RightAlt
+                or Key.LWin or Key.RWin
+                or Key.None)
+            return;
+
+        RemoveHandler(UIElement.PreviewKeyDownEvent, _hotkeyCapture);
+        _hotkeyCapture   = null;
+        _capturingHotkey = false;
+
+        if (key == Key.Escape)
+        {
+            RefreshHotkeyButton();
+            e.Handled = true;
+            return;
+        }
+
+        var modifiers = 0u;
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0) modifiers |= MOD_CONTROL;
+        if ((Keyboard.Modifiers & ModifierKeys.Shift)   != 0) modifiers |= MOD_SHIFT;
+        if ((Keyboard.Modifiers & ModifierKeys.Alt)     != 0) modifiers |= MOD_ALT;
+        if ((Keyboard.Modifiers & ModifierKeys.Windows) != 0) modifiers |= MOD_WIN;
+
+        var vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+
+        var helper = new System.Windows.Interop.WindowInteropHelper(this);
+        UnregisterHotKey(helper.Handle, HOTKEY_ID);
+        _hotkeyModifiers = modifiers;
+        _hotkeyVk        = vk;
+        RegisterHotKey(helper.Handle, HOTKEY_ID, _hotkeyModifiers, _hotkeyVk);
+        SaveHotkey();
+        RefreshHotkeyButton();
+
+        e.Handled = true;
+    }
+
+    // ── Game watcher ──────────────────────────────────────────────────────────
+
+    private void StartGameWatcher()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        timer.Tick += GameWatcherTick;
+        timer.Start();
+    }
+
+    private void GameWatcherTick(object? sender, EventArgs e)
+    {
+        var exePaths = _chapters.Take(3).Select(c => c.GameExePath).ToArray();
+        for (int i = 0; i < 3; i++)
+        {
+            var path = i < exePaths.Length ? exePaths[i] : null;
+            if (string.IsNullOrEmpty(path)) { _gameWasRunning[i] = false; continue; }
+
+            var name = IOPath.GetFileNameWithoutExtension(path);
+            bool running;
+            try { running = Process.GetProcessesByName(name).Length > 0; }
+            catch { running = false; }
+
+            if (_gameWatcherInitialized && running && !_gameWasRunning[i]
+                && (_gameToast == null || !_gameToast.IsVisible))
+                ShowGameToast();
+
+            _gameWasRunning[i] = running;
+        }
+        _gameWatcherInitialized = true;
+    }
+
+    private void ShowGameToast()
+    {
+        _gameToast?.Close();
+
+        const double W = 330;
+
+        var progressFg = new Border
+        {
+            Background          = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170)),
+            Height              = 3,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Width               = W - 2,
+        };
+
+        var progressGrid = new Grid { Height = 3 };
+        progressGrid.Children.Add(new Border
+        {
+            Background = new SolidColorBrush(Color.FromArgb(40, 0, 204, 170)),
+        });
+        progressGrid.Children.Add(progressFg);
+
+        var hintText = new TextBlock
+        {
+            Text       = Loc.Get("game_toast_hint"),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize   = 10,
+            Foreground = new SolidColorBrush(Color.FromArgb(180, 160, 190, 210)),
+        };
+        var keyText = new TextBlock
+        {
+            Text       = FormatHotkey(_hotkeyModifiers, _hotkeyVk),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize   = 13,
+            FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170)),
+            Margin     = new Thickness(0, 3, 0, 0),
+        };
+
+        var textStack = new StackPanel { Margin = new Thickness(14, 12, 14, 10) };
+        textStack.Children.Add(hintText);
+        textStack.Children.Add(keyText);
+
+        var innerGrid = new Grid();
+        innerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        innerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+        Grid.SetRow(textStack,    0);
+        Grid.SetRow(progressGrid, 1);
+        innerGrid.Children.Add(textStack);
+        innerGrid.Children.Add(progressGrid);
+
+        var outerBorder = new Border
+        {
+            Background      = new SolidColorBrush(Color.FromArgb(240, 9, 20, 30)),
+            BorderBrush     = new SolidColorBrush(Color.FromArgb(255, 21, 48, 72)),
+            BorderThickness = new Thickness(1),
+            CornerRadius    = new CornerRadius(6),
+            ClipToBounds    = true,
+            Child           = innerGrid,
+        };
+
+        var screen = SystemParameters.WorkArea;
+        var toast = new Window
+        {
+            WindowStyle        = WindowStyle.None,
+            AllowsTransparency = true,
+            Background         = Brushes.Transparent,
+            ResizeMode         = ResizeMode.NoResize,
+            ShowInTaskbar      = false,
+            Topmost            = true,
+            Width              = W,
+            SizeToContent      = SizeToContent.Height,
+            Left               = screen.Right - W - 20,
+            Top                = screen.Top + screen.Height / 2,
+            Opacity            = 0,
+            Content            = outerBorder,
+        };
+
+        toast.Loaded += (_, _) =>
+        {
+            toast.Top = screen.Top + (screen.Height - toast.ActualHeight) / 2;
+
+            toast.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250)));
+
+            var fullW = progressGrid.ActualWidth;
+            progressFg.Width = fullW;
+            progressFg.BeginAnimation(FrameworkElement.WidthProperty,
+                new DoubleAnimation(fullW, 0, TimeSpan.FromSeconds(10)));
+
+            var fadeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(9) };
+            fadeTimer.Tick += (_, _) =>
+            {
+                fadeTimer.Stop();
+                toast.BeginAnimation(UIElement.OpacityProperty,
+                    new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(800)));
+            };
+            fadeTimer.Start();
+
+            var closeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+            closeTimer.Tick += (_, _) => { closeTimer.Stop(); toast.Close(); };
+            closeTimer.Start();
+        };
+
+        _gameToast = toast;
+        toast.Closed += (_, _) => { if (ReferenceEquals(_gameToast, toast)) _gameToast = null; };
+        toast.Show();
     }
 
     [System.Runtime.InteropServices.DllImport("winmm.dll",
@@ -2452,4 +2760,153 @@ public partial class MainWindow : Window
     {
         LiveSplitOverlay.Visibility = Visibility.Collapsed;
     }
+
+    // ── Bug report ────────────────────────────────────────────────────────────
+
+    private void BugReportButton_Click(object sender, RoutedEventArgs e)
+    {
+        BugNameBox.Text            = "";
+        BugETitleBox.Text          = "";
+        BugDescBox.Text            = "";
+        _bugImagePath              = null;
+        BugImageFileName.Text      = Loc.Get("bug_report_image_none");
+        BugImageFileName.Foreground = new SolidColorBrush(Color.FromArgb(160, 42, 16, 80));
+        BugStatusText.Visibility   = Visibility.Collapsed;
+        SendBugReportBtnText.Text  = Loc.Get("bug_report_send_btn");
+        SendBugReportBtn.IsEnabled = true;
+        BugReportOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void BugImageBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new OpenFileDialog
+        {
+            Filter = "Images|*.jpg;*.jpeg;*.png;*.gif;*.webp;*.bmp",
+        };
+        if (picker.ShowDialog(this) != true) return;
+        _bugImagePath = picker.FileName;
+        BugImageFileName.Text       = IOPath.GetFileName(_bugImagePath);
+        BugImageFileName.Foreground = new SolidColorBrush(Color.FromArgb(220, 170, 140, 220));
+    }
+
+    private void CloseBugReportBtn_Click(object sender, RoutedEventArgs e) =>
+        BugReportOverlay.Visibility = Visibility.Collapsed;
+
+    private async void SendBugReportBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var title = BugETitleBox.Text.Trim();
+        var desc  = BugDescBox.Text.Trim();
+
+        if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(desc))
+        {
+            BugStatusText.Text       = Loc.Get("bug_report_err_empty");
+            BugStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 200, 60, 60));
+            BugStatusText.Visibility = Visibility.Visible;
+            return;
+        }
+
+        SendBugReportBtn.IsEnabled = false;
+        SendBugReportBtnText.Text  = Loc.Get("bug_report_sending");
+        BugStatusText.Visibility   = Visibility.Collapsed;
+
+        var name = BugNameBox.Text.Trim();
+        var ok   = await SendDiscordBugReportAsync(name, title, desc, _bugImagePath);
+
+        if (ok)
+        {
+            BugStatusText.Text       = Loc.Get("bug_report_success");
+            BugStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 200, 140));
+            BugStatusText.Visibility = Visibility.Visible;
+            SendBugReportBtnText.Text = Loc.Get("bug_report_send_btn");
+            await Task.Delay(2000);
+            BugReportOverlay.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            BugStatusText.Text         = Loc.Get("bug_report_err_send");
+            BugStatusText.Foreground   = new SolidColorBrush(Color.FromArgb(255, 200, 60, 60));
+            BugStatusText.Visibility   = Visibility.Visible;
+            SendBugReportBtnText.Text  = Loc.Get("bug_report_send_btn");
+            SendBugReportBtn.IsEnabled = true;
+        }
+    }
+
+    private static async Task<bool> SendDiscordBugReportAsync(
+        string name, string title, string description, string? imagePath)
+    {
+        const string WebhookUrl =
+            "YourWebhookURL";
+
+        try
+        {
+            using var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+
+            var authorName = string.IsNullOrEmpty(name) ? "Anonymous" : name;
+            var footer     = $"Playtime Speed Launcher  ·  {AppVersion.GetDisplayVersion()}";
+
+            string json;
+            if (imagePath != null && File.Exists(imagePath))
+            {
+                var fileName = IOPath.GetFileName(imagePath);
+                json = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    embeds = new[] { new
+                    {
+                        author      = new { name = authorName },
+                        title,
+                        description,
+                        color       = 0x7B2FBE,
+                        image       = new { url = $"attachment://{fileName}" },
+                        footer      = new { text = footer },
+                        timestamp   = DateTime.UtcNow.ToString("o"),
+                    }}
+                });
+
+                using var form = new System.Net.Http.MultipartFormDataContent();
+                form.Add(new System.Net.Http.StringContent(
+                    json, System.Text.Encoding.UTF8, "application/json"), "payload_json");
+
+                var bytes       = await File.ReadAllBytesAsync(imagePath);
+                var fileContent = new System.Net.Http.ByteArrayContent(bytes);
+                fileContent.Headers.ContentType =
+                    new System.Net.Http.Headers.MediaTypeHeaderValue(GetImageMimeType(imagePath));
+                form.Add(fileContent, "files[0]", fileName);
+
+                var resp = await client.PostAsync(WebhookUrl, form);
+                return resp.IsSuccessStatusCode;
+            }
+            else
+            {
+                json = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    embeds = new[] { new
+                    {
+                        author      = new { name = authorName },
+                        title,
+                        description,
+                        color       = 0x7B2FBE,
+                        footer      = new { text = footer },
+                        timestamp   = DateTime.UtcNow.ToString("o"),
+                    }}
+                });
+
+                var content = new System.Net.Http.StringContent(
+                    json, System.Text.Encoding.UTF8, "application/json");
+                var resp = await client.PostAsync(WebhookUrl, content);
+                return resp.IsSuccessStatusCode;
+            }
+        }
+        catch { return false; }
+    }
+
+    private static string GetImageMimeType(string path) =>
+        IOPath.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png"            => "image/png",
+            ".gif"            => "image/gif",
+            ".webp"           => "image/webp",
+            ".bmp"            => "image/bmp",
+            _                 => "application/octet-stream",
+        };
 }
