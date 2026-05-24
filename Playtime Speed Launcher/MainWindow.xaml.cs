@@ -63,6 +63,9 @@ public partial class MainWindow : Window
 
     // ── LiveSplit ──────────────────────────────────────────────────────────────
     private readonly LiveSplitService _liveSplitService = new();
+
+    // ── Discord Rich Presence ─────────────────────────────────────────────────
+    private readonly DiscordPresenceService _discordPresence = new();
     private LiveSplitInfo? _liveSplitInfo         = null;
     private bool           _isLiveSplitDownloading = false;
 
@@ -91,6 +94,7 @@ public partial class MainWindow : Window
         _ = DetectLiveSplitAsync();
         PlayIntro();
         StartGameWatcher();
+        _discordPresence.SetBrowsing();
         Loaded += (_, _) =>
             Dispatcher.BeginInvoke(DispatcherPriority.Background,
                 new Action(() => AttachButtonSounds(this)));
@@ -337,6 +341,7 @@ public partial class MainWindow : Window
         base.OnClosing(e);
         UnregisterHotKey(new System.Windows.Interop.WindowInteropHelper(this).Handle, HOTKEY_ID);
         _hotkeyOverlay?.Close();
+        _discordPresence.Dispose();
     }
 
     private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
@@ -509,15 +514,15 @@ public partial class MainWindow : Window
 
     private void GameWatcherTick(object? sender, EventArgs e)
     {
-        var exePaths = _chapters.Take(3).Select(c => c.GameExePath).ToArray();
+        bool anyRunning = false;
+
         for (int i = 0; i < 3; i++)
         {
-            var path = i < exePaths.Length ? exePaths[i] : null;
+            var path = _chapters[i].GameExePath;
             if (string.IsNullOrEmpty(path)) { _gameWasRunning[i] = false; continue; }
 
-            var name = IOPath.GetFileNameWithoutExtension(path);
             bool running;
-            try { running = Process.GetProcessesByName(name).Length > 0; }
+            try { running = Process.GetProcessesByName(IOPath.GetFileNameWithoutExtension(path)).Length > 0; }
             catch { running = false; }
 
             if (_gameWatcherInitialized && running && !_gameWasRunning[i]
@@ -525,7 +530,13 @@ public partial class MainWindow : Window
                 ShowGameToast();
 
             _gameWasRunning[i] = running;
+            if (running) anyRunning = true;
         }
+
+        // Discord always reflects what the user selected in the launcher
+        if (_gameWatcherInitialized && !anyRunning && _gameWasRunning.Any(x => x))
+            _discordPresence.SetChapterSelected(_chapters[_selected], GetVersionLabel(_chapters[_selected]));
+
         _gameWatcherInitialized = true;
     }
 
@@ -798,6 +809,7 @@ public partial class MainWindow : Window
     {
         if (index != _selected) PlaySfx("SelecChapter.WAV");
         _selected = index;
+        _discordPresence.SetChapterSelected(_chapters[index], GetVersionLabel(_chapters[index]));
         for (int i = 0; i < _cards.Count; i++)
         {
             bool sel = i == index;
@@ -842,6 +854,19 @@ public partial class MainWindow : Window
         StatusText.Text      = ch.IsInstalled ? Loc.Get("status_installed") : ch.IsAvailable ? Loc.Get("status_not_found") : Loc.Get("status_coming_soon");
         PlayButton.IsEnabled = canPlay;
         PlayButton.Opacity   = canPlay ? 1.0 : 0.35;
+    }
+
+    private string GetVersionLabel(ChapterInfo ch)
+    {
+        var selPath = _store.GetSelectedPath(ch.Number);
+        if (selPath != null)
+        {
+            var custom = _store.GetCustoms(ch.Number).FirstOrDefault(x => x.ExePath == selPath);
+            return custom?.Name ?? IOPath.GetFileNameWithoutExtension(selPath);
+        }
+        return ch.IsInstalled ? Loc.Get("version_auto_steam")
+             : ch.IsAvailable ? Loc.Get("version_not_installed")
+             : Loc.Get("version_none");
     }
 
     private async Task DetectVersionsAsync()
@@ -1643,6 +1668,7 @@ public partial class MainWindow : Window
         var cts = new CancellationTokenSource();
         _activePolls[preset.ManifestId] = cts;
         _downloadLogs[preset.ManifestId] = [$"[ 00:00 ]  {Loc.Get("steamcmd_in_progress")}"];
+        _discordPresence.SetInstalling(_chapters[chapterNum - 1], preset.Name);
         BuildInstallationsList();
 
         var downloadStart = DateTime.Now;
@@ -1728,6 +1754,7 @@ public partial class MainWindow : Window
             ticker.Stop();
             _activePolls.Remove(preset.ManifestId);
             _downloadLogBlocks.Remove(preset.ManifestId);
+            _discordPresence.SetChapterSelected(_chapters[chapterNum - 1], GetVersionLabel(_chapters[chapterNum - 1]));
             BuildInstallationsList();
         }
 
@@ -2077,6 +2104,8 @@ public partial class MainWindow : Window
         var ch  = _chapters[_selected];
         var exe = _store.GetSelectedPath(ch.Number) ?? ch.GameExePath;
         if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) return;
+
+        _discordPresence.SetGameRunning(ch, GetVersionLabel(ch));
 
         try
         {
@@ -2835,7 +2864,7 @@ public partial class MainWindow : Window
         string name, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
-            "YourWebhookURL";
+            "YourWebhookUrl";
 
         try
         {

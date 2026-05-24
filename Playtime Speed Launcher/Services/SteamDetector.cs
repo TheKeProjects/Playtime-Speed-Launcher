@@ -195,9 +195,10 @@ public static class SteamDetector
                 .Where(f =>
                 {
                     var n = Path.GetFileNameWithoutExtension(f).ToLowerInvariant();
-                    return !n.Contains("crash") && !n.Contains("setup") &&
-                           !n.Contains("prereq") && !n.Contains("unins") &&
-                           !n.Contains("install") && !n.Contains("redist");
+                    return !n.Contains("crash")    && !n.Contains("setup")   &&
+                           !n.Contains("prereq")   && !n.Contains("unins")   &&
+                           !n.Contains("install")  && !n.Contains("redist")  &&
+                           !n.Contains("launcher") && !n.Contains("helper");
                 })
                 .OrderByDescending(f => new FileInfo(f).Length)
                 .FirstOrDefault();
