@@ -1,3 +1,3 @@
-1.2.1
-- Added Discord Rich Presence support
-- Fixed the installation of Chapter 1 version: NMG_Any% 1.2
+1.2.2
+- Improved Discord Rich Presence integration
+- Added checkpoint selection status support to Discord Rich Presence

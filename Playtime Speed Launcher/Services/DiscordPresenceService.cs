@@ -117,6 +117,23 @@ public sealed class DiscordPresenceService : IDisposable
         });
     }
 
+    public void SetSelectingCheckpoint(ChapterInfo chapter, string version)
+    {
+        Set(new RichPresence
+        {
+            Details    = $"Selecting checkpoint — {chapter.SubTitle}",
+            State      = version,
+            Timestamps = new Timestamps(DateTime.UtcNow),
+            Assets     = new Assets
+            {
+                LargeImageKey  = "launcher",
+                LargeImageText = "Playtime Speed Launcher",
+                SmallImageKey  = "checkpoint",
+                SmallImageText = chapter.SubTitle,
+            },
+        });
+    }
+
     // ── Internals ──────────────────────────────────────────────────────────────
 
     private void Set(RichPresence presence)

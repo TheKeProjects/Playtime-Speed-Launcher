@@ -367,7 +367,18 @@ public partial class MainWindow : Window
 
             var exePaths = _chapters.Take(3).Select(c => c.GameExePath).ToArray();
             _hotkeyOverlay = new HotkeyOverlay(exePaths);
-            _hotkeyOverlay.Closed += (_, _) => _hotkeyOverlay = null;
+
+            var runningCh = GetRunningChapter();
+            if (runningCh != null)
+                _discordPresence.SetSelectingCheckpoint(runningCh, GetVersionLabel(runningCh));
+
+            _hotkeyOverlay.Closed += (_, _) =>
+            {
+                _hotkeyOverlay = null;
+                var ch = GetRunningChapter();
+                if (ch != null)
+                    _discordPresence.SetGameRunning(ch, GetVersionLabel(ch));
+            };
             _hotkeyOverlay.Show();
             _hotkeyOverlay.Activate();
         }
@@ -514,7 +525,8 @@ public partial class MainWindow : Window
 
     private void GameWatcherTick(object? sender, EventArgs e)
     {
-        bool anyRunning = false;
+        bool anyRunning    = false;
+        bool stateChanged  = false;
 
         for (int i = 0; i < 3; i++)
         {
@@ -529,13 +541,16 @@ public partial class MainWindow : Window
                 && (_gameToast == null || !_gameToast.IsVisible))
                 ShowGameToast();
 
+            if (running != _gameWasRunning[i]) stateChanged = true;
             _gameWasRunning[i] = running;
             if (running) anyRunning = true;
         }
 
         // Discord always reflects what the user selected in the launcher
-        if (_gameWatcherInitialized && !anyRunning && _gameWasRunning.Any(x => x))
+        if (_gameWatcherInitialized && !anyRunning && stateChanged)
             _discordPresence.SetChapterSelected(_chapters[_selected], GetVersionLabel(_chapters[_selected]));
+
+        if (stateChanged) RefreshInfo();
 
         _gameWatcherInitialized = true;
     }
@@ -809,7 +824,8 @@ public partial class MainWindow : Window
     {
         if (index != _selected) PlaySfx("SelecChapter.WAV");
         _selected = index;
-        _discordPresence.SetChapterSelected(_chapters[index], GetVersionLabel(_chapters[index]));
+        if (!_gameWasRunning.Any(x => x))
+            _discordPresence.SetChapterSelected(_chapters[index], GetVersionLabel(_chapters[index]));
         for (int i = 0; i < _cards.Count; i++)
         {
             bool sel = i == index;
@@ -850,9 +866,13 @@ public partial class MainWindow : Window
                     : Loc.Get("version_prefix") + " " + Loc.Get("version_none");
         }
 
-        var canPlay = ch.IsInstalled || (selPath != null && File.Exists(selPath));
-        StatusText.Text      = ch.IsInstalled ? Loc.Get("status_installed") : ch.IsAvailable ? Loc.Get("status_not_found") : Loc.Get("status_coming_soon");
-        PlayButton.IsEnabled = canPlay;
+        var canPlay   = ch.IsInstalled || (selPath != null && File.Exists(selPath));
+        var isRunning = IsProcessRunning(ch.GameExePath);
+        StatusText.Text      = isRunning ? Loc.Get("status_playing")
+                             : ch.IsInstalled ? Loc.Get("status_installed")
+                             : ch.IsAvailable ? Loc.Get("status_not_found")
+                             : Loc.Get("status_coming_soon");
+        PlayButton.IsEnabled = canPlay && !isRunning;
         PlayButton.Opacity   = canPlay ? 1.0 : 0.35;
     }
 
@@ -867,6 +887,20 @@ public partial class MainWindow : Window
         return ch.IsInstalled ? Loc.Get("version_auto_steam")
              : ch.IsAvailable ? Loc.Get("version_not_installed")
              : Loc.Get("version_none");
+    }
+
+    private static bool IsProcessRunning(string? exePath)
+    {
+        if (string.IsNullOrEmpty(exePath)) return false;
+        try { return Process.GetProcessesByName(IOPath.GetFileNameWithoutExtension(exePath)).Length > 0; }
+        catch { return false; }
+    }
+
+    private ChapterInfo? GetRunningChapter()
+    {
+        for (int i = 0; i < Math.Min(3, _chapters.Count); i++)
+            if (_gameWasRunning[i]) return _chapters[i];
+        return null;
     }
 
     private async Task DetectVersionsAsync()
@@ -2104,6 +2138,7 @@ public partial class MainWindow : Window
         var ch  = _chapters[_selected];
         var exe = _store.GetSelectedPath(ch.Number) ?? ch.GameExePath;
         if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) return;
+        if (IsProcessRunning(exe)) return;
 
         _discordPresence.SetGameRunning(ch, GetVersionLabel(ch));
 

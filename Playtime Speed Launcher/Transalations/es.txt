@@ -52,6 +52,7 @@ version_none = —
 status_installed = ● INSTALADO
 status_not_found = ○ No encontrado
 status_coming_soon = — Próximamente
+status_playing = ▶ JUGANDO
 
 # Panel de edición
 edit_install_title = EDITAR INSTALACIÓN
