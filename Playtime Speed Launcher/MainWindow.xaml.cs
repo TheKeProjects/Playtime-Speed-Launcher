@@ -58,6 +58,13 @@ public partial class MainWindow : Window
     private bool _showingInstallView  = false;
     private bool _isGbInstall         = false;
 
+    // ── Epic Games ────────────────────────────────────────────────────────────
+    private readonly EpicGamesService _epicService = new();
+
+    // ── LiveSplit server poller ───────────────────────────────────────────────
+    private readonly LiveSplitServerClient    _liveSplitClient  = new();
+    private          CancellationTokenSource? _liveSplitPollCts;
+
     // ── Bug report ────────────────────────────────────────────────────────────
     private string? _bugImagePath = null;
 
@@ -65,7 +72,8 @@ public partial class MainWindow : Window
     private readonly LiveSplitService _liveSplitService = new();
 
     // ── Discord Rich Presence ─────────────────────────────────────────────────
-    private readonly DiscordPresenceService _discordPresence = new();
+    private readonly DiscordPresenceService  _discordPresence = new();
+    private readonly DiscordPresenceSettings _discordSettings = DiscordPresenceSettings.Load();
     private LiveSplitInfo? _liveSplitInfo         = null;
     private bool           _isLiveSplitDownloading = false;
 
@@ -94,6 +102,11 @@ public partial class MainWindow : Window
         _ = DetectLiveSplitAsync();
         PlayIntro();
         StartGameWatcher();
+        StartLiveSplitPoller();
+        _discordPresence.ApplySettings(
+            _discordSettings.ShowActivity,
+            _discordSettings.ShowVersion,
+            _discordSettings.ShowLiveSplit);
         _discordPresence.SetBrowsing();
         Loaded += (_, _) =>
             Dispatcher.BeginInvoke(DispatcherPriority.Background,
@@ -194,6 +207,13 @@ public partial class MainWindow : Window
         AcceptInstallBtnText.Text      = Loc.Get("updates_download_btn");
         CancelInstallBtnText.Text      = Loc.Get("updates_cancel_btn");
         CloseUpdatesBtnText.Text       = Loc.Get("updates_close");
+
+        DiscordStatusBtnText.Text        = Loc.Get("discord_settings_btn");
+        DiscordShowActivityLabel.Text    = Loc.Get("discord_show_activity");
+        DiscordShowVersionLabel.Text     = Loc.Get("discord_show_version");
+        DiscordShowLiveSplitLabel.Text   = Loc.Get("discord_show_livesplit");
+        if (DiscordStatusPanel.Visibility == Visibility.Visible)
+            RefreshDiscordToggles();
 
         SaveCardHeaderText.Text        = Loc.Get("save_card_header");
         SaveCardDeleteBtnText.Text     = Loc.Get("save_card_delete_btn");
@@ -341,6 +361,8 @@ public partial class MainWindow : Window
         base.OnClosing(e);
         UnregisterHotKey(new System.Windows.Interop.WindowInteropHelper(this).Handle, HOTKEY_ID);
         _hotkeyOverlay?.Close();
+        _liveSplitPollCts?.Cancel();
+        _liveSplitClient.Dispose();
         _discordPresence.Dispose();
     }
 
@@ -365,7 +387,7 @@ public partial class MainWindow : Window
             if (IntroOverlay.Visibility == Visibility.Visible)
                 HideIntro();
 
-            var exePaths = _chapters.Take(3).Select(c => c.GameExePath).ToArray();
+            var exePaths = _chapters.Select(c => c.GameExePath).ToArray();
             _hotkeyOverlay = new HotkeyOverlay(exePaths);
 
             var runningCh = GetRunningChapter();
@@ -515,6 +537,58 @@ public partial class MainWindow : Window
     }
 
     // ── Game watcher ──────────────────────────────────────────────────────────
+
+    // ── LiveSplit server poller ───────────────────────────────────────────────
+
+    private void StartLiveSplitPoller()
+    {
+        _liveSplitPollCts = new CancellationTokenSource();
+        _ = PollLiveSplitAsync(_liveSplitPollCts.Token);
+    }
+
+    private async Task PollLiveSplitAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try { await Task.Delay(1000, ct); }
+            catch (OperationCanceledException) { break; }
+
+            try
+            {
+                var line = await Task.Run(() => QueryLiveSplit(), ct);
+                _discordPresence.UpdateLiveSplitLine(line);
+            }
+            catch { }
+        }
+    }
+
+    private string QueryLiveSplit()
+    {
+        if (!_liveSplitClient.IsConnected && !_liveSplitClient.TryConnect())
+            return "LiveSplit not connected";
+
+        var phase = _liveSplitClient.GetTimerPhase();
+        if (phase is null)
+            return "LiveSplit not connected";
+
+        if (phase is "Running" or "Paused" or "Ended")
+        {
+            var raw = _liveSplitClient.GetCurrentTime();
+            return raw is null ? "LiveSplit not connected" : "⏱ " + FormatLiveSplitTime(raw);
+        }
+
+        // NotRunning = LiveSplit is open but no run has started yet
+        return "LiveSplit: Ready";
+    }
+
+    private static string FormatLiveSplitTime(string raw)
+    {
+        if (!TimeSpan.TryParse(raw.Trim(), out var ts)) return raw.Trim();
+        var cs = ts.Milliseconds / 10; // centiseconds
+        return ts.Hours > 0
+            ? $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2}.{cs:D2}"
+            : $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}.{cs:D2}";
+    }
 
     private void StartGameWatcher()
     {
@@ -844,9 +918,36 @@ public partial class MainWindow : Window
         _cards[index].Opacity = enter ? 0.85 : (_chapters[index].IsAvailable ? 0.55 : 0.28);
     }
 
+    // Returns the exe that should actually be launched for the chapter,
+    // respecting manual selection → Epic toggle → Steam auto-detect priority.
+    private string? GetActiveExePath(ChapterInfo ch)
+    {
+        var selPath = _store.GetSelectedPath(ch.Number);
+        if (selPath != null) return selPath;
+
+        // In Epic mode never fall back to the Steam exe — if there is no Epic
+        // path for this chapter it is treated as "not installed".
+        if (_epicService.IsEnabled)
+            return _epicService.GetExePath(ch.Number);
+
+        return ch.GameExePath;
+    }
+
+    private void RefreshPlatformButton()
+    {
+        var isEpic = _epicService.IsEnabled;
+        PlatformToggleText.Text       = isEpic ? "EPIC" : "STEAM";
+        PlatformToggleText.Foreground = isEpic
+            ? new SolidColorBrush(Color.FromArgb(255, 232, 120,  0))
+            : new SolidColorBrush(Color.FromArgb(255,  42,  90, 122));
+        PlatformToggleBorder.BorderBrush = isEpic
+            ? new SolidColorBrush(Color.FromArgb(180, 150,  60,  0))
+            : new SolidColorBrush(Color.FromArgb(255,  26,  58,  85));
+    }
+
     private void RefreshInfo()
     {
-        var ch     = _chapters[_selected];
+        var ch      = _chapters[_selected];
         var selPath = _store.GetSelectedPath(ch.Number);
 
         TitleText.Text       = Loc.Get($"ch{ch.Number}_title");
@@ -857,6 +958,17 @@ public partial class MainWindow : Window
             var custom = _store.GetCustoms(ch.Number).FirstOrDefault(x => x.ExePath == selPath);
             VersionText.Text = Loc.Get("version_prefix") + " " + (custom?.Name ?? IOPath.GetFileNameWithoutExtension(selPath));
         }
+        else if (_epicService.IsEnabled && _epicService.GetExePath(ch.Number) is not null)
+        {
+            VersionText.Text = Loc.Get("version_prefix") + " " + Loc.Get("version_auto_epic");
+        }
+        else if (_epicService.IsEnabled)
+        {
+            // Epic mode but no known exe for this chapter — treat as not installed.
+            VersionText.Text = ch.IsAvailable
+                ? Loc.Get("version_prefix") + " " + Loc.Get("version_not_installed")
+                : Loc.Get("version_prefix") + " " + Loc.Get("version_none");
+        }
         else
         {
             VersionText.Text = ch.IsInstalled
@@ -866,10 +978,13 @@ public partial class MainWindow : Window
                     : Loc.Get("version_prefix") + " " + Loc.Get("version_none");
         }
 
-        var canPlay   = ch.IsInstalled || (selPath != null && File.Exists(selPath));
-        var isRunning = IsProcessRunning(ch.GameExePath);
+        RefreshPlatformButton();
+
+        var activeExe = GetActiveExePath(ch);
+        var canPlay   = !string.IsNullOrEmpty(activeExe) && File.Exists(activeExe);
+        var isRunning = IsProcessRunning(activeExe);
         StatusText.Text      = isRunning ? Loc.Get("status_playing")
-                             : ch.IsInstalled ? Loc.Get("status_installed")
+                             : canPlay   ? Loc.Get("status_installed")
                              : ch.IsAvailable ? Loc.Get("status_not_found")
                              : Loc.Get("status_coming_soon");
         PlayButton.IsEnabled = canPlay && !isRunning;
@@ -884,6 +999,8 @@ public partial class MainWindow : Window
             var custom = _store.GetCustoms(ch.Number).FirstOrDefault(x => x.ExePath == selPath);
             return custom?.Name ?? IOPath.GetFileNameWithoutExtension(selPath);
         }
+        if (_epicService.IsEnabled && _epicService.GetExePath(ch.Number) is not null)
+            return Loc.Get("version_auto_epic");
         return ch.IsInstalled ? Loc.Get("version_auto_steam")
              : ch.IsAvailable ? Loc.Get("version_not_installed")
              : Loc.Get("version_none");
@@ -927,6 +1044,8 @@ public partial class MainWindow : Window
         var sel   = _store.GetSelectedPath(chNum);
 
         VersionsHeader.Text = Loc.Get("versions_header", chNum);
+
+        TogglePresetsBtn.Visibility = Visibility.Visible;
         TogglePresetsBtn.Content = new TextBlock
         {
             Text = _hidePresetRows ? Loc.Get("show_installers") : Loc.Get("hide_installers"),
@@ -935,10 +1054,22 @@ public partial class MainWindow : Window
             Foreground = new SolidColorBrush(Color.FromArgb(255, 45, 90, 120)),
         };
 
-        InstallsList.Children.Add(
-            MakeInstallRow(Loc.Get("auto_name"), Loc.Get("auto_subtitle"),
-                isAuto: true, isSelected: sel is null, chapterNum: chNum,
-                exePath: ch.GameExePath ?? ""));
+        if (!_epicService.IsEnabled)
+        {
+            InstallsList.Children.Add(
+                MakeInstallRow(Loc.Get("auto_name"), Loc.Get("auto_subtitle"),
+                    isAuto: true, isSelected: sel is null, chapterNum: chNum,
+                    exePath: ch.GameExePath ?? ""));
+        }
+        else
+        {
+            var epicExe      = _epicService.GetExePath(chNum);
+            var epicIconPath = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", "Epic.png");
+            InstallsList.Children.Add(
+                MakeInstallRow(Loc.Get("auto_name"), Loc.Get("version_auto_epic"),
+                    isAuto: true, isSelected: sel is null, chapterNum: chNum,
+                    exePath: epicExe ?? "", iconOverride: epicIconPath));
+        }
 
         if (ch.Presets.Count > 0 && !_hidePresetRows)
         {
@@ -973,7 +1104,7 @@ public partial class MainWindow : Window
 
     private Border MakeInstallRow(string name, string subtitle,
         bool isAuto, bool isSelected, int chapterNum, string exePath,
-        InstallationInfo? inst = null)
+        InstallationInfo? inst = null, string? iconOverride = null)
     {
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) });
@@ -983,17 +1114,21 @@ public partial class MainWindow : Window
         var iconBorder = new Border
         {
             Width = 34, Height = 34, CornerRadius = new CornerRadius(4),
-            Background = new SolidColorBrush(isAuto ? Color.FromArgb(255, 18, 60, 110) : Color.FromArgb(255, 20, 38, 55)),
+            Background = iconOverride is not null
+                ? Brushes.Transparent
+                : new SolidColorBrush(isAuto ? Color.FromArgb(255, 18, 60, 110) : Color.FromArgb(255, 20, 38, 55)),
             HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
         };
         var customIcon = inst?.IconPath;
         var steamImg   = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", "Steam.jpg");
         var chapterImg = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", $"Chapter {chapterNum}.png");
         iconBorder.Child =
-            !isAuto && customIcon is not null && File.Exists(customIcon)
-                ? new Image { Source = new BitmapImage(new Uri(customIcon)), Stretch = Stretch.UniformToFill }
+            iconOverride is not null && File.Exists(iconOverride)
+                ? new Image { Source = new BitmapImage(new Uri(iconOverride)), Stretch = Stretch.UniformToFill }
+            : !isAuto && customIcon is not null && File.Exists(customIcon)
+                ? (UIElement)new Image { Source = new BitmapImage(new Uri(customIcon)), Stretch = Stretch.UniformToFill }
             : isAuto && File.Exists(steamImg)
-                ? (UIElement)new Image { Source = new BitmapImage(new Uri(steamImg)), Stretch = Stretch.UniformToFill }
+                ? new Image { Source = new BitmapImage(new Uri(steamImg)), Stretch = Stretch.UniformToFill }
             : !isAuto && File.Exists(chapterImg)
                 ? new Image { Source = new BitmapImage(new Uri(chapterImg)), Stretch = Stretch.UniformToFill }
             : new TextBlock
@@ -2131,12 +2266,73 @@ public partial class MainWindow : Window
     private void CloseVersionsBtn_Click(object sender, RoutedEventArgs e) =>
         VersionsOverlay.Visibility = Visibility.Collapsed;
 
+    // ── Platform toggle (Steam ↔ Epic Games) ──────────────────────────────────
+
+    private void PlatformToggleBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_epicService.IsEnabled)
+        {
+            _epicService.SetEnabled(false);
+            RefreshPlatformButton();
+            RefreshInfo();
+            return;
+        }
+
+        // Switching to Epic — ensure we have a valid base path.
+        var basePath = _epicService.BasePath;
+
+        if (basePath == null || !_epicService.HasExeForAnyChapter())
+        {
+            basePath = _epicService.TryAutoDetect();
+
+            if (basePath == null)
+            {
+                var content = new TextBlock
+                {
+                    Text         = Loc.Get("epic_not_found_content"),
+                    FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize     = 11,
+                    Foreground   = new SolidColorBrush(Color.FromArgb(220, 160, 190, 220)),
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth     = 380,
+                };
+
+                var result = WpfDialog.Show(this, "Epic Games",
+                    content,
+                    primaryText: Loc.Get("select_folder"),
+                    closeText:   Loc.Get("cancel"));
+
+                if (result != WpfDialogResult.Primary) return;
+
+                var picker = new OpenFolderDialog();
+                if (picker.ShowDialog(this) != true) return;
+
+                // Accept PoppyPlaytimeChapterOne directly OR its parent folder
+                var picked = picker.FolderName;
+                var sub    = IOPath.Combine(picked, "PoppyPlaytimeChapterOne");
+                basePath = Directory.Exists(sub) ? sub : picked;
+            }
+
+            _epicService.SetBasePath(basePath);
+        }
+
+        if (!_epicService.HasExeForAnyChapter())
+        {
+            ShowErrorAsync(Loc.Get("epic_no_exe_error"));
+            return;
+        }
+
+        _epicService.SetEnabled(true);
+        RefreshPlatformButton();
+        RefreshInfo();
+    }
+
     // ── Main buttons ──────────────────────────────────────────────────────────
 
     private void PlayButton_Click(object sender, RoutedEventArgs e)
     {
         var ch  = _chapters[_selected];
-        var exe = _store.GetSelectedPath(ch.Number) ?? ch.GameExePath;
+        var exe = GetActiveExePath(ch);
         if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) return;
         if (IsProcessRunning(exe)) return;
 
@@ -2823,6 +3019,129 @@ public partial class MainWindow : Window
     private void CloseLiveSplitBtn_Click(object sender, RoutedEventArgs e)
     {
         LiveSplitOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    // ── Discord presence settings ─────────────────────────────────────────────
+
+    private void DiscordStatusBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var isOpen = DiscordStatusPanel.Visibility == Visibility.Visible;
+        DiscordStatusPanel.Visibility = isOpen ? Visibility.Collapsed : Visibility.Visible;
+        if (!isOpen) RefreshDiscordToggles();
+    }
+
+    private void RefreshDiscordToggles()
+    {
+        SetToggle(DiscordShowActivityText,   _discordSettings.ShowActivity);
+        SetToggle(DiscordShowVersionText,    _discordSettings.ShowVersion);
+        SetToggle(DiscordShowLiveSplitText,  _discordSettings.ShowLiveSplit);
+    }
+
+    private static void SetToggle(TextBlock tb, bool on)
+    {
+        tb.Text       = on ? "ON" : "OFF";
+        tb.Foreground = on
+            ? new SolidColorBrush(Color.FromArgb(255,   0, 204, 170))
+            : new SolidColorBrush(Color.FromArgb(255,  42,  90, 122));
+    }
+
+    private void DiscordShowActivityBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _discordSettings.ShowActivity = !_discordSettings.ShowActivity;
+        _discordSettings.Save();
+        _discordPresence.ApplySettings(
+            _discordSettings.ShowActivity,
+            _discordSettings.ShowVersion,
+            _discordSettings.ShowLiveSplit);
+        RefreshDiscordToggles();
+    }
+
+    private void DiscordShowVersionBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _discordSettings.ShowVersion = !_discordSettings.ShowVersion;
+        _discordSettings.Save();
+        _discordPresence.ApplySettings(
+            _discordSettings.ShowActivity,
+            _discordSettings.ShowVersion,
+            _discordSettings.ShowLiveSplit);
+        RefreshDiscordToggles();
+    }
+
+    private void DiscordShowLiveSplitBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _discordSettings.ShowLiveSplit = !_discordSettings.ShowLiveSplit;
+        _discordSettings.Save();
+        _discordPresence.ApplySettings(
+            _discordSettings.ShowActivity,
+            _discordSettings.ShowVersion,
+            _discordSettings.ShowLiveSplit);
+        RefreshDiscordToggles();
+
+        if (_discordSettings.ShowLiveSplit)
+            ShowLiveSplitTcpNotice();
+    }
+
+    private void ShowLiveSplitTcpNotice()
+    {
+        var mono   = new FontFamily("Cascadia Code, Consolas, Courier New");
+        var bright = new SolidColorBrush(Color.FromArgb(200, 160, 200, 230));
+        var muted  = new SolidColorBrush(Color.FromArgb(150, 120, 160, 190));
+        var teal   = new SolidColorBrush(Color.FromArgb(255,   0, 204, 170));
+
+        var panel = new StackPanel { MinWidth = 370 };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text         = Loc.Get("livesplit_tcp_desc"),
+            FontFamily   = mono, FontSize = 11,
+            Foreground   = bright,
+            TextWrapping = TextWrapping.Wrap,
+            Margin       = new Thickness(0, 0, 0, 14),
+        });
+
+        panel.Children.Add(new TextBlock
+        {
+            Text       = Loc.Get("livesplit_tcp_steps_label"),
+            FontFamily = mono, FontSize = 10,
+            Foreground = muted,
+            Margin     = new Thickness(0, 0, 0, 6),
+        });
+
+        var stepBox = new Border
+        {
+            Background      = new SolidColorBrush(Color.FromArgb(25, 0, 204, 170)),
+            BorderBrush     = new SolidColorBrush(Color.FromArgb(55, 0, 204, 170)),
+            BorderThickness = new Thickness(1),
+            CornerRadius    = new CornerRadius(3),
+            Padding         = new Thickness(14, 10, 14, 10),
+            Margin          = new Thickness(0, 0, 0, 14),
+        };
+        var steps = new StackPanel();
+        steps.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("livesplit_tcp_step1"),
+            FontFamily = mono, FontSize = 11, Foreground = teal,
+            Margin = new Thickness(0, 0, 0, 5),
+        });
+        steps.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("livesplit_tcp_step2"),
+            FontFamily = mono, FontSize = 11, Foreground = teal,
+        });
+        stepBox.Child = steps;
+        panel.Children.Add(stepBox);
+
+        panel.Children.Add(new TextBlock
+        {
+            Text         = Loc.Get("livesplit_tcp_reminder"),
+            FontFamily   = mono, FontSize = 10,
+            Foreground   = muted,
+            TextWrapping = TextWrapping.Wrap,
+        });
+
+        WpfDialog.Show(this,
+            Loc.Get("livesplit_tcp_title"), panel,
+            primaryText: Loc.Get("understood"));
     }
 
     // ── Bug report ────────────────────────────────────────────────────────────

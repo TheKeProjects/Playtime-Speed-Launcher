@@ -30,7 +30,6 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="48"/>
                     <RowDefinition Height="*"/>
-                    <RowDefinition Height="52"/>
                 </Grid.RowDefinitions>
 
                 <!-- Header -->
@@ -48,46 +47,65 @@
                     </Grid>
                 </Border>
 
-                <!-- Chapter content — built entirely in code-behind -->
-                <ScrollViewer Grid.Row="1"
-                              VerticalScrollBarVisibility="Auto"
-                              Margin="16,14" MaxHeight="480">
-                    <StackPanel x:Name="ChaptersPanel"/>
-                </ScrollViewer>
+                <!-- Content + Buttons -->
+                <DockPanel Grid.Row="1" Margin="16,14">
 
-                <!-- Footer -->
-                <Border Grid.Row="2" Background="#060F18"
-                        BorderBrush="#0D2030" BorderThickness="0,1,0,0">
-                    <Grid Margin="14,0">
-                        <Button x:Name="LoadBtn"
-                                Height="36" MinWidth="180"
-                                local:ButtonHelper.CornerRadius="3"
-                                Background="#00503C" BorderBrush="#00B482" BorderThickness="1"
-                                HorizontalAlignment="Left" VerticalAlignment="Center"
-                                IsEnabled="False"
-                                Click="LoadBtn_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;"
-                                           FontSize="14" Foreground="#00CCAA"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock x:Name="LoadBtnText"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="11" FontWeight="Bold" Foreground="#00CCAA"
-                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
-                            </StackPanel>
-                        </Button>
+                    <!-- Action buttons — docked to bottom of content area -->
+                    <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,4" LastChildFill="False">
                         <Button x:Name="CloseBtn"
-                                Height="36" MinWidth="120"
+                                Height="32" Padding="14,0"
                                 local:ButtonHelper.CornerRadius="3"
                                 Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1"
-                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                DockPanel.Dock="Right"
                                 Click="CloseBtn_Click">
                             <TextBlock x:Name="CloseBtnText"
                                        FontFamily="Cascadia Code, Consolas, Courier New"
                                        FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
                         </Button>
-                    </Grid>
-                </Border>
+
+                        <Button x:Name="LoadBtn"
+                                Height="32" Padding="14,0"
+                                local:ButtonHelper.CornerRadius="3"
+                                Background="#00503C" BorderBrush="#00B482" BorderThickness="1"
+                                DockPanel.Dock="Left"
+                                IsEnabled="False"
+                                Click="LoadBtn_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;"
+                                           FontSize="13" Foreground="#00CCAA"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="LoadBtnText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="11" FontWeight="Bold" Foreground="#00CCAA"
+                                           VerticalAlignment="Center" Margin="7,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="DeleteBtn"
+                                Height="32" Padding="14,0"
+                                local:ButtonHelper.CornerRadius="3"
+                                Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
+                                DockPanel.Dock="Left" Margin="8,0,0,0"
+                                Visibility="Collapsed"
+                                Click="DeleteBtn_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74D;"
+                                           FontSize="13" Foreground="#CC3333"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="DeleteBtnText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="11" FontWeight="Bold" Foreground="#CC3333"
+                                           VerticalAlignment="Center" Margin="7,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </DockPanel>
+
+                    <!-- Chapter content — built entirely in code-behind -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="480">
+                        <StackPanel x:Name="ChaptersPanel"/>
+                    </ScrollViewer>
+
+                </DockPanel>
 
             </Grid>
         </Border>

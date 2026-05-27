@@ -1,3 +1,5 @@
-1.2.2
-- Improved Discord Rich Presence integration
-- Added checkpoint selection status support to Discord Rich Presence
+1.2.3
+- Added Epic Games support
+- Added LiveSplit timer integration to Discord statuses
+- Added settings to manage Discord status integration
+- Added an in-game checkpoint loader for Chapters 4 and 5 (load and delete all saves)

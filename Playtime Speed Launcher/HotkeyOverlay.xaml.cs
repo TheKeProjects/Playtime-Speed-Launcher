@@ -11,10 +11,12 @@ namespace SpeedrunLauncher;
 
 public partial class HotkeyOverlay : Window
 {
-    private record CheckpointItem(string Source, string Dest);
+    private record CheckpointItem(string Source, string Dest, string? DeletePattern = null);
+    private record DeleteInfo(string Dest, string? DeletePattern);
 
     private CheckpointItem? _selected;
     private Border?         _selectedBorder;
+    private DeleteInfo?     _deleteInfo;
 
     private static readonly Color NormalBg = Color.FromArgb( 12, 255, 255, 255);
     private static readonly Color HoverBg  = Color.FromArgb( 28, 255, 255, 255);
@@ -23,9 +25,9 @@ public partial class HotkeyOverlay : Window
     public HotkeyOverlay(string?[] chapterExePaths)
     {
         InitializeComponent();
-        HintText.Text     = Loc.Get("hotkey_hint");
-        LoadBtnText.Text  = Loc.Get("hotkey_load_btn");
-        CloseBtnText.Text = Loc.Get("back");
+        HintText.Text      = Loc.Get("hotkey_hint");
+        CloseBtnText.Text  = Loc.Get("back");
+        DeleteBtnText.Text = Loc.Get("hotkey_delete_btn");
         PopulateAll(chapterExePaths);
     }
 
@@ -54,14 +56,18 @@ public partial class HotkeyOverlay : Window
         var localApp  = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var savesBase = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Saves");
 
-        var chapters = new (int Num, string SavesDir, string SaveFile, string DestFile)[]
+        var chapters = new (int Num, string SavesDir, string? SaveFile, string Dest, string? DeletePattern)[]
         {
             (1, IOPath.Combine(savesBase, "Chapter 1"), "Chap1Checkpoint.sav",
-             IOPath.Combine(localApp, "Poppy_Playtime",      "Saved", "SaveGames", "Chap1Checkpoint.sav")),
+             IOPath.Combine(localApp, "Poppy_Playtime",      "Saved", "SaveGames", "Chap1Checkpoint.sav"), null),
             (2, IOPath.Combine(savesBase, "Chapter 2"), "Chap2Checkpoint.sav",
-             IOPath.Combine(localApp, "Playtime_Prototype4", "Saved", "SaveGames", "Chap2Checkpoint.sav")),
+             IOPath.Combine(localApp, "Playtime_Prototype4", "Saved", "SaveGames", "Chap2Checkpoint.sav"), null),
             (3, IOPath.Combine(savesBase, "Chapter 3"), "Playtime.sav",
-             IOPath.Combine(localApp, "Playtime_Chapter3",   "Saved", "SaveGames", "Playtime.sav")),
+             IOPath.Combine(localApp, "Playtime_Chapter3",   "Saved", "SaveGames", "Playtime.sav"), null),
+            (4, IOPath.Combine(savesBase, "Chapter 4"), null,
+             IOPath.Combine(localApp, "ch4_pro",            "Saved", "SaveGames"), "SaveGame_*"),
+            (5, IOPath.Combine(savesBase, "Chapter 5"), null,
+             IOPath.Combine(localApp, "ch5_pro",            "Saved", "SaveGames"), "PoppySave_*"),
         };
 
         if (detected > 0)
@@ -69,25 +75,43 @@ public partial class HotkeyOverlay : Window
             // Show only the running chapter — narrow panel, chapter name as header
             ContentPanel.Width = 480;
             HeaderText.Text    = $"[ {Loc.Get($"ch{detected}_title")} ]";
+            LoadBtnText.Text   = Loc.Get("hotkey_load_btn");
+
+            var ch = chapters.FirstOrDefault(c => c.Num == detected);
+            if (ch.Num > 0)
+            {
+                _deleteInfo          = new DeleteInfo(ch.Dest, ch.DeletePattern);
+                DeleteBtn.Visibility = Visibility.Visible;
+
+                if (ch.DeletePattern != null)
+                {
+                    // ch4/5: no checkpoint list — pre-arm the load button with the full saves folder
+                    _selected         = new CheckpointItem(ch.SavesDir, ch.Dest, ch.DeletePattern);
+                    LoadBtn.IsEnabled = true;
+                    return;
+                }
+            }
         }
         else
         {
-            // No chapter detected — show all three with section labels
+            // No chapter detected — show ch1-3 only with section labels
             ContentPanel.Width = 520;
             HeaderText.Text    = Loc.Get("hotkey_header");
+            LoadBtnText.Text   = Loc.Get("hotkey_load_all_btn");
         }
 
         bool firstSection = true;
         foreach (var ch in chapters)
         {
             if (detected > 0 && ch.Num != detected) continue;
-            AddSection(ch.Num, ch.SavesDir, ch.SaveFile, ch.DestFile,
+            if (detected == 0 && ch.Num > 3) continue;
+            AddSection(ch.Num, ch.SavesDir, ch.SaveFile, ch.Dest, ch.DeletePattern,
                        firstSection, showSectionLabel: detected == 0);
             firstSection = false;
         }
     }
 
-    private void AddSection(int chNum, string savesDir, string saveFile, string destFile,
+    private void AddSection(int chNum, string savesDir, string? saveFile, string dest, string? deletePattern,
                             bool firstSection, bool showSectionLabel)
     {
         if (!Directory.Exists(savesDir)) return;
@@ -98,8 +122,10 @@ public partial class HotkeyOverlay : Window
                 var m = System.Text.RegularExpressions.Regex.Match(IOPath.GetFileName(d), @"^\[(\d+)\]");
                 return m.Success ? int.Parse(m.Groups[1].Value) : 999;
             })
-            .Select(d => (name: IOPath.GetFileName(d), src: IOPath.Combine(d, saveFile)))
-            .Where(e => File.Exists(e.src))
+            .Select(d => saveFile != null
+                ? (name: IOPath.GetFileName(d), src: IOPath.Combine(d, saveFile), isDir: false)
+                : (name: IOPath.GetFileName(d), src: d, isDir: true))
+            .Where(e => e.isDir ? (Directory.Exists(e.src) && Directory.GetFiles(e.src).Length > 0) : File.Exists(e.src))
             .ToList();
 
         if (entries.Count == 0) return;
@@ -129,9 +155,9 @@ public partial class HotkeyOverlay : Window
         }
 
         bool first = true;
-        foreach (var (name, src) in entries)
+        foreach (var (name, src, _) in entries)
         {
-            ChaptersPanel.Children.Add(MakeRow(name, new CheckpointItem(src, destFile), first));
+            ChaptersPanel.Children.Add(MakeRow(name, new CheckpointItem(src, dest, deletePattern), first));
             first = false;
         }
     }
@@ -194,8 +220,40 @@ public partial class HotkeyOverlay : Window
         if (_selected == null) return;
         try
         {
-            Directory.CreateDirectory(IOPath.GetDirectoryName(_selected.Dest)!);
-            File.Copy(_selected.Source, _selected.Dest, overwrite: true);
+            if (_selected.DeletePattern != null)
+            {
+                Directory.CreateDirectory(_selected.Dest);
+                foreach (var f in Directory.GetFiles(_selected.Dest, _selected.DeletePattern))
+                    File.Delete(f);
+                foreach (var f in Directory.GetFiles(_selected.Source))
+                    File.Copy(f, IOPath.Combine(_selected.Dest, IOPath.GetFileName(f)), overwrite: true);
+            }
+            else
+            {
+                Directory.CreateDirectory(IOPath.GetDirectoryName(_selected.Dest)!);
+                File.Copy(_selected.Source, _selected.Dest, overwrite: true);
+            }
+        }
+        catch { }
+        Close();
+    }
+
+    private void DeleteBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_deleteInfo == null) return;
+        try
+        {
+            if (_deleteInfo.DeletePattern != null)
+            {
+                if (Directory.Exists(_deleteInfo.Dest))
+                    foreach (var f in Directory.GetFiles(_deleteInfo.Dest, _deleteInfo.DeletePattern))
+                        File.Delete(f);
+            }
+            else
+            {
+                if (File.Exists(_deleteInfo.Dest))
+                    File.Delete(_deleteInfo.Dest);
+            }
         }
         catch { }
         Close();

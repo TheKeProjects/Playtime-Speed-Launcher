@@ -190,7 +190,9 @@ checkpoint_select_header = [ SELECCIONAR CHECKPOINT ]
 # Hotkey overlay (Ctrl+Shift+Enter)
 hotkey_header   = [ CARGAR CHECKPOINT ]
 hotkey_hint     = Esc · cerrar
-hotkey_load_btn = CARGAR
+hotkey_load_btn     = CARGAR 100%
+hotkey_load_all_btn = CARGAR
+hotkey_delete_btn   = BORRAR GUARDADOS
 
 # Controles (sección en configuración)
 controls_section       = CONTROLES
@@ -205,6 +207,25 @@ ch4_load_btn = CARGAR 100%
 
 # Chapter 5 save card
 ch5_load_btn = CARGAR 100%
+
+# Configuración de presencia de Discord
+discord_settings_btn = Estado de Discord
+discord_show_activity = Mostrar qué estoy jugando
+discord_show_version = Mostrar versión
+discord_show_livesplit = Mostrar LiveSplit
+
+# Aviso TCP de LiveSplit
+livesplit_tcp_title = Servidor de LiveSplit requerido
+livesplit_tcp_desc = Esta opción muestra tu timer en Discord, pero requiere que el servidor de LiveSplit esté activo.
+livesplit_tcp_steps_label = Cada vez que abras LiveSplit, haz esto:
+livesplit_tcp_step1 = 1.  Clic derecho en LiveSplit
+livesplit_tcp_step2 = 2.  Control  →  Start Server
+livesplit_tcp_reminder = Debes activar el servidor cada vez que abras LiveSplit.
+
+# Epic Games
+epic_not_found_content = No se encontró la instalación de Poppy Playtime en Epic Games.\n\nSelecciona la carpeta PoppyPlaytimeChapterOne dentro de tu instalación de Epic Games.
+epic_no_exe_error = No se encontraron ejecutables de Poppy Playtime en la carpeta seleccionada.
+version_auto_epic = Versión automática de Epic Games
 
 # Reporte de errores
 bug_report_btn         = REPORTAR ERROR

@@ -96,6 +96,21 @@
                         </StackPanel>
                     </Border>
                 </Button>
+
+                <Button x:Name="PlatformToggleBtn"
+                        Background="Transparent" BorderThickness="0"
+                        Padding="0" Click="PlatformToggleBtn_Click"
+                        VerticalAlignment="Center"
+                        Margin="8,0,0,0">
+                    <Border x:Name="PlatformToggleBorder"
+                            BorderBrush="#1A3A55" BorderThickness="1"
+                            CornerRadius="3" Padding="10,4">
+                        <TextBlock x:Name="PlatformToggleText"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="11" FontWeight="Bold"
+                                   Foreground="#2A5A7A"/>
+                    </Border>
+                </Button>
             </StackPanel>
 
             <TextBlock x:Name="DescriptionText"
@@ -406,6 +421,86 @@
                                            VerticalAlignment="Center" Margin="10,0,0,0"/>
                             </StackPanel>
                         </Button>
+
+                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
+
+                        <!-- Discord Status row -->
+                        <Button x:Name="DiscordStatusBtn"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                local:ButtonHelper.CornerRadius="4"
+                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                Padding="12,10" Margin="0,0,0,8"
+                                Click="DiscordStatusBtn_Click">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BD;"
+                                           FontSize="16" Foreground="#2A5A7A"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="DiscordStatusBtnText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Discord settings sub-panel (expandable) -->
+                        <Border x:Name="DiscordStatusPanel"
+                                Visibility="Collapsed"
+                                Background="#050B12"
+                                BorderBrush="#0A1D2E" BorderThickness="1"
+                                CornerRadius="3"
+                                Padding="14,12" Margin="0,0,0,8">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock x:Name="DiscordShowActivityLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" Foreground="#8AAABB"
+                                               VerticalAlignment="Center"/>
+                                    <Button x:Name="DiscordShowActivityBtn"
+                                            Height="26" MinWidth="60"
+                                            HorizontalAlignment="Right"
+                                            local:ButtonHelper.CornerRadius="3"
+                                            Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                            Padding="10,0" Click="DiscordShowActivityBtn_Click">
+                                        <TextBlock x:Name="DiscordShowActivityText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" FontWeight="Bold"/>
+                                    </Button>
+                                </Grid>
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock x:Name="DiscordShowVersionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" Foreground="#8AAABB"
+                                               VerticalAlignment="Center"/>
+                                    <Button x:Name="DiscordShowVersionBtn"
+                                            Height="26" MinWidth="60"
+                                            HorizontalAlignment="Right"
+                                            local:ButtonHelper.CornerRadius="3"
+                                            Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                            Padding="10,0" Click="DiscordShowVersionBtn_Click">
+                                        <TextBlock x:Name="DiscordShowVersionText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" FontWeight="Bold"/>
+                                    </Button>
+                                </Grid>
+                                <Grid>
+                                    <TextBlock x:Name="DiscordShowLiveSplitLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" Foreground="#8AAABB"
+                                               VerticalAlignment="Center"/>
+                                    <Button x:Name="DiscordShowLiveSplitBtn"
+                                            Height="26" MinWidth="60"
+                                            HorizontalAlignment="Right"
+                                            local:ButtonHelper.CornerRadius="3"
+                                            Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                            Padding="10,0" Click="DiscordShowLiveSplitBtn_Click">
+                                        <TextBlock x:Name="DiscordShowLiveSplitText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" FontWeight="Bold"/>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
 
                         <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
 
