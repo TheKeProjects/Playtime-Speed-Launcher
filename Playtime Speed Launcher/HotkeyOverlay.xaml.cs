@@ -75,7 +75,7 @@ public partial class HotkeyOverlay : Window
             // Show only the running chapter — narrow panel, chapter name as header
             ContentPanel.Width = 480;
             HeaderText.Text    = $"[ {Loc.Get($"ch{detected}_title")} ]";
-            LoadBtnText.Text   = Loc.Get("hotkey_load_btn");
+            LoadBtnText.Text   = Loc.Get(detected >= 4 ? "hotkey_load_btn" : "hotkey_load_all_btn");
 
             var ch = chapters.FirstOrDefault(c => c.Num == detected);
             if (ch.Num > 0)

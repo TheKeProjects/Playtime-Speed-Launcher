@@ -104,6 +104,8 @@ username_placeholder = Steam username
 password_placeholder = Password  (empty = use saved Steam session)
 start_download = Start download
 install_dialog_title = Install  ·  {0}
+save_password = Save your password
+use_another_account = Use another account
 
 # Download complete dialog
 files_downloaded_msg = Files downloaded successfully.\nCustomize the name and icon before saving.

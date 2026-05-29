@@ -171,6 +171,22 @@ public sealed class DiscordPresenceService : IDisposable
         }, version: version);
     }
 
+    public void SetWatchingTutorial(string videoTitle, string chapter)
+    {
+        Set(new RichPresence
+        {
+            Details    = $"Watching tutorial  ·  {chapter}",
+            Timestamps = new Timestamps(DateTime.UtcNow),
+            Assets     = new Assets
+            {
+                LargeImageKey  = "launcher",
+                LargeImageText = "Playtime Speed Launcher",
+                SmallImageKey  = "checkpoint",
+                SmallImageText = videoTitle,
+            },
+        }, version: videoTitle);
+    }
+
     public void SetSelectingCheckpoint(ChapterInfo chapter, string version)
     {
         Set(new RichPresence

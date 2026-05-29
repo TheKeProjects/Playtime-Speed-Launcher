@@ -5,6 +5,8 @@ using Microsoft.Win32;
 
 namespace SpeedrunLauncher.Services;
 
+public sealed record SteamUser(string PersonaName, string SteamId64);
+
 public static class SteamCmdRunner
 {
     // AppData\Local is always ASCII-safe; SteamCMD (2013 binary) crashes on unicode paths.
@@ -79,6 +81,53 @@ public static class SteamCmdRunner
             }
         }
         catch { }
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the most-recently-used Steam user from loginusers.vdf,
+    /// or null if Steam is not installed or no user record exists.
+    /// </summary>
+    public static SteamUser? GetActiveUser()
+    {
+        try
+        {
+            var steamDir = GetSteamInstallPath();
+            if (steamDir is null) return null;
+
+            var vdf = Path.Combine(steamDir, "config", "loginusers.vdf");
+            if (!File.Exists(vdf)) return null;
+
+            var content = File.ReadAllText(vdf);
+
+            // Split on quoted 17-digit SteamIDs → [before, id1, block1, id2, block2, …]
+            var parts = Regex.Split(content, @"""(\d{17})""");
+            for (int i = 1; i + 1 < parts.Length; i += 2)
+            {
+                var block = parts[i + 1];
+                if (!Regex.IsMatch(block, @"""MostRecent""\s+""1""")) continue;
+
+                var steamId64 = parts[i];
+                var persona   = Regex.Match(block, @"""PersonaName""\s+""([^""]+)""");
+                var name      = persona.Success ? persona.Groups[1].Value : steamId64;
+                return new SteamUser(name, steamId64);
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    /// <summary>Returns the local avatar cache path for a given SteamID64, or null.</summary>
+    public static string? GetAvatarPath(string steamId64)
+    {
+        var steamDir = GetSteamInstallPath();
+        if (steamDir is null) return null;
+        var cacheDir = Path.Combine(steamDir, "config", "avatarcache");
+        foreach (var ext in new[] { ".png", ".jpg", ".jpeg" })
+        {
+            var path = Path.Combine(cacheDir, steamId64 + ext);
+            if (File.Exists(path)) return path;
+        }
         return null;
     }
 

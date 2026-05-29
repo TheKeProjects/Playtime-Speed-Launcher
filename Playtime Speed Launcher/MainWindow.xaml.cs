@@ -39,7 +39,8 @@ public partial class MainWindow : Window
     private int  _saveCardChapter = 0;
 
     // ── Global hotkey ─────────────────────────────────────────────────────────
-    private HotkeyOverlay?  _hotkeyOverlay;
+    private HotkeyOverlay?         _hotkeyOverlay;
+    private VideoTutorialOverlay?  _tutorialOverlay;
     private uint             _hotkeyModifiers = MOD_CONTROL | MOD_SHIFT;
     private uint             _hotkeyVk        = VK_RETURN;
     private bool             _capturingHotkey;
@@ -103,6 +104,8 @@ public partial class MainWindow : Window
         PlayIntro();
         StartGameWatcher();
         StartLiveSplitPoller();
+        Services.VideoTutorialService.Initialize();
+        LoadSteamUser();
         _discordPresence.ApplySettings(
             _discordSettings.ShowActivity,
             _discordSettings.ShowVersion,
@@ -243,6 +246,31 @@ public partial class MainWindow : Window
             BuildInstallationsList();
     }
 
+    private void LoadSteamUser()
+    {
+        try
+        {
+            var user = Services.SteamCmdRunner.GetActiveUser();
+            if (user is null) return;
+
+            SteamPersonaName.Text = user.PersonaName;
+
+            var avatarPath = Services.SteamCmdRunner.GetAvatarPath(user.SteamId64);
+            if (avatarPath != null)
+            {
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.UriSource    = new Uri(avatarPath);
+                bmp.CacheOption  = BitmapCacheOption.OnLoad;
+                bmp.EndInit();
+                SteamAvatar.Source = bmp;
+            }
+
+            SteamUserPanel.Visibility = Visibility.Visible;
+        }
+        catch { }
+    }
+
     private static string TranslatePresetName(string name) =>
         name.Replace("Parche", Loc.Get("patch"));
 
@@ -339,7 +367,9 @@ public partial class MainWindow : Window
     private const uint MOD_SHIFT   = 0x0004;
     private const uint MOD_WIN     = 0x0008;
     private const uint VK_RETURN   = 0x0D;
+    private const uint VK_F9       = 0x78;
     private const int  HOTKEY_ID   = 9001;
+    private const int  TUTORIAL_HOTKEY_ID = 9002;
 
     private static readonly string HotkeyFile =
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -353,14 +383,18 @@ public partial class MainWindow : Window
         source?.AddHook(WndProc);
         LoadHotkey();
         RegisterHotKey(helper.Handle, HOTKEY_ID, _hotkeyModifiers, _hotkeyVk);
+        RegisterHotKey(helper.Handle, TUTORIAL_HOTKEY_ID, 0, VK_F9);
         RefreshHotkeyButton();
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         base.OnClosing(e);
-        UnregisterHotKey(new System.Windows.Interop.WindowInteropHelper(this).Handle, HOTKEY_ID);
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        UnregisterHotKey(hwnd, HOTKEY_ID);
+        UnregisterHotKey(hwnd, TUTORIAL_HOTKEY_ID);
         _hotkeyOverlay?.Close();
+        _tutorialOverlay?.Close();
         _liveSplitPollCts?.Cancel();
         _liveSplitClient.Dispose();
         _discordPresence.Dispose();
@@ -368,12 +402,41 @@ public partial class MainWindow : Window
 
     private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
-        if (msg == 0x0312 && (int)wParam == HOTKEY_ID)
+        if (msg == 0x0312)
         {
-            ToggleHotkeyOverlay();
-            handled = true;
+            if ((int)wParam == HOTKEY_ID)
+            {
+                ToggleHotkeyOverlay();
+                handled = true;
+            }
+            else if ((int)wParam == TUTORIAL_HOTKEY_ID)
+            {
+                ToggleTutorialOverlay();
+                handled = true;
+            }
         }
         return 0;
+    }
+
+    private void ToggleTutorialOverlay()
+    {
+        if (_tutorialOverlay is { IsVisible: true })
+        {
+            _tutorialOverlay.Close();
+        }
+        else
+        {
+            _tutorialOverlay = new VideoTutorialOverlay(_discordPresence);
+            _tutorialOverlay.Closed += (_, _) =>
+            {
+                _tutorialOverlay = null;
+                var ch = _chapters.Count > 0 ? _chapters[_selected] : null;
+                if (ch != null) _discordPresence.SetChapterSelected(ch, GetVersionLabel(ch));
+                else _discordPresence.SetBrowsing();
+            };
+            _tutorialOverlay.Show();
+            _tutorialOverlay.Activate();
+        }
     }
 
     private void ToggleHotkeyOverlay()
@@ -2002,55 +2065,197 @@ public partial class MainWindow : Window
     private async Task<(string username, string? password)?> PromptCredentialsAsync(
         string suggestedUser, ChapterPreset preset)
     {
+        var mono   = new FontFamily("Cascadia Code, Consolas, Courier New");
+        var dimFg  = new SolidColorBrush(Color.FromArgb(120, 150, 180, 200));
+        var inputBg = new SolidColorBrush(Color.FromRgb(10, 20, 32));
+        var inputFg = new SolidColorBrush(Color.FromRgb(200, 210, 220));
+        var inputBd = new SolidColorBrush(Color.FromRgb(30, 60, 90));
+
+        // ── Input controls ──────────────────────────────────────────────────
         var userTb = new TextBox
         {
-            Text = suggestedUser,
-            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
-            Background = new SolidColorBrush(Color.FromRgb(10, 20, 32)),
-            Foreground = new SolidColorBrush(Color.FromRgb(200, 210, 220)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(30, 60, 90)),
-            CaretBrush = new SolidColorBrush(Color.FromRgb(0, 204, 170)),
+            Text        = suggestedUser,
+            FontFamily  = mono,
+            Background  = inputBg, Foreground = inputFg,
+            BorderBrush = inputBd,
+            CaretBrush  = new SolidColorBrush(Teal),
         };
         var passPb = new PasswordBox
         {
-            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
-            Background = new SolidColorBrush(Color.FromRgb(10, 20, 32)),
-            Foreground = new SolidColorBrush(Color.FromRgb(200, 210, 220)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(30, 60, 90)),
+            FontFamily = mono, Background = inputBg,
+            Foreground = inputFg, BorderBrush = inputBd,
+        };
+        var saveCb = new CheckBox
+        {
+            Content     = Loc.Get("save_password"),
+            FontFamily  = mono, FontSize = 10,
+            Foreground  = new SolidColorBrush(Color.FromArgb(180, 150, 180, 200)),
+            Margin      = new Thickness(0, 10, 0, 0),
+            IsChecked   = false,
         };
 
-        var panel = new StackPanel { MaxWidth = 440 };
+        // ── Manual-entry section (always built, hidden when account selected) ─
+        var manualSection = new StackPanel();
+        manualSection.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("username_placeholder") ?? "Username",
+            Foreground = dimFg, FontSize = 9, FontFamily = mono,
+            Margin = new Thickness(0, 0, 0, 2),
+        });
+        manualSection.Children.Add(userTb);
+        manualSection.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("password_placeholder") ?? "Password",
+            Foreground = dimFg, FontSize = 9, FontFamily = mono,
+            Margin = new Thickness(0, 8, 0, 2),
+        });
+        manualSection.Children.Add(passPb);
+        manualSection.Children.Add(saveCb);
+
+        // ── Main panel ───────────────────────────────────────────────────────
+        var panel = new StackPanel { MaxWidth = 460 };
         panel.Children.Add(new TextBlock
         {
-            Text = Loc.Get("credentials_version_label"),
-            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"), FontSize = 11,
+            Text       = Loc.Get("credentials_version_label"),
+            FontFamily = mono, FontSize = 11,
             Foreground = new SolidColorBrush(Color.FromArgb(160, 120, 160, 190)),
-            Margin = new Thickness(0, 0, 0, 6),
+            Margin     = new Thickness(0, 0, 0, 6),
         });
         panel.Children.Add(new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(50, 0, 204, 170)),
+            Background   = new SolidColorBrush(Color.FromArgb(50, 0, 204, 170)),
             CornerRadius = new CornerRadius(4), Padding = new Thickness(10, 5, 10, 5),
-            Margin = new Thickness(0, 0, 0, 8),
-            Child = new TextBlock
+            Margin       = new Thickness(0, 0, 0, 12),
+            Child        = new TextBlock
             {
-                Text = preset.Command,
-                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
-                FontSize = 10, Foreground = new SolidColorBrush(Teal),
+                Text       = preset.Command,
+                FontFamily = mono, FontSize = 10,
+                Foreground = new SolidColorBrush(Teal),
             },
         });
-        if (!string.IsNullOrEmpty(suggestedUser))
+
+        // ── Saved-account banners ────────────────────────────────────────────
+        Services.SavedAccount? selectedAccount = null;
+
+        var savedAccounts = Services.SteamCredentialStore.LoadAll();
+        if (savedAccounts.Count > 0)
+        {
             panel.Children.Add(new TextBlock
             {
-                Text = Loc.Get("detected_user"),
-                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"), FontSize = 10,
-                Foreground = new SolidColorBrush(Color.FromArgb(160, 0, 204, 170)),
-                Margin = new Thickness(0, 0, 0, 4),
+                Text       = Loc.Get("saved_accounts") ?? "SAVED ACCOUNTS",
+                FontFamily = mono, FontSize = 8, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
+                Margin     = new Thickness(0, 0, 0, 6),
             });
-        panel.Children.Add(new TextBlock { Text = Loc.Get("username_placeholder") ?? "Username", Foreground = new SolidColorBrush(Color.FromArgb(120, 150, 180, 200)), FontSize = 9, FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"), Margin = new Thickness(0, 0, 0, 2) });
-        panel.Children.Add(userTb);
-        panel.Children.Add(new TextBlock { Text = Loc.Get("password_placeholder") ?? "Password", Foreground = new SolidColorBrush(Color.FromArgb(120, 150, 180, 200)), FontSize = 9, FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"), Margin = new Thickness(0, 8, 0, 2) });
-        panel.Children.Add(passPb);
+
+            Border? activeBanner = null;
+            var accountsWrap = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
+
+            foreach (var acct in savedAccounts)
+            {
+                var acc = acct;
+                var nameTb = new TextBlock
+                {
+                    Text       = acc.Username,
+                    FontFamily = mono, FontSize = 11, FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(180, 210, 230)),
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                var banner = new Border
+                {
+                    Background      = new SolidColorBrush(Color.FromArgb(30, 10, 40, 60)),
+                    BorderBrush     = new SolidColorBrush(Color.FromArgb(80, 30, 60, 90)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius    = new CornerRadius(4),
+                    Padding         = new Thickness(12, 8, 12, 8),
+                    Margin          = new Thickness(0, 0, 0, 4),
+                    Cursor          = Cursors.Hand,
+                    Child           = new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Children    =
+                        {
+                            new TextBlock
+                            {
+                                Text       = "",
+                                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                                FontSize   = 14,
+                                Foreground = new SolidColorBrush(Color.FromArgb(120, 0, 204, 170)),
+                                VerticalAlignment = VerticalAlignment.Center,
+                                Margin     = new Thickness(0, 0, 10, 0),
+                            },
+                            nameTb,
+                        },
+                    },
+                };
+
+                banner.MouseEnter += (_, _) =>
+                {
+                    if (activeBanner != banner)
+                        banner.Background = new SolidColorBrush(Color.FromArgb(50, 0, 80, 100));
+                };
+                banner.MouseLeave += (_, _) =>
+                {
+                    if (activeBanner != banner)
+                        banner.Background = new SolidColorBrush(Color.FromArgb(30, 10, 40, 60));
+                };
+                banner.MouseDown += (_, _) =>
+                {
+                    if (activeBanner != null)
+                    {
+                        activeBanner.BorderBrush = new SolidColorBrush(Color.FromArgb(80, 30, 60, 90));
+                        activeBanner.Background  = new SolidColorBrush(Color.FromArgb(30, 10, 40, 60));
+                    }
+                    selectedAccount          = acc;
+                    activeBanner             = banner;
+                    banner.BorderBrush       = new SolidColorBrush(Color.FromArgb(220, 0, 204, 170));
+                    banner.Background        = new SolidColorBrush(Color.FromArgb(40, 0, 204, 170));
+                    manualSection.Visibility = Visibility.Collapsed;
+                };
+
+                accountsWrap.Children.Add(banner);
+            }
+
+            // Pre-select the first account
+            if (savedAccounts.Count > 0)
+            {
+                var firstBanner = (Border)accountsWrap.Children[0];
+                selectedAccount            = savedAccounts[0];
+                activeBanner               = firstBanner;
+                firstBanner.BorderBrush    = new SolidColorBrush(Color.FromArgb(220, 0, 204, 170));
+                firstBanner.Background     = new SolidColorBrush(Color.FromArgb(40, 0, 204, 170));
+                manualSection.Visibility   = Visibility.Collapsed;
+            }
+
+            panel.Children.Add(accountsWrap);
+
+            // "Use another account" button
+            var useAnotherBtn = new Button
+            {
+                Content         = Loc.Get("use_another_account"),
+                FontFamily      = mono, FontSize = 9,
+                Background      = new SolidColorBrush(Color.FromArgb(20, 255, 255, 255)),
+                BorderBrush     = new SolidColorBrush(Color.FromArgb(50, 100, 140, 160)),
+                BorderThickness = new Thickness(1),
+                Foreground      = new SolidColorBrush(Color.FromArgb(160, 100, 160, 200)),
+                Padding         = new Thickness(10, 4, 10, 4),
+                Cursor          = Cursors.Hand,
+                Margin          = new Thickness(0, 0, 0, 12),
+                HorizontalAlignment = HorizontalAlignment.Left,
+            };
+            ButtonHelper.SetCornerRadius(useAnotherBtn, new CornerRadius(3));
+            useAnotherBtn.Click += (_, _) =>
+            {
+                selectedAccount          = null;
+                activeBanner             = null;
+                userTb.Text              = suggestedUser;
+                passPb.Password          = "";
+                manualSection.Visibility = Visibility.Visible;
+            };
+            panel.Children.Add(useAnotherBtn);
+        }
+
+        panel.Children.Add(manualSection);
 
         var result = await WpfDialog.ShowAsync(this,
             Loc.Get("install_dialog_title", TranslatePresetName(preset.Name)), panel,
@@ -2058,9 +2263,23 @@ public partial class MainWindow : Window
             closeText:   Loc.Get("cancel"));
 
         if (result != WpfDialogResult.Primary) return null;
+
+        // Use saved account
+        if (selectedAccount != null)
+        {
+            var pass = Services.SteamCredentialStore.Decrypt(selectedAccount);
+            return (selectedAccount.Username, pass);
+        }
+
+        // Use manual entry
         var user = userTb.Text.Trim();
         if (string.IsNullOrEmpty(user)) return null;
-        return (user, passPb.Password.Length > 0 ? passPb.Password : null);
+        var password = passPb.Password.Length > 0 ? passPb.Password : null;
+
+        if (saveCb.IsChecked == true && password != null)
+            Services.SteamCredentialStore.Save(user, password);
+
+        return (user, password);
     }
 
     private async Task MoveAndRegisterAsync(ChapterPreset preset, int chapterNum, string depotPath)

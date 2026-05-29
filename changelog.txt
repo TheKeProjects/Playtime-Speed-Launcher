@@ -1,5 +1,6 @@
-1.2.3
-- Added Epic Games support
-- Added LiveSplit timer integration to Discord statuses
-- Added settings to manage Discord status integration
-- Added an in-game checkpoint loader for Chapters 4 and 5 (load and delete all saves)
+1.2.4
+- Added in-game glitch and skip tutorials (currently available for Chapters 1 and 2, default key: F9)
+- Added Discord Rich Presence support while watching tutorials
+- Added Steam profile user and avatar display to the main menu
+- Added an option to save the user and password for automatic depot downloads (still require Steam Guard)
+- Fixed the LOAD button in the in-game checkpoint loader for Chapters 1, 2, and 3

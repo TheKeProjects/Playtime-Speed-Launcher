@@ -104,6 +104,8 @@ username_placeholder = Usuario de Steam
 password_placeholder = Contraseña  (vacío = usar sesión guardada de Steam)
 start_download = Iniciar descarga
 install_dialog_title = Instalar  ·  {0}
+save_password = Guardar contraseña
+use_another_account = Usar otra cuenta
 
 # Diálogo de descarga completa
 files_downloaded_msg = Los archivos se descargaron correctamente.\nPersonaliza el nombre e ícono antes de guardar.

@@ -212,6 +212,24 @@
             </StackPanel>
         </Button>
 
+        <!-- Steam user (above footer, bottom-right) -->
+        <StackPanel x:Name="SteamUserPanel"
+                    Grid.Row="4"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                    Margin="0,0,20,14"
+                    Visibility="Collapsed">
+            <TextBlock x:Name="SteamPersonaName"
+                       FontFamily="Cascadia Code, Consolas, Courier New"
+                       FontSize="13" FontWeight="Bold"
+                       Foreground="#3A6A8A"
+                       VerticalAlignment="Center"
+                       Margin="0,0,12,0"/>
+            <Border Width="44" Height="44" CornerRadius="22" ClipToBounds="True">
+                <Image x:Name="SteamAvatar" Stretch="UniformToFill"/>
+            </Border>
+        </StackPanel>
+
         <!-- ── VERSIONS OVERLAY ── -->
         <Grid x:Name="VersionsOverlay"
               Grid.RowSpan="6"
