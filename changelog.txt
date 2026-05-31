@@ -1,4 +1,4 @@
 1.2.5
-- Added a setting to customize the Tutorials Menu keybind
+- Added a setting to customize the Glitches and Skips Tutorials Menu keybind
 - Added an in-game popup displaying the keybind used to open the Tutorials Menu
 - Added a Version History menu to view the complete changelog from all releases
