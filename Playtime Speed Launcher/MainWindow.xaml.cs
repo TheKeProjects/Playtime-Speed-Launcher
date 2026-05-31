@@ -45,11 +45,16 @@ public partial class MainWindow : Window
     private uint             _hotkeyVk        = VK_RETURN;
     private bool             _capturingHotkey;
     private KeyEventHandler? _hotkeyCapture;
+    private uint             _tutorialHotkeyModifiers = 0;
+    private uint             _tutorialHotkeyVk        = VK_F9;
+    private bool             _capturingTutorialHotkey;
+    private KeyEventHandler? _tutorialHotkeyCapture;
 
     // ── Game watcher ──────────────────────────────────────────────────────────
     private readonly bool[] _gameWasRunning        = new bool[3];
     private bool             _gameWatcherInitialized;
     private Window?          _gameToast;
+    private Window?          _tutorialToast;
 
     // ── Update system ─────────────────────────────────────────────────────────
     private readonly UpdateService _updateService = new();
@@ -182,7 +187,9 @@ public partial class MainWindow : Window
         LanguageLabel.Text         = Loc.Get("language_label");
         ControlsSectionLabel.Text  = Loc.Get("controls_section");
         CheckpointHotkeyLabel.Text = Loc.Get("checkpoint_hotkey_label");
+        TutorialHotkeyLabel.Text   = Loc.Get("tutorial_hotkey_label");
         RefreshHotkeyButton();
+        RefreshTutorialHotkeyButton();
         ToolTipService.SetToolTip(SettingsButton, Loc.Get("settings_tooltip"));
 
         OpenUpdatesBtnText.Text        = Loc.Get("updates_header");
@@ -225,6 +232,10 @@ public partial class MainWindow : Window
 
         CheckpointSelectHeaderText.Text   = Loc.Get("checkpoint_select_header");
         CloseCheckpointSelectBtnText.Text = Loc.Get("back");
+
+        ChangelogBtnText.Text      = Loc.Get("changelog_btn");
+        ChangelogHeaderText.Text   = Loc.Get("changelog_header");
+        CloseChangelogBtnText.Text = Loc.Get("back");
 
         BugReportBtnText.Text      = Loc.Get("bug_report_btn");
         BugReportHeaderText.Text   = Loc.Get("bug_report_title");
@@ -375,6 +386,10 @@ public partial class MainWindow : Window
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "hotkey.cfg");
 
+    private static readonly string TutorialHotkeyFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "tutorial_hotkey.cfg");
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
@@ -382,8 +397,9 @@ public partial class MainWindow : Window
         var source = System.Windows.Interop.HwndSource.FromHwnd(helper.Handle);
         source?.AddHook(WndProc);
         LoadHotkey();
+        LoadTutorialHotkey();
         RegisterHotKey(helper.Handle, HOTKEY_ID, _hotkeyModifiers, _hotkeyVk);
-        RegisterHotKey(helper.Handle, TUTORIAL_HOTKEY_ID, 0, VK_F9);
+        RegisterHotKey(helper.Handle, TUTORIAL_HOTKEY_ID, _tutorialHotkeyModifiers, _tutorialHotkeyVk);
         RefreshHotkeyButton();
     }
 
@@ -395,6 +411,8 @@ public partial class MainWindow : Window
         UnregisterHotKey(hwnd, TUTORIAL_HOTKEY_ID);
         _hotkeyOverlay?.Close();
         _tutorialOverlay?.Close();
+        _gameToast?.Close();
+        _tutorialToast?.Close();
         _liveSplitPollCts?.Cancel();
         _liveSplitClient.Dispose();
         _discordPresence.Dispose();
@@ -599,6 +617,107 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    // ── Tutorial hotkey configuration ─────────────────────────────────────────
+
+    private void LoadTutorialHotkey()
+    {
+        try
+        {
+            if (!File.Exists(TutorialHotkeyFile)) return;
+            var parts = File.ReadAllText(TutorialHotkeyFile).Trim().Split(',');
+            if (parts.Length == 2
+                && uint.TryParse(parts[0], out var mod)
+                && uint.TryParse(parts[1], out var vk))
+            {
+                _tutorialHotkeyModifiers = mod;
+                _tutorialHotkeyVk        = vk;
+            }
+        }
+        catch { }
+    }
+
+    private void SaveTutorialHotkey()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(TutorialHotkeyFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(TutorialHotkeyFile, $"{_tutorialHotkeyModifiers},{_tutorialHotkeyVk}");
+        }
+        catch { }
+    }
+
+    private void RefreshTutorialHotkeyButton()
+    {
+        TutorialHotkeyText.Text       = FormatHotkey(_tutorialHotkeyModifiers, _tutorialHotkeyVk);
+        TutorialHotkeyBtn.BorderBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        TutorialHotkeyText.Foreground = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+    }
+
+    private void TutorialHotkeyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_capturingTutorialHotkey)
+        {
+            _capturingTutorialHotkey = false;
+            if (_tutorialHotkeyCapture != null)
+            {
+                RemoveHandler(UIElement.PreviewKeyDownEvent, _tutorialHotkeyCapture);
+                _tutorialHotkeyCapture = null;
+            }
+            RefreshTutorialHotkeyButton();
+            return;
+        }
+
+        _capturingTutorialHotkey = true;
+        TutorialHotkeyText.Text       = Loc.Get("hotkey_press_keys");
+        TutorialHotkeyText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170));
+        TutorialHotkeyBtn.BorderBrush = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170));
+
+        _tutorialHotkeyCapture = CaptureTutorialHotkeyKeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _tutorialHotkeyCapture, true);
+    }
+
+    private void CaptureTutorialHotkeyKeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key is Key.LeftCtrl or Key.RightCtrl
+                or Key.LeftShift or Key.RightShift
+                or Key.LeftAlt or Key.RightAlt
+                or Key.LWin or Key.RWin
+                or Key.None)
+            return;
+
+        RemoveHandler(UIElement.PreviewKeyDownEvent, _tutorialHotkeyCapture);
+        _tutorialHotkeyCapture   = null;
+        _capturingTutorialHotkey = false;
+
+        if (key == Key.Escape)
+        {
+            RefreshTutorialHotkeyButton();
+            e.Handled = true;
+            return;
+        }
+
+        var modifiers = 0u;
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0) modifiers |= MOD_CONTROL;
+        if ((Keyboard.Modifiers & ModifierKeys.Shift)   != 0) modifiers |= MOD_SHIFT;
+        if ((Keyboard.Modifiers & ModifierKeys.Alt)     != 0) modifiers |= MOD_ALT;
+        if ((Keyboard.Modifiers & ModifierKeys.Windows) != 0) modifiers |= MOD_WIN;
+
+        var vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+
+        var helper = new System.Windows.Interop.WindowInteropHelper(this);
+        UnregisterHotKey(helper.Handle, TUTORIAL_HOTKEY_ID);
+        _tutorialHotkeyModifiers = modifiers;
+        _tutorialHotkeyVk        = vk;
+        RegisterHotKey(helper.Handle, TUTORIAL_HOTKEY_ID, _tutorialHotkeyModifiers, _tutorialHotkeyVk);
+        SaveTutorialHotkey();
+        RefreshTutorialHotkeyButton();
+
+        e.Handled = true;
+    }
+
     // ── Game watcher ──────────────────────────────────────────────────────────
 
     // ── LiveSplit server poller ───────────────────────────────────────────────
@@ -674,9 +793,11 @@ public partial class MainWindow : Window
             try { running = Process.GetProcessesByName(IOPath.GetFileNameWithoutExtension(path)).Length > 0; }
             catch { running = false; }
 
-            if (_gameWatcherInitialized && running && !_gameWasRunning[i]
-                && (_gameToast == null || !_gameToast.IsVisible))
-                ShowGameToast();
+            if (_gameWatcherInitialized && running && !_gameWasRunning[i])
+            {
+                if (_gameToast    == null || !_gameToast.IsVisible)    ShowGameToast();
+                if (_tutorialToast == null || !_tutorialToast.IsVisible) ShowTutorialToast();
+            }
 
             if (running != _gameWasRunning[i]) stateChanged = true;
             _gameWasRunning[i] = running;
@@ -797,6 +918,116 @@ public partial class MainWindow : Window
 
         _gameToast = toast;
         toast.Closed += (_, _) => { if (ReferenceEquals(_gameToast, toast)) _gameToast = null; };
+        toast.Show();
+    }
+
+    private void ShowTutorialToast()
+    {
+        _tutorialToast?.Close();
+
+        const double W        = 330;
+        const double Duration = 15;
+
+        var progressFg = new Border
+        {
+            Background          = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170)),
+            Height              = 3,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Width               = W - 2,
+        };
+
+        var progressGrid = new Grid { Height = 3 };
+        progressGrid.Children.Add(new Border
+        {
+            Background = new SolidColorBrush(Color.FromArgb(40, 0, 204, 170)),
+        });
+        progressGrid.Children.Add(progressFg);
+
+        var hintText = new TextBlock
+        {
+            Text       = Loc.Get("tutorial_toast_hint"),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize   = 10,
+            Foreground = new SolidColorBrush(Color.FromArgb(180, 160, 190, 210)),
+        };
+        var keyText = new TextBlock
+        {
+            Text       = FormatHotkey(_tutorialHotkeyModifiers, _tutorialHotkeyVk),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize   = 13,
+            FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170)),
+            Margin     = new Thickness(0, 3, 0, 0),
+        };
+
+        var textStack = new StackPanel { Margin = new Thickness(14, 12, 14, 10) };
+        textStack.Children.Add(hintText);
+        textStack.Children.Add(keyText);
+
+        var innerGrid = new Grid();
+        innerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        innerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+        Grid.SetRow(textStack,    0);
+        Grid.SetRow(progressGrid, 1);
+        innerGrid.Children.Add(textStack);
+        innerGrid.Children.Add(progressGrid);
+
+        var outerBorder = new Border
+        {
+            Background      = new SolidColorBrush(Color.FromArgb(240, 9, 20, 30)),
+            BorderBrush     = new SolidColorBrush(Color.FromArgb(255, 21, 48, 72)),
+            BorderThickness = new Thickness(1),
+            CornerRadius    = new CornerRadius(6),
+            ClipToBounds    = true,
+            Child           = innerGrid,
+        };
+
+        var screen = SystemParameters.WorkArea;
+        var toast = new Window
+        {
+            WindowStyle        = WindowStyle.None,
+            AllowsTransparency = true,
+            Background         = Brushes.Transparent,
+            ResizeMode         = ResizeMode.NoResize,
+            ShowInTaskbar      = false,
+            Topmost            = true,
+            Width              = W,
+            SizeToContent      = SizeToContent.Height,
+            Left               = screen.Right - W - 20,
+            Top                = screen.Top + screen.Height / 2,
+            Opacity            = 0,
+            Content            = outerBorder,
+        };
+
+        toast.Loaded += (_, _) =>
+        {
+            // Place below center, offset enough to clear the checkpoint toast (~65px tall + 10px gap)
+            toast.Top = screen.Top + (screen.Height - toast.ActualHeight) / 2 + 85;
+
+            toast.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250)));
+
+            var fullW = progressGrid.ActualWidth;
+            progressFg.Width = fullW;
+            progressFg.BeginAnimation(FrameworkElement.WidthProperty,
+                new DoubleAnimation(fullW, 0, TimeSpan.FromSeconds(Duration)));
+
+            var fadeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Duration - 1) };
+            fadeTimer.Tick += (_, _) =>
+            {
+                fadeTimer.Stop();
+                toast.BeginAnimation(UIElement.OpacityProperty,
+                    new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(800)));
+            };
+            fadeTimer.Start();
+
+            var closeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Duration) };
+            closeTimer.Tick += (_, _) => { closeTimer.Stop(); toast.Close(); };
+            closeTimer.Start();
+        };
+
+        _tutorialToast = toast;
+        toast.Closed += (_, _) => { if (ReferenceEquals(_tutorialToast, toast)) _tutorialToast = null; };
         toast.Show();
     }
 
@@ -3361,6 +3592,103 @@ public partial class MainWindow : Window
         WpfDialog.Show(this,
             Loc.Get("livesplit_tcp_title"), panel,
             primaryText: Loc.Get("understood"));
+    }
+
+    // ── Changelog ─────────────────────────────────────────────────────────────
+
+    private void ChangelogButton_Click(object sender, RoutedEventArgs e)
+    {
+        BuildChangelogPanel();
+        ChangelogOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void CloseChangelogBtn_Click(object sender, RoutedEventArgs e) =>
+        ChangelogOverlay.Visibility = Visibility.Collapsed;
+
+    private void BuildChangelogPanel()
+    {
+        ChangelogPanel.Children.Clear();
+
+        bool isFirst = true;
+        foreach (var entry in ChangelogData.Entries)
+        {
+            bool isCurrent = entry.Version == AppVersion.CURRENT_VERSION;
+
+            if (!isFirst)
+            {
+                ChangelogPanel.Children.Add(new Border
+                {
+                    BorderBrush     = new SolidColorBrush(Color.FromArgb(255, 13, 32, 48)),
+                    BorderThickness = new Thickness(0, 0, 0, 1),
+                    Margin          = new Thickness(0, 0, 0, 12),
+                });
+            }
+            isFirst = false;
+
+            // Version header row
+            var headerRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
+
+            var versionBadge = new Border
+            {
+                Background      = new SolidColorBrush(isCurrent ? Color.FromArgb(255, 0, 80, 60) : Color.FromArgb(255, 6, 15, 24)),
+                BorderBrush     = new SolidColorBrush(isCurrent ? Color.FromArgb(255, 0, 180, 130) : Color.FromArgb(255, 13, 37, 53)),
+                BorderThickness = new Thickness(1),
+                CornerRadius    = new CornerRadius(3),
+                Padding         = new Thickness(8, 3, 8, 3),
+                Margin          = new Thickness(0, 0, 10, 0),
+            };
+            versionBadge.Child = new TextBlock
+            {
+                Text             = $"v{entry.Version}",
+                FontFamily       = new System.Windows.Media.FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize         = 13,
+                FontWeight       = FontWeights.Bold,
+                Foreground       = new SolidColorBrush(isCurrent ? Color.FromArgb(255, 0, 204, 170) : Color.FromArgb(255, 58, 106, 138)),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            headerRow.Children.Add(versionBadge);
+
+            headerRow.Children.Add(new TextBlock
+            {
+                Text              = entry.Date,
+                FontFamily        = new System.Windows.Media.FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize          = 11,
+                Foreground        = new SolidColorBrush(Color.FromArgb(255, 26, 58, 80)),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+
+            if (isCurrent)
+            {
+                headerRow.Children.Add(new TextBlock
+                {
+                    Text              = Loc.Get("changelog_current"),
+                    FontFamily        = new System.Windows.Media.FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize          = 10,
+                    Foreground        = new SolidColorBrush(Color.FromArgb(255, 0, 120, 90)),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin            = new Thickness(10, 0, 0, 0),
+                });
+            }
+
+            var card = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+            card.Children.Add(headerRow);
+
+            // Change items
+            foreach (var change in entry.Changes)
+            {
+                card.Children.Add(new TextBlock
+                {
+                    Text        = $"  ·  {change}",
+                    FontFamily  = new System.Windows.Media.FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize    = 12,
+                    Foreground  = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187)),
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin      = new Thickness(0, 2, 0, 0),
+                });
+            }
+
+            ChangelogPanel.Children.Add(card);
+        }
     }
 
     // ── Bug report ────────────────────────────────────────────────────────────

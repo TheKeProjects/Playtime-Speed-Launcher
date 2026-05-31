@@ -199,10 +199,12 @@ hotkey_delete_btn   = DELETE SAVES
 # Controls (section in settings)
 controls_section       = CONTROLS
 checkpoint_hotkey_label = Checkpoint loader shortcut
+tutorial_hotkey_label   = Tutorials menu shortcut
 hotkey_press_keys      = Press keys...
 
 # Game launch toast
-game_toast_hint = Open checkpoint loader with:
+game_toast_hint     = Open checkpoint loader with:
+tutorial_toast_hint = Open the tutorials menu with:
 
 # Chapter 4 save card
 ch4_load_btn = LOAD 100%
@@ -228,6 +230,11 @@ livesplit_tcp_reminder = You need to activate the server every time you open Liv
 epic_not_found_content = Could not find the Poppy Playtime Epic Games installation.\n\nSelect the PoppyPlaytimeChapterOne folder inside your Epic Games installation.
 epic_no_exe_error = No Poppy Playtime executables were found in the selected folder.
 version_auto_epic = Automatic Epic Games version
+
+# Version history
+changelog_btn     = CHANGELOG
+changelog_header  = [ VERSION HISTORY ]
+changelog_current = (current version)
 
 # Bug report
 bug_report_btn         = REPORT BUG

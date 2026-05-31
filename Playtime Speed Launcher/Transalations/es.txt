@@ -199,10 +199,12 @@ hotkey_delete_btn   = BORRAR GUARDADOS
 # Controles (sección en configuración)
 controls_section       = CONTROLES
 checkpoint_hotkey_label = Atajo checkpoint loader
+tutorial_hotkey_label   = Atajo menú de tutoriales
 hotkey_press_keys      = Presiona teclas...
 
 # Toast de inicio de juego
-game_toast_hint = Abre el checkpoint loader con:
+game_toast_hint     = Abre el checkpoint loader con:
+tutorial_toast_hint = Abre el menú de tutoriales con:
 
 # Chapter 4 save card
 ch4_load_btn = CARGAR 100%
@@ -228,6 +230,11 @@ livesplit_tcp_reminder = Debes activar el servidor cada vez que abras LiveSplit.
 epic_not_found_content = No se encontró la instalación de Poppy Playtime en Epic Games.\n\nSelecciona la carpeta PoppyPlaytimeChapterOne dentro de tu instalación de Epic Games.
 epic_no_exe_error = No se encontraron ejecutables de Poppy Playtime en la carpeta seleccionada.
 version_auto_epic = Versión automática de Epic Games
+
+# Historial de versiones
+changelog_btn     = NOVEDADES
+changelog_header  = [ HISTORIAL DE VERSIONES ]
+changelog_current = (versión actual)
 
 # Reporte de errores
 bug_report_btn         = REPORTAR ERROR
