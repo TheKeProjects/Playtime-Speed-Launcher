@@ -200,6 +200,7 @@ hotkey_delete_btn   = BORRAR GUARDADOS
 controls_section       = CONTROLES
 checkpoint_hotkey_label = Atajo checkpoint loader
 tutorial_hotkey_label   = Atajo menú de tutoriales
+tutorial_save_explain   = Conserva los videos descargados entre sesiones
 hotkey_press_keys      = Presiona teclas...
 
 # Toast de inicio de juego
@@ -217,6 +218,7 @@ discord_settings_btn = Estado de Discord
 discord_show_activity = Mostrar qué estoy jugando
 discord_show_version = Mostrar versión
 discord_show_livesplit = Mostrar LiveSplit
+discord_sign_out = DESCONECTAR DISCORD
 
 # Aviso TCP de LiveSplit
 livesplit_tcp_title = Servidor de LiveSplit requerido
@@ -237,10 +239,20 @@ changelog_header  = [ HISTORIAL DE VERSIONES ]
 changelog_current = (versión actual)
 
 # Reporte de errores
-bug_report_btn         = REPORTAR ERROR
-bug_report_title       = [ REPORTAR UN ERROR ]
-bug_report_name_label  = Tu nombre (opcional)
-bug_report_etitle_label = Título del error *
+bug_report_btn                   = REPORTAR ERROR
+bug_report_title                 = [ REPORTAR UN ERROR ]
+bug_report_discord_label              = CUENTA DE DISCORD
+bug_report_discord_connect_btn        = CONECTAR DISCORD
+bug_report_discord_waiting            = Esperando autorización en el navegador...
+bug_report_discord_cancel             = CANCELAR
+bug_report_discord_info_header        = [ CUENTA DE DISCORD ]
+bug_report_discord_info_why_title     = ¿Por qué se necesita Discord?
+bug_report_discord_info_why_text      = Si necesito más detalles sobre el error, Discord me permite contactarte directamente de forma rápida. Es completamente opcional.
+bug_report_discord_info_perms_title   = Permisos solicitados:
+bug_report_discord_info_perm_name     = identify
+bug_report_discord_info_perm_desc     = Lee tu nombre de usuario e ID de Discord. Nada más.
+bug_report_discord_info_no_access     = Sin acceso a: correo electrónico · servidores · amigos · mensajes · avatar · ningún otro dato.
+bug_report_etitle_label          = Título del error *
 bug_report_desc_label  = Descripción *
 bug_report_image_label = Captura de pantalla (opcional)
 bug_report_image_btn   = ADJUNTAR IMAGEN

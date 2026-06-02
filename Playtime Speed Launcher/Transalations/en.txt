@@ -200,6 +200,7 @@ hotkey_delete_btn   = DELETE SAVES
 controls_section       = CONTROLS
 checkpoint_hotkey_label = Checkpoint loader shortcut
 tutorial_hotkey_label   = Tutorials menu shortcut
+tutorial_save_explain   = Keep downloaded videos between sessions
 hotkey_press_keys      = Press keys...
 
 # Game launch toast
@@ -217,6 +218,7 @@ discord_settings_btn = Discord Status
 discord_show_activity = Show what I'm playing
 discord_show_version = Show version
 discord_show_livesplit = Show LiveSplit
+discord_sign_out = DISCONNECT DISCORD
 
 # LiveSplit TCP notice
 livesplit_tcp_title = LiveSplit Server required
@@ -237,10 +239,20 @@ changelog_header  = [ VERSION HISTORY ]
 changelog_current = (current version)
 
 # Bug report
-bug_report_btn         = REPORT BUG
-bug_report_title       = [ REPORT A BUG ]
-bug_report_name_label  = Your name (optional)
-bug_report_etitle_label = Error title *
+bug_report_btn                   = REPORT BUG
+bug_report_title                 = [ REPORT A BUG ]
+bug_report_discord_label              = DISCORD ACCOUNT
+bug_report_discord_connect_btn        = CONNECT DISCORD
+bug_report_discord_waiting            = Waiting for browser authorization...
+bug_report_discord_cancel             = CANCEL
+bug_report_discord_info_header        = [ DISCORD ACCOUNT ]
+bug_report_discord_info_why_title     = Why is Discord required?
+bug_report_discord_info_why_text      = If I need more details about the bug, Discord lets me contact you directly and quickly. It is completely optional.
+bug_report_discord_info_perms_title   = Requested permissions:
+bug_report_discord_info_perm_name     = identify
+bug_report_discord_info_perm_desc     = Reads your Discord username and user ID. Nothing else.
+bug_report_discord_info_no_access     = No access to: email · servers · friends · messages · avatar · any other data.
+bug_report_etitle_label          = Error title *
 bug_report_desc_label  = Description *
 bug_report_image_label = Screenshot (optional)
 bug_report_image_btn   = ATTACH IMAGE

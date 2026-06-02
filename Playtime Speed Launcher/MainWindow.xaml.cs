@@ -72,7 +72,9 @@ public partial class MainWindow : Window
     private          CancellationTokenSource? _liveSplitPollCts;
 
     // ── Bug report ────────────────────────────────────────────────────────────
-    private string? _bugImagePath = null;
+    private string?                       _bugImagePath         = null;
+    private (string Id, string Username)? _bugReportDiscordUser = null;
+    private CancellationTokenSource?      _discordAuthCts       = null;
 
     // ── LiveSplit ──────────────────────────────────────────────────────────────
     private readonly LiveSplitService _liveSplitService = new();
@@ -237,16 +239,27 @@ public partial class MainWindow : Window
         ChangelogHeaderText.Text   = Loc.Get("changelog_header");
         CloseChangelogBtnText.Text = Loc.Get("back");
 
-        BugReportBtnText.Text      = Loc.Get("bug_report_btn");
-        BugReportHeaderText.Text   = Loc.Get("bug_report_title");
-        BugNameLabel.Text          = Loc.Get("bug_report_name_label");
-        BugETitleLabel.Text        = Loc.Get("bug_report_etitle_label");
-        BugDescLabel.Text          = Loc.Get("bug_report_desc_label");
-        BugImageLabel.Text         = Loc.Get("bug_report_image_label");
-        BugImageBtnText.Text       = Loc.Get("bug_report_image_btn");
-        BugImageFileName.Text      = Loc.Get("bug_report_image_none");
-        SendBugReportBtnText.Text  = Loc.Get("bug_report_send_btn");
-        CloseBugReportBtnText.Text = Loc.Get("back");
+        BugReportBtnText.Text              = Loc.Get("bug_report_btn");
+        BugReportHeaderText.Text           = Loc.Get("bug_report_title");
+        BugDiscordLabel.Text                   = Loc.Get("bug_report_discord_label");
+        BugDiscordConnectBtnText.Text          = Loc.Get("bug_report_discord_connect_btn");
+        BugDiscordWaitingText.Text             = Loc.Get("bug_report_discord_waiting");
+        BugDiscordCancelAuthBtnText.Text       = Loc.Get("bug_report_discord_cancel");
+        DiscordInfoHeader.Text                 = Loc.Get("bug_report_discord_info_header");
+        DiscordInfoWhyTitle.Text               = Loc.Get("bug_report_discord_info_why_title");
+        DiscordInfoWhyText.Text                = Loc.Get("bug_report_discord_info_why_text");
+        DiscordInfoPermsTitle.Text             = Loc.Get("bug_report_discord_info_perms_title");
+        DiscordInfoPermIdentifyName.Text       = Loc.Get("bug_report_discord_info_perm_name");
+        DiscordInfoPermIdentifyDesc.Text       = Loc.Get("bug_report_discord_info_perm_desc");
+        DiscordInfoNoAccessText.Text           = Loc.Get("bug_report_discord_info_no_access");
+        DiscordInfoCloseBtnText.Text           = Loc.Get("back");
+        BugETitleLabel.Text                = Loc.Get("bug_report_etitle_label");
+        BugDescLabel.Text                  = Loc.Get("bug_report_desc_label");
+        BugImageLabel.Text                 = Loc.Get("bug_report_image_label");
+        BugImageBtnText.Text               = Loc.Get("bug_report_image_btn");
+        BugImageFileName.Text              = Loc.Get("bug_report_image_none");
+        SendBugReportBtnText.Text          = Loc.Get("bug_report_send_btn");
+        CloseBugReportBtnText.Text         = Loc.Get("back");
 
         CardsPanel.Children.Clear();
         _cards.Clear();
@@ -2156,6 +2169,31 @@ public partial class MainWindow : Window
         };
         ticker.Start();
 
+        // Watch steamapps/content for new files and folders created by SteamCMD
+        var contentPath = IOPath.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "steamcmd", "steamapps", "content");
+        Directory.CreateDirectory(contentPath);
+
+        var contentWatcher = new System.IO.FileSystemWatcher(contentPath)
+        {
+            IncludeSubdirectories = true,
+            NotifyFilter = System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.DirectoryName,
+        };
+        contentWatcher.Created += (_, e) =>
+        {
+            var rel   = IOPath.GetRelativePath(contentPath, e.FullPath);
+            var isDir = Directory.Exists(e.FullPath);
+            var tag   = isDir ? "[DIR] " : "[FILE]";
+            Dispatcher.Invoke(() =>
+            {
+                if (!_downloadLogs.TryGetValue(manifestId, out var lines)) return;
+                lines.Add($"{tag}  {rel}");
+                RefreshLogBlock();
+            });
+        };
+        contentWatcher.EnableRaisingEvents = true;
+
         Task<string?> GuardPrompt(string _)
         {
             string? code = null;
@@ -2215,6 +2253,8 @@ public partial class MainWindow : Window
         finally
         {
             ticker.Stop();
+            contentWatcher.EnableRaisingEvents = false;
+            contentWatcher.Dispose();
             _activePolls.Remove(preset.ManifestId);
             _downloadLogBlocks.Remove(preset.ManifestId);
             _discordPresence.SetChapterSelected(_chapters[chapterNum - 1], GetVersionLabel(_chapters[chapterNum - 1]));
@@ -2832,6 +2872,10 @@ public partial class MainWindow : Window
             SaveCardSaveBtnPlus.Visibility  = Visibility.Visible;
         }
 
+        SaveCardDeleteBtn.Visibility = (_saveCardChapter == 4 || _saveCardChapter == 5)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
         SaveCardOverlay.Visibility = Visibility.Visible;
     }
 
@@ -3078,6 +3122,35 @@ public partial class MainWindow : Window
 
         _updateService.Dispose();
         Close();
+    }
+
+    // ── Tutorial video ────────────────────────────────────────────────────────
+
+    private void YoutubeTutorialBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var videoPath = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Videos", "Ingles.mp4");
+        if (!File.Exists(videoPath)) return;
+
+        TutorialPlayer.Source = new Uri(videoPath);
+        TutorialVideoOverlay.Visibility = Visibility.Visible;
+        TutorialVideoOverlay.Focus();
+        TutorialPlayer.Play();
+    }
+
+    private void CloseTutorialVideo()
+    {
+        TutorialPlayer.Stop();
+        TutorialPlayer.Source           = null;
+        TutorialVideoOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void CloseTutorialVideoBtn_Click(object sender, RoutedEventArgs e) => CloseTutorialVideo();
+    private void TutorialPlayer_MediaEnded(object sender, RoutedEventArgs e)   => CloseTutorialVideo();
+    private void TutorialVideoOverlay_MouseDown(object sender, MouseButtonEventArgs e) => CloseTutorialVideo();
+
+    private void TutorialVideoOverlay_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape) CloseTutorialVideo();
     }
 
     // ── Updates ───────────────────────────────────────────────────────────────
@@ -3695,15 +3768,28 @@ public partial class MainWindow : Window
 
     private void BugReportButton_Click(object sender, RoutedEventArgs e)
     {
-        BugNameBox.Text            = "";
-        BugETitleBox.Text          = "";
-        BugDescBox.Text            = "";
-        _bugImagePath              = null;
-        BugImageFileName.Text      = Loc.Get("bug_report_image_none");
+        BugETitleBox.Text           = "";
+        BugDescBox.Text             = "";
+        _bugImagePath               = null;
+        _bugReportDiscordUser       = null;
+        BugImageFileName.Text       = Loc.Get("bug_report_image_none");
         BugImageFileName.Foreground = new SolidColorBrush(Color.FromArgb(160, 42, 16, 80));
-        BugStatusText.Visibility   = Visibility.Collapsed;
-        SendBugReportBtnText.Text  = Loc.Get("bug_report_send_btn");
-        SendBugReportBtn.IsEnabled = true;
+        BugStatusText.Visibility    = Visibility.Collapsed;
+        SendBugReportBtnText.Text   = Loc.Get("bug_report_send_btn");
+        SendBugReportBtn.IsEnabled  = true;
+        var cached = Services.DiscordOAuthService.LoadCached();
+        if (cached.HasValue)
+        {
+            _bugReportDiscordUser          = cached;
+            BugDiscordUsername.Text        = cached.Value.Username;
+            BugDiscordConnected.Visibility = Visibility.Visible;
+            BugDiscordConnectRow.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            BugDiscordConnected.Visibility  = Visibility.Collapsed;
+            BugDiscordConnectRow.Visibility = Visibility.Visible;
+        }
         BugReportOverlay.Visibility = Visibility.Visible;
     }
 
@@ -3722,6 +3808,52 @@ public partial class MainWindow : Window
     private void CloseBugReportBtn_Click(object sender, RoutedEventArgs e) =>
         BugReportOverlay.Visibility = Visibility.Collapsed;
 
+    private async void BugDiscordConnectBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _discordAuthCts?.Cancel();
+        _discordAuthCts = new CancellationTokenSource();
+
+        BugDiscordConnectRow.Visibility = Visibility.Collapsed;
+        BugDiscordWaiting.Visibility    = Visibility.Visible;
+
+        var user = await Services.DiscordOAuthService.AuthenticateAsync(_discordAuthCts.Token);
+
+        BugDiscordWaiting.Visibility = Visibility.Collapsed;
+
+        if (user.HasValue)
+        {
+            _bugReportDiscordUser           = user;
+            BugDiscordUsername.Text         = user.Value.Username;
+            BugDiscordConnected.Visibility  = Visibility.Visible;
+            Services.DiscordOAuthService.SaveCached(user.Value.Id, user.Value.Username);
+        }
+        else
+        {
+            BugDiscordConnectRow.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void BugDiscordCancelAuthBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _discordAuthCts?.Cancel();
+        BugDiscordWaiting.Visibility    = Visibility.Collapsed;
+        BugDiscordConnectRow.Visibility = Visibility.Visible;
+    }
+
+    private void BugDiscordDisconnectBtn_Click(object sender, RoutedEventArgs e)
+    {
+        Services.DiscordOAuthService.ClearCached();
+        _bugReportDiscordUser           = null;
+        BugDiscordConnected.Visibility  = Visibility.Collapsed;
+        BugDiscordConnectRow.Visibility = Visibility.Visible;
+    }
+
+    private void BugDiscordInfoBtn_Click(object sender, RoutedEventArgs e) =>
+        DiscordInfoOverlay.Visibility = Visibility.Visible;
+
+    private void DiscordInfoCloseBtn_Click(object sender, RoutedEventArgs e) =>
+        DiscordInfoOverlay.Visibility = Visibility.Collapsed;
+
     private async void SendBugReportBtn_Click(object sender, RoutedEventArgs e)
     {
         var title = BugETitleBox.Text.Trim();
@@ -3739,8 +3871,7 @@ public partial class MainWindow : Window
         SendBugReportBtnText.Text  = Loc.Get("bug_report_sending");
         BugStatusText.Visibility   = Visibility.Collapsed;
 
-        var name = BugNameBox.Text.Trim();
-        var ok   = await SendDiscordBugReportAsync(name, title, desc, _bugImagePath);
+        var ok = await SendDiscordBugReportAsync(_bugReportDiscordUser, title, desc, _bugImagePath);
 
         if (ok)
         {
@@ -3762,7 +3893,7 @@ public partial class MainWindow : Window
     }
 
     private static async Task<bool> SendDiscordBugReportAsync(
-        string name, string title, string description, string? imagePath)
+        (string Id, string Username)? discordUser, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
             "YourWebhookUrl";
@@ -3771,7 +3902,9 @@ public partial class MainWindow : Window
         {
             using var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30) };
 
-            var authorName = string.IsNullOrEmpty(name) ? "Anonymous" : name;
+            var authorName = discordUser.HasValue
+                ? $"{discordUser.Value.Username}  ·  ID: {discordUser.Value.Id}"
+                : "Anonymous";
             var footer     = $"Playtime Speed Launcher  ·  {AppVersion.GetDisplayVersion()}";
 
             string json;

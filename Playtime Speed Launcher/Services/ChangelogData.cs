@@ -7,9 +7,17 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("1.2.6", "02/06/2026",
+        [
+            "Added Glitches & Skips Tutorials for Chapters 3, 4, and 5",
+            "Updated the Tutorials Menu overlay",
+            "Discord is now required for submitting error reports and feedback",
+            "Removed the 'Delete Saves' button from Chapters 1, 2, and 3",
+            "Added a beginner tutorial to help users learn how to use the launcher",
+        ]),
         new("1.2.5", "31/05/2026",
         [
-            "Added a setting to customize the Tutorials Menu keybind",
+            "Added a setting to customize the Glitches and Skips Tutorials Menu keybind",
             "Added an in-game popup displaying the keybind used to open the Tutorials Menu",
             "Added a Version History menu to view the complete changelog from all releases",
         ]),

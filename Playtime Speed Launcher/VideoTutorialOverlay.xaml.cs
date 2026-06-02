@@ -63,6 +63,8 @@ public partial class VideoTutorialOverlay : Window
             _progressTimer.Stop();
         };
 
+        SaveExplainText.Text = LocalizationService.Get("tutorial_save_explain");
+
         SaveIcon.Foreground = new SolidColorBrush(VideoTutorialService.SaveEnabled
             ? Color.FromArgb(255,   0, 204, 170)
             : Color.FromArgb(100,  26,  58,  85));

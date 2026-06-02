@@ -42,6 +42,11 @@ public sealed class DiscordPresenceService : IDisposable
     private string        _versionLine     = "";
     private RichPresence? _currentPresence;
 
+    private (string Id, string Username)? _connectedUser;
+
+    /// <summary>Discord user retrieved from the OnReady handshake, or null if not connected.</summary>
+    public (string Id, string Username)? ConnectedUser => _connectedUser;
+
     // ── User settings ──────────────────────────────────────────────────────────
     private bool _showActivity  = true;
     private bool _showVersion   = true;
@@ -81,6 +86,8 @@ public sealed class DiscordPresenceService : IDisposable
         try
         {
             _client = new DiscordRpcClient(AppId) { Logger = new NullLogger() };
+            _client.OnReady            += (_, msg) => _connectedUser = (msg.User.ID.ToString(), msg.User.Username);
+            _client.OnConnectionFailed += (_, _)   => _connectedUser = null;
             _client.Initialize();
         }
         catch
@@ -242,6 +249,7 @@ public sealed class DiscordPresenceService : IDisposable
             _client.Dispose();
         }
         catch { }
-        _client = null;
+        _client        = null;
+        _connectedUser = null;
     }
 }

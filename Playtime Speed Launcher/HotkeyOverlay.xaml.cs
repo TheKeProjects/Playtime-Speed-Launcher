@@ -81,7 +81,7 @@ public partial class HotkeyOverlay : Window
             if (ch.Num > 0)
             {
                 _deleteInfo          = new DeleteInfo(ch.Dest, ch.DeletePattern);
-                DeleteBtn.Visibility = Visibility.Visible;
+                DeleteBtn.Visibility = ch.Num >= 4 ? Visibility.Visible : Visibility.Collapsed;
 
                 if (ch.DeletePattern != null)
                 {

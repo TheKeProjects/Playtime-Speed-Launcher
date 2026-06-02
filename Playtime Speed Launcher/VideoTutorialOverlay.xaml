@@ -131,6 +131,15 @@
                         </StackPanel>
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock x:Name="SaveExplainText"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="9" Foreground="#1A3A55"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="→"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="12" Foreground="#0D2535"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,10,0"/>
                             <Button x:Name="SaveBtn"
                                     Width="28" Height="28"
                                     local:ButtonHelper.CornerRadius="4"
@@ -145,10 +154,6 @@
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"/>
                             </Button>
-                            <TextBlock Text="F9  "
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="10" Foreground="#1A3A55"
-                                       VerticalAlignment="Center"/>
                             <Button Click="Close_Click"
                                     Width="28" Height="28"
                                     local:ButtonHelper.CornerRadius="4"

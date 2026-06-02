@@ -129,6 +129,18 @@
                     HorizontalAlignment="Center"
                     Margin="0,4,0,14">
 
+            <!-- YouTube tutorial video button -->
+            <Button x:Name="YoutubeTutorialBtn"
+                    Width="58" Height="58"
+                    local:ButtonHelper.CornerRadius="5"
+                    Background="#1A0000" BorderBrush="#660000"
+                    BorderThickness="1"
+                    Margin="0,0,8,0"
+                    Click="YoutubeTutorialBtn_Click">
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE714;"
+                           FontSize="22" Foreground="#CC3333"/>
+            </Button>
+
             <Grid>
                 <Button x:Name="SettingsButton"
                         Width="58" Height="58"
@@ -536,6 +548,7 @@
                                                    FontSize="10" FontWeight="Bold"/>
                                     </Button>
                                 </Grid>
+
                             </StackPanel>
                         </Border>
 
@@ -1251,6 +1264,32 @@
             </Border>
         </Grid>
 
+        <!-- ── TUTORIAL VIDEO OVERLAY ── -->
+        <Grid x:Name="TutorialVideoOverlay"
+              Grid.RowSpan="6"
+              Background="Black"
+              Visibility="Collapsed"
+              Focusable="True"
+              KeyDown="TutorialVideoOverlay_KeyDown"
+              MouseDown="TutorialVideoOverlay_MouseDown">
+            <MediaElement x:Name="TutorialPlayer"
+                          LoadedBehavior="Manual"
+                          UnloadedBehavior="Stop"
+                          Stretch="Uniform"
+                          MediaEnded="TutorialPlayer_MediaEnded"/>
+            <Button Click="CloseTutorialVideoBtn_Click"
+                    Width="36" Height="36"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="0,12,12,0"
+                    Panel.ZIndex="10"
+                    local:ButtonHelper.CornerRadius="4"
+                    Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1">
+                <TextBlock Text="✕" FontSize="14" FontWeight="Bold"
+                           Foreground="#3A6A8A"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Button>
+        </Grid>
+
         <!-- ── BUG REPORT OVERLAY ── -->
         <Grid x:Name="BugReportOverlay"
               Grid.RowSpan="6"
@@ -1282,19 +1321,98 @@
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="24,16,24,16">
 
-                            <!-- Name (optional) -->
-                            <TextBlock x:Name="BugNameLabel"
+                            <!-- Discord identity -->
+                            <TextBlock x:Name="BugDiscordLabel"
                                        FontFamily="Cascadia Code, Consolas, Courier New"
                                        FontSize="9" FontWeight="Bold" Foreground="#5522AA"
-                                       Margin="0,0,0,4"/>
-                            <TextBox x:Name="BugNameBox"
-                                     FontFamily="Cascadia Code, Consolas, Courier New"
-                                     FontSize="11"
-                                     Background="#080C18" Foreground="#AABBCC"
-                                     BorderBrush="#1E1040" BorderThickness="1"
-                                     CaretBrush="#9944CC"
-                                     Padding="8,6"
-                                     Margin="0,0,0,14"/>
+                                       Margin="0,0,0,6"/>
+
+                            <!-- Connect button + info button row -->
+                            <StackPanel x:Name="BugDiscordConnectRow"
+                                        Orientation="Horizontal"
+                                        Margin="0,0,0,14">
+                                <Button x:Name="BugDiscordConnectBtn"
+                                        Height="34" HorizontalAlignment="Left"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#0E0818" BorderBrush="#2A1050" BorderThickness="1"
+                                        Padding="14,0"
+                                        Click="BugDiscordConnectBtn_Click">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BD;"
+                                                   FontSize="13" Foreground="#7722AA"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="BugDiscordConnectBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" FontWeight="Bold" Foreground="#7722AA"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="BugDiscordInfoBtn"
+                                        Width="26" Height="26"
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center"
+                                        local:ButtonHelper.CornerRadius="13"
+                                        Background="Transparent" BorderBrush="#2A1050" BorderThickness="1"
+                                        Click="BugDiscordInfoBtn_Click">
+                                    <TextBlock Text="?"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold" Foreground="#5522AA"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Waiting for browser authorization -->
+                            <StackPanel x:Name="BugDiscordWaiting"
+                                        Visibility="Collapsed"
+                                        Margin="0,0,0,14">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="BugDiscordWaitingText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" Foreground="#5522AA"
+                                               VerticalAlignment="Center"/>
+                                    <Button x:Name="BugDiscordCancelAuthBtn"
+                                            Height="20"
+                                            local:ButtonHelper.CornerRadius="2"
+                                            Background="Transparent" BorderBrush="#2A1050" BorderThickness="1"
+                                            Padding="8,0" Margin="10,0,0,0"
+                                            Click="BugDiscordCancelAuthBtn_Click">
+                                        <TextBlock x:Name="BugDiscordCancelAuthBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" FontWeight="Bold" Foreground="#5522AA"/>
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Connected state: username only + × to disconnect -->
+                            <Border x:Name="BugDiscordConnected"
+                                    Visibility="Collapsed"
+                                    Background="#061408"
+                                    BorderBrush="#1A3A1A" BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="10,8"
+                                    Margin="0,0,0,14">
+                                <Grid>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BD;"
+                                                   FontSize="14" Foreground="#00CC88"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="BugDiscordUsername"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#00CC88"
+                                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                    </StackPanel>
+                                    <Button x:Name="BugDiscordDisconnectBtn"
+                                            Width="22" Height="22"
+                                            HorizontalAlignment="Right" VerticalAlignment="Center"
+                                            local:ButtonHelper.CornerRadius="11"
+                                            Background="Transparent" BorderBrush="#2A4A2A" BorderThickness="1"
+                                            Click="BugDiscordDisconnectBtn_Click">
+                                        <TextBlock Text="✕"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" Foreground="#336633"/>
+                                    </Button>
+                                </Grid>
+                            </Border>
 
                             <!-- Error title (required) -->
                             <TextBlock x:Name="BugETitleLabel"
@@ -1396,6 +1514,105 @@
                         </Grid>
                     </Border>
 
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ── DISCORD INFO POPUP ── -->
+        <Grid x:Name="DiscordInfoOverlay"
+              Grid.RowSpan="6"
+              Visibility="Collapsed"
+              Background="#CC000000">
+            <Border Width="400" Background="#09141E"
+                    BorderBrush="#2A1050" BorderThickness="1"
+                    CornerRadius="4"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="44"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="48"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <Border Grid.Row="0" Background="#07101A"
+                            BorderBrush="#1A0838" BorderThickness="0,0,0,1">
+                        <TextBlock x:Name="DiscordInfoHeader"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="12" FontWeight="Bold" Foreground="#9944CC"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- Content -->
+                    <StackPanel Grid.Row="1" Margin="22,18,22,18">
+
+                        <!-- Why -->
+                        <TextBlock x:Name="DiscordInfoWhyTitle"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="10" FontWeight="Bold" Foreground="#9944CC"
+                                   Margin="0,0,0,6"/>
+                        <TextBlock x:Name="DiscordInfoWhyText"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="10" Foreground="#8AAABB"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,16"/>
+
+                        <!-- Permissions -->
+                        <TextBlock x:Name="DiscordInfoPermsTitle"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="10" FontWeight="Bold" Foreground="#9944CC"
+                                   Margin="0,0,0,8"/>
+
+                        <!-- identify permission row -->
+                        <Border Background="#060B14"
+                                BorderBrush="#1A1A38" BorderThickness="1"
+                                CornerRadius="3" Padding="12,8">
+                            <Grid>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock x:Name="DiscordInfoPermIdentifyName"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="10" FontWeight="Bold" Foreground="#7755CC"/>
+                                    <TextBlock x:Name="DiscordInfoPermIdentifyDesc"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" Foreground="#4A5A7A"
+                                               TextWrapping="Wrap"
+                                               Margin="0,3,0,0"/>
+                                </StackPanel>
+                                <!-- Green checkmark -->
+                                <TextBlock Text="&#xE73E;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="12" Foreground="#336644"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- No access list -->
+                        <TextBlock x:Name="DiscordInfoNoAccessText"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="9" Foreground="#334444"
+                                   TextWrapping="Wrap"
+                                   Margin="0,10,0,0"/>
+
+                    </StackPanel>
+
+                    <!-- Footer -->
+                    <Border Grid.Row="2" Background="#07101A"
+                            BorderBrush="#1A0838" BorderThickness="0,1,0,0">
+                        <Button x:Name="DiscordInfoCloseBtn"
+                                Height="32" MinWidth="100"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Margin="0,0,16,0"
+                                local:ButtonHelper.CornerRadius="3"
+                                Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1"
+                                Click="DiscordInfoCloseBtn_Click">
+                            <TextBlock x:Name="DiscordInfoCloseBtnText"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                        </Button>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>
