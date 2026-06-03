@@ -97,6 +97,80 @@
             </Setter>
         </Style>
 
+        <!-- Custom scrollbar thumb -->
+        <Style x:Key="ScrollBarThumb" TargetType="Thumb">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="#1A3A55" CornerRadius="3" Margin="1,0"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Custom vertical scrollbar (thin, dark) -->
+        <Style x:Key="CustomScrollBar" TargetType="ScrollBar">
+            <Setter Property="Width" Value="6"/>
+            <Setter Property="MinWidth" Value="6"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Border Background="#050C14" CornerRadius="3">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True" Margin="0,4">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.LineUpCommand">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Rectangle Fill="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.LineDownCommand">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Rectangle Fill="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ScrollBarThumb}"/>
+                                </Track.Thumb>
+                            </Track>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Custom ScrollViewer template -->
+        <Style x:Key="CustomScrollViewer" TargetType="ScrollViewer">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ScrollContentPresenter Grid.Column="0"
+                                                    Margin="{TemplateBinding Padding}"/>
+                            <ScrollBar x:Name="PART_VerticalScrollBar"
+                                       Grid.Column="1"
+                                       Style="{StaticResource CustomScrollBar}"
+                                       Value="{TemplateBinding VerticalOffset}"
+                                       Maximum="{TemplateBinding ScrollableHeight}"
+                                       ViewportSize="{TemplateBinding ViewportHeight}"
+                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
     <Grid>
@@ -105,7 +179,7 @@
         <Rectangle Fill="#BB000000" MouseDown="Backdrop_MouseDown"/>
 
         <!-- Main panel -->
-        <Border Width="1060" Height="660"
+        <Border Width="1200" Height="740"
                 VerticalAlignment="Center" HorizontalAlignment="Center"
                 Background="#EF07101A"
                 BorderBrush="#153048" BorderThickness="1"
@@ -129,42 +203,17 @@
                                        FontSize="13" FontWeight="Bold" Foreground="#00CCAA"
                                        VerticalAlignment="Center"/>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal"
-                                    HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <TextBlock x:Name="SaveExplainText"
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="9" Foreground="#1A3A55"
+                        <Button Click="Close_Click"
+                                Width="28" Height="28"
+                                HorizontalAlignment="Right"
+                                local:ButtonHelper.CornerRadius="4"
+                                Background="#0A1825" BorderBrush="#0D2535"
+                                BorderThickness="1" Cursor="Hand">
+                            <TextBlock Text="✕" FontSize="12" FontWeight="Bold"
+                                       Foreground="#3A6A8A"
+                                       HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
-                            <TextBlock Text="→"
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="12" Foreground="#0D2535"
-                                       VerticalAlignment="Center"
-                                       Margin="10,0,10,0"/>
-                            <Button x:Name="SaveBtn"
-                                    Width="28" Height="28"
-                                    local:ButtonHelper.CornerRadius="4"
-                                    Background="#0A1825" BorderBrush="#0D2535"
-                                    BorderThickness="1" Cursor="Hand"
-                                    Click="Save_Click" Margin="0,0,8,0"
-                                    ToolTip="Keep downloaded videos between sessions">
-                                <TextBlock x:Name="SaveIcon"
-                                           Text="&#xE74E;"
-                                           FontFamily="Segoe MDL2 Assets"
-                                           FontSize="12" Foreground="#1A3A55"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                            </Button>
-                            <Button Click="Close_Click"
-                                    Width="28" Height="28"
-                                    local:ButtonHelper.CornerRadius="4"
-                                    Background="#0A1825" BorderBrush="#0D2535"
-                                    BorderThickness="1" Cursor="Hand">
-                                <TextBlock Text="✕" FontSize="12" FontWeight="Bold"
-                                           Foreground="#3A6A8A"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                            </Button>
-                        </StackPanel>
+                        </Button>
                     </Grid>
                 </Border>
 
@@ -206,7 +255,7 @@
                                              VerticalAlignment="Center"
                                              TextChanged="SearchBox_TextChanged"/>
                                     <TextBlock x:Name="SearchPlaceholder"
-                                               Text="Search videos..."
+                                               Text="Search videos... (@author)"
                                                FontFamily="Cascadia Code, Consolas, Courier New"
                                                FontSize="11" Foreground="#1A3A55"
                                                VerticalAlignment="Center" Margin="28,0,0,0"
@@ -223,8 +272,11 @@
 
                             <!-- Video list -->
                             <ScrollViewer Grid.Row="2"
+                                          x:Name="VideoListScroller"
+                                          Style="{StaticResource CustomScrollViewer}"
                                           VerticalScrollBarVisibility="Auto"
-                                          Padding="10,0,10,10">
+                                          Padding="10,0,4,10"
+                                          PreviewMouseWheel="VideoList_PreviewMouseWheel">
                                 <StackPanel x:Name="VideoListPanel"/>
                             </ScrollViewer>
                         </Grid>
@@ -239,7 +291,7 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Video display -->
+                        <!-- Video -->
                         <Grid Grid.Row="0" Background="#000000">
                             <MediaElement x:Name="Player"
                                           LoadedBehavior="Manual"
@@ -247,7 +299,6 @@
                                           Stretch="Uniform"
                                           MediaOpened="Player_MediaOpened"
                                           MediaEnded="Player_MediaEnded"/>
-                            <!-- Empty / downloading / no-selection state -->
                             <StackPanel x:Name="EmptyState"
                                         VerticalAlignment="Center"
                                         HorizontalAlignment="Center">
@@ -261,20 +312,13 @@
                                            FontSize="11" Foreground="#1A3A55"
                                            HorizontalAlignment="Center"
                                            Margin="0,10,0,0"/>
-
-                                <!-- Determinate download progress bar -->
-                                <Border x:Name="DownloadBarTrack"
-                                        Width="220" Height="4"
-                                        Margin="0,14,0,0"
-                                        Background="#0D2030"
-                                        CornerRadius="2"
-                                        Visibility="Collapsed"
-                                        ClipToBounds="True">
-                                    <Border x:Name="DownloadBarFill"
-                                            Width="0" Height="4"
-                                            Background="#00CCAA"
-                                            CornerRadius="2"
-                                            HorizontalAlignment="Left"/>
+                                <Border x:Name="LoadingBarTrack"
+                                        Width="220" Height="4" Margin="0,14,0,0"
+                                        Background="#0D2030" CornerRadius="2"
+                                        Visibility="Collapsed" ClipToBounds="True">
+                                    <Border x:Name="LoadingBarFill"
+                                            Width="220" Height="4" Background="#00CCAA"
+                                            CornerRadius="2" HorizontalAlignment="Left"/>
                                 </Border>
                             </StackPanel>
                         </Grid>
@@ -285,27 +329,25 @@
                                     Style="{StaticResource SeekSlider}"
                                     Minimum="0" Maximum="100" Value="0"
                                     IsEnabled="False"
-                                    VerticalAlignment="Center"
-                                    Margin="14,0"
+                                    VerticalAlignment="Center" Margin="14,0"
                                     ValueChanged="ProgressSlider_ValueChanged"/>
                         </Grid>
 
-                        <!-- Controls bar -->
+                        <!-- Controls -->
                         <Border Grid.Row="2" Background="#040810"
                                 BorderBrush="#0D2030" BorderThickness="0,1,0,1">
                             <Grid Margin="14,0">
-                                <!-- Left: play/pause + time -->
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Button x:Name="PlayPauseBtn"
-                                            Width="36" Height="36"
-                                            local:ButtonHelper.CornerRadius="18"
-                                            Background="#0A1825" BorderBrush="#0D2535"
+                                            Width="40" Height="40"
+                                            local:ButtonHelper.CornerRadius="20"
+                                            Background="#0D2030" BorderBrush="#00CCAA"
                                             BorderThickness="1" IsEnabled="False"
                                             Cursor="Hand" Click="PlayPause_Click">
                                         <TextBlock x:Name="PlayPauseIcon"
                                                    Text="&#xE768;"
                                                    FontFamily="Segoe MDL2 Assets"
-                                                   FontSize="14" Foreground="#00CCAA"
+                                                   FontSize="16" Foreground="#00CCAA"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"/>
                                     </Button>
@@ -313,22 +355,16 @@
                                                Text="0:00 / 0:00"
                                                FontFamily="Cascadia Code, Consolas, Courier New"
                                                FontSize="10" Foreground="#3A6A8A"
-                                               VerticalAlignment="Center"
-                                               Margin="12,0,0,0"/>
+                                               VerticalAlignment="Center" Margin="12,0,0,0"/>
                                 </StackPanel>
-
-                                <!-- Right: save + volume -->
                                 <StackPanel Orientation="Horizontal"
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Center">
+                                            HorizontalAlignment="Right" VerticalAlignment="Center">
                                     <TextBlock x:Name="VolumeIcon"
                                                Text="&#xE767;"
                                                FontFamily="Segoe MDL2 Assets"
                                                FontSize="14" Foreground="#1A3A55"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0"
-                                               Cursor="Hand"
-                                               MouseDown="VolumeIcon_MouseDown"/>
+                                               VerticalAlignment="Center" Margin="0,0,8,0"
+                                               Cursor="Hand" MouseDown="VolumeIcon_MouseDown"/>
                                     <Slider x:Name="VolumeSlider"
                                             Style="{StaticResource VolumeSlider}"
                                             Minimum="0" Maximum="1" Value="0.8"

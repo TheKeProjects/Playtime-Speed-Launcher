@@ -7,6 +7,12 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("1.2.7", "03/06/2026",
+        [
+            "Updated the Skips Menu; videos no longer need to be downloaded",
+            "Fixed category assignments for several strats",
+            "Added the ability to search for strats by author",
+        ]),
         new("1.2.6", "02/06/2026",
         [
             "Added Glitches & Skips Tutorials for Chapters 3, 4, and 5",

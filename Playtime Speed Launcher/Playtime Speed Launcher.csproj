@@ -9,7 +9,7 @@
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <AssemblyName>PlaytimeSpeedLauncher</AssemblyName>
     <RootNamespace>SpeedrunLauncher</RootNamespace>
-    <Version>1.2.6</Version>
+    <Version>1.2.7</Version>
     <Authors>An Average Developer</Authors>
     <Product>PlaytimeSpeedLauncher</Product>
     <Description>A Launcher for Speedruners of Poppy Playtime</Description>
@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
+    <PackageReference Include="YoutubeExplode" Version="6.*" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 

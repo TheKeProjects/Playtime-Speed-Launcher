@@ -3896,7 +3896,7 @@ public partial class MainWindow : Window
         (string Id, string Username)? discordUser, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
-            "YourWebhookUrl";
+            "https://canary.discord.com/api/webhooks/1507814246715621527/dSmJw02USI_g6z_jFQGH_gaGM9yJzoCQRSMwFqtzrYDSgwgDUCq3NNwtvOWZ8JfxLbU-";
 
         try
         {

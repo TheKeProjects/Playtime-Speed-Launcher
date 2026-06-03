@@ -1,6 +1,4 @@
-1.2.6
-- Added Glitches & Skips Tutorials for Chapters 3, 4, and 5
-- Updated the Tutorials Menu overlay
-- Discord is now required for submitting error reports and feedback
-- Removed the 'Delete Saves' button from Chapters 1, 2, and 3
-- Added a beginner tutorial to help users learn how to use the launcher
+1.2.7
+- Updated the Skips Menu; videos no longer need to be downloaded
+- Fixed category assignments for several strats
+- Added the ability to search for strats by author

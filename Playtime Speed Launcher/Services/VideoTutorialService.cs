@@ -1,380 +1,259 @@
-using System.Diagnostics;
-using System.Globalization;
-using System.IO;
-using System.Net.Http;
 using System.Text.RegularExpressions;
+using YoutubeExplode;
+using YoutubeExplode.Videos.Streams;
 
 namespace SpeedrunLauncher.Services;
 
 public sealed class TutorialVideo
 {
-    public required string Id          { get; init; }
-    public required string Title       { get; init; }
-    public          string Description { get; init; } = "";
-    public required string Url         { get; init; }
-    public          string Category    { get; init; } = "General";
-    public          string Chapter     { get; set;  } = "";   // assigned by InChapter()
-    public          string LocalPath   { get; set;  } = "";
-    public          string SavedPath   { get; set;  } = "";
-    public bool IsSaved      => !string.IsNullOrEmpty(SavedPath)  && File.Exists(SavedPath);
-    public bool IsDownloaded => IsSaved || (!string.IsNullOrEmpty(LocalPath) && File.Exists(LocalPath));
-    public string PlayablePath => IsSaved ? SavedPath : LocalPath;
+    public required string   Id            { get; init; }
+    public required string   Title         { get; init; }
+    public          string   Description   { get; init; } = "";
+    public required string   Url           { get; init; }
+    public          string   Category      { get; init; } = "General";
+    public          string   Chapter       { get; set;  } = "";
+    public          string[] RunCategories { get; init; } = [];
+    public          string   Version       { get; init; } = "";
+    public          string[] Routes        { get; init; } = [];
+    public          string   Author        { get; init; } = "";
+    public          bool     OpenInBrowser { get; init; } = false;
 }
 
 public static class VideoTutorialService
 {
-    // Set true  → list shows only chapter headers; category/run-category filters are hidden.
-    // Set false → full grouping with category headers and all filter pills (default).
     public static bool FlatList = true;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // TUTORIAL VIDEO LIST
-    //
-    // To add a new chapter : copy one of the ..InChapter("Chapter X", ...) blocks.
-    // To add a video       : add a new() { ... } line inside the right chapter block.
-    // ─────────────────────────────────────────────────────────────────────────
     public static readonly List<TutorialVideo> Videos =
     [
         // ─── CHAPTER 1 ────────────────────────────────────────────────────────
         ..InChapter("Chapter 1",
-
-            // Major Skips
-            new() { Id = "blue_hand_skip",   Title = "Blue Hand Skip (BHS)", Category = "Major Skips", Description = "Any%", Url = "https://www.youtube.com/watch?v=jqwK8JXwF8s" },
-            new() { Id = "red_hand_skip",    Title = "Red Hand Skip (RHS)",  Category = "Major Skips", Description = "Any%", Url = "https://www.youtube.com/watch?v=KAbUV4uBTzY" },
-            new() { Id = "stair_clip",       Title = "Stair Clip",           Category = "Major Skips", Description = "Any%", Url = "https://www.youtube.com/watch?v=rSWFhaQTHl8" },
-            new() { Id = "cat_clip",         Title = "Cat Clip",             Category = "Major Skips", Description = "Any%", Url = "https://www.youtube.com/watch?v=v0039B49RTA" },
-            new() { Id = "huggy_zip",        Title = "Huggy Zip",            Category = "Major Skips", Description = "Any%", Url = "https://www.youtube.com/watch?v=R61xu2V8DEY" },
-            new() { Id = "catwalk_skip",     Title = "Catwalk Skip",         Category = "Major Skips", Description = "Any%", Url = "https://www.youtube.com/watch?v=jrIoy7zHE3Q" },
-
-            // No Major Glitches
-            new() { Id = "blue_hand_loading_skip", Title = "Blue Hand Loading Skip (BHLS)", Category = "Major Skips", Description = "No Major Glitches", Url = "https://youtube.com/watch?v=6VKOjaLtjhk"        },
-            new() { Id = "unopened_door",          Title = "Unopened Door",                 Category = "Major Skips", Description = "No Major Glitches", Url = "https://www.youtube.com/watch?v=QgDjy8MAOZ8"    },
-            new() { Id = "hyperspeed_hallway",     Title = "Hyperspeed Hallway",            Category = "Major Skips", Description = "No Major Glitches", Url = "https://www.youtube.com/watch?v=2bSGJwXH_w8"    },
-            new() { Id = "mythic_cubes",           Title = "Mythic Cubes",                  Category = "Major Skips", Description = "No Major Glitches", Url = "https://www.youtube.com/watch?v=l-0or95GWdE"    },
-            new() { Id = "rukki_skip_ch1",         Title = "Rukki Skip",                    Category = "Major Skips", Description = "No Major Glitches", Url = "https://www.youtube.com/watch?v=Md7_Y-Kesb8"    },
-            new() { Id = "entarino_slide",         Title = "Entarino Slide",                Category = "Major Skips", Description = "No Major Glitches", Url = "https://www.youtube.com/watch?v=Z0jEhJsyJQ8"    }
+            new() { Id = "jqwK8JXwF8s",    Title = "Blue Hand Skip (BHS)",       Version = "<1.1, 1.2", Author = "MythicCheese", RunCategories = ["Any%"],                      Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/jqwK8JXwF8s", OpenInBrowser = true },
+            new() { Id = "xDBjyu_9oVs",    Title = "VHS Intro Skip",             Version = "1.3",        Author = "Mago",         RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/xDBjyu_9oVs", OpenInBrowser = true },
+            new() { Id = "QgDjy8MAOZ8",    Title = "Unopened Door",              Version = "<1.1",       Author = "MythicCheese", RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/QgDjy8MAOZ8", OpenInBrowser = true },
+            new() { Id = "M9fj9qSwM7Y",    Title = "Hyperspeed Hallway (HSH)",   Version = "<1.1, 1.2",  Author = "Pezzy",        RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/M9fj9qSwM7Y", OpenInBrowser = true },
+            new() { Id = "tlxYrFR3L4o",    Title = "Cubes Puzzle Skip",          Version = "1.3",        Author = "Mago",         RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/tlxYrFR3L4o", OpenInBrowser = true },
+            new() { Id = "l-0or95GWdE_v1", Title = "Mythic Cubes | <1.1",        Version = "<1.1",       Author = "MythicCheese", RunCategories = ["No Major Glitches"],         Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/l-0or95GWdE", OpenInBrowser = true },
+            new() { Id = "l-0or95GWdE_v2", Title = "Mythic Cubes | 1.2",         Version = "1.2",        Author = "MythicCheese", RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/l-0or95GWdE", OpenInBrowser = true },
+            new() { Id = "KAbUV4uBTzY",    Title = "Red Hand Skip (RHS) | <1.1", Version = "<1.1",       Author = "MythicCheese", RunCategories = ["Any%"],                      Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/KAbUV4uBTzY", OpenInBrowser = true },
+            new() { Id = "EKQ3hXL0jSk",    Title = "Red Hand Skip (RHS) | 1.2",  Version = "1.2",        Author = "Ajai",         RunCategories = ["Any%"],                      Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/EKQ3hXL0jSk", OpenInBrowser = true },
+            new() { Id = "sSrDxPO0-s8",    Title = "Rukki Skip",                 Version = "<1.1, 1.2",  Author = "n0kitsune",    RunCategories = ["No Major Glitches"],         Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/sSrDxPO0-s8", OpenInBrowser = true },
+            new() { Id = "0ZhO4evCif8",    Title = "Unpowered Pole",             Version = "1.3",        Author = "Mago",         RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/0ZhO4evCif8", OpenInBrowser = true },
+            new() { Id = "Md7_Y-Kesb8",    Title = "No Slide Reload",            Version = "<1.1",       Author = "MythicCheese", RunCategories = ["No Major Glitches"],         Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/Md7_Y-Kesb8", OpenInBrowser = true },
+            new() { Id = "rSWFhaQTHl8",    Title = "Stair Clip",                 Version = "<1.1",       Author = "MythicCheese", RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/rSWFhaQTHl8", OpenInBrowser = true },
+            new() { Id = "v0039B49RTA",    Title = "Catclip | <1.1",             Version = "<1.1",       Author = "MythicCheese", RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/v0039B49RTA", OpenInBrowser = true },
+            new() { Id = "w3gDZGgijUg",    Title = "Catclip | 1.2",              Version = "1.2",        Author = "Nia",          RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/w3gDZGgijUg", OpenInBrowser = true },
+            new() { Id = "uXYnafCMPXA",    Title = "Catclip | 1.3",              Version = "1.3",        Author = "Mago",         RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/uXYnafCMPXA", OpenInBrowser = true },
+            new() { Id = "Z0jEhJsyJQ8",    Title = "Entarino Slide",             Version = "<1.1, 1.2",  Author = "MythicCheese", RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/Z0jEhJsyJQ8", OpenInBrowser = true },
+            new() { Id = "zc-DRhZhn5E",    Title = "Anti-Stuck Jump",            Version = "1.3",        Author = "Mago",         RunCategories = ["Any%", "No Major Glitches"], Routes = ["All Tapes", "Any Tapes"], Url = "https://youtu.be/zc-DRhZhn5E", OpenInBrowser = true },
+            new() { Id = "jrIoy7zHE3Q",    Title = "Catwalk Clip",               Version = "<1.1",       Author = "MythicCheese", RunCategories = ["Any%"],                      Routes = ["Any Tapes"],              Url = "https://youtu.be/jrIoy7zHE3Q", OpenInBrowser = true }
         ),
 
         // ─── CHAPTER 2 ────────────────────────────────────────────────────────
         ..InChapter("Chapter 2",
-
-            // Major Skips
-            new() { Id = "hyperspeed_swing",                   Title = "Hyperspeed Swing",                       Category = "Major Skips",  Description = "Out of Bounds, Inbounds, No Major Glitches",                                                       Url = "https://youtube.com/watch?v=RI_O4bd5Nsc"          },
-            new() { Id = "nam_skip",                           Title = "Nam Skip",                               Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=a6CpFrU5WQo"          },
-            new() { Id = "100_nam",                            Title = "100% Nam",                               Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=7jYyGEOUBAc"          },
-            new() { Id = "green_hand_early",                   Title = "Green Hand Early",                       Category = "Major Skips",  Description = "Out of Bounds, Inbounds",                                                                          Url = "https://youtube.com/watch?v=Upxk67wHM1g&t=128"    },
-            new() { Id = "mommy_hand_grab_skip",               Title = "Mommy Hand Grab Skip",                   Category = "Major Skips",  Description = "Out of Bounds, Inbounds",                                                                          Url = "https://youtube.com/watch?v=Upxk67wHM1g&t=158"    },
-            new() { Id = "green_hand_room_skip",               Title = "Green Hand Room Skip",                   Category = "Major Skips",  Description = "Out of Bounds, Inbounds, No Major Glitches",                                                       Url = "https://youtube.com/watch?v=L2Zf_6cQh7k&t=243"    },
-            new() { Id = "standing_buttons_musical_memory",    Title = "Standing on Buttons in Musical Memory",  Category = "Major Skips",  Description = "Out of Bounds, Inbounds, No Major Glitches",                                                       Url = "https://youtube.com/watch?v=qBB-ICLxX4w"          },
-            new() { Id = "musical_memory_skip",                Title = "Musical Memory Skip",                    Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=hNH0PRbAbs0"          },
-            new() { Id = "musical_memory_skip_cutout",         Title = "Musical Memory Skip w/ Cutout",          Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=2AFgCdZmLGY"          },
-            new() { Id = "door_prop_skip",                     Title = "Door Prop Skip",                         Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=2AFgCdZmLGY&t=56"     },
-            new() { Id = "musical_memory_load_manip",          Title = "Musical Memory Load Manipulation",       Category = "Major Skips",  Description = "All Categories",                                                                                   Url = "https://youtube.com/watch?v=BZ4Bdkj1k2U"          },
-            new() { Id = "storage_skip",                       Title = "Storage Skip",                           Category = "Major Skips",  Description = "Out of Bounds, Inbounds, No Major Glitches",                                                       Url = "https://youtube.com/watch?v=f4PKNx-yUuM&t=596"    },
-            new() { Id = "wack_a_wuggy_skip",                  Title = "Wack-A-Wuggy Skip",                      Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=QiUpe37XkJE&t=344"    },
-            new() { Id = "barry_skip",                         Title = "Barry Skip",                             Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=gGNH_aNCqXI"          },
-            new() { Id = "100_barry_skip",                     Title = "100% Barry Skip",                        Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=yaClb5aj5Fo"      },
-            new() { Id = "statues_skip",                       Title = "Statues Skip",                           Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=2QY__BkFEKs"          },
-            new() { Id = "statues_minigame_skip_objects",      Title = "Statues Minigame Skip w/ Objects",       Category = "Major Skips",  Description = "Out of Bounds, Inbounds, No Major Glitches",                                                       Url = "https://youtube.com/watch?v=obKKjiOkGxo&t=1060"   },
-            new() { Id = "statues_minigame_skip_crouching",    Title = "Statues Minigame Skip w/ Crouching",     Category = "Major Skips",  Description = "Out of Bounds, Inbounds",                                                                          Url = "https://youtube.com/watch?v=ZN8YzGuwAjI"          },
-            new() { Id = "hyperspeed_swing_over_tubes",        Title = "Hyperspeed Swing Over Tubes",            Category = "Major Skips",  Description = "Out of Bounds, Inbounds, No Major Glitches",                                                       Url = "https://youtube.com/watch?v=k-eF3a7cwfI"          },
-            new() { Id = "storm_skip",                         Title = "Storm Skip",                             Category = "Major Skips",  Description = "Out of Bounds, Inbounds, No Major Glitches",                                                       Url = "https://youtube.com/watch?v=-xpfAY8EOLE"          },
-            new() { Id = "ggd_skip",                           Title = "GGD Skip",                               Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=Qg8z2TaWu-I"      },
-            new() { Id = "oob_mommy_chase_skip",               Title = "OoB Mommy Chase Skip",                   Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=kso--tLYwf8"          },
-            new() { Id = "mommy_chase_skip_barrels",           Title = "Mommy Chase Skip w/ Barrels",            Category = "Major Skips",  Description = "Out of Bounds, Inbounds, No Major Glitches",                                                       Url = "https://youtube.com/watch?v=qxS2knT431Q&t=1335"   },
-            new() { Id = "mommy_death_cutscene_skip",          Title = "Mommy Death Cutscene Skip",              Category = "Major Skips",  Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=1kF6yKN5HrY"          },
-            new() { Id = "robin_office_skip",                  Title = "Robin/Office Skip",                      Category = "Major Skips",  Description = "Out of Bounds, Inbounds, No Major Glitches — Video by RubyRain",                                   Url = "https://youtube.com/watch?v=IDJreYBRPEQ"          },
-            new() { Id = "100_office_skip",                    Title = "100% Office Skip",                       Category = "Major Skips",  Description = "Out of Bounds, Inbounds, No Major Glitches",                                                       Url = "https://youtube.com/watch?v=QiUpe37XkJE&t=960"    },
-
-            // Small Tricks
-            new() { Id = "rukki_skip",                         Title = "Rukki Skip",                             Category = "Small Tricks", Description = "All Categories — clicking, releasing, or holding to get the hand stuck",                           Url = "https://youtube.com/watch?v=mDXk5kS9OGY"          },
-            new() { Id = "lever_sniping",                      Title = "Lever Sniping",                          Category = "Small Tricks", Description = "All Categories",                                                                                   Url = "https://youtube.com/watch?v=7yfLDnN8-Mw"          },
-            new() { Id = "hyperventing",                       Title = "Hyperventing",                           Category = "Small Tricks", Description = "All Categories",                                                                                   Url = "https://youtube.com/watch?v=6JzYBfLK3SU"      },
-            new() { Id = "small_ghs",                          Title = "Small GHS",                              Category = "Small Tricks", Description = "All Categories — Video by MutantAye",                                                              Url = "https://youtube.com/watch?v=BK2MMxyq5Mg"          },
-            new() { Id = "wack_a_wuggy_double_hits",           Title = "Wack-A-Wuggy Double/Triple Hits",        Category = "Small Tricks", Description = "Out of Bounds, Inbounds, No Major Glitches — max 10 double hits in No Major Skips",               Url = "https://youtube.com/watch?v=qxS2knT431Q&t=698"    },
-            new() { Id = "hyperswing_over_tubes",              Title = "Hyperswing Over Tubes",                  Category = "Small Tricks", Description = "Out of Bounds, Inbounds, No Major Glitches — landing in front of tubes allowed in all categories", Url = "https://streamable.com/wj3lyy"                    },
-
-            // Legacy
-            new() { Id = "bean_skip",                          Title = "Bean Skip",                              Category = "Legacy",       Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=wT_6ahpuPhU&t=23"     },
-            new() { Id = "uis_box_skip",                       Title = "UIS/Box Skip",                           Category = "Legacy",       Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=xAjc3OM4SxM&t=82"     },
-            new() { Id = "train_skip",                         Title = "Train Skip",                             Category = "Legacy",       Description = "All categories — ending cutscene must be shown; time stops when lever animation plays",             Url = "https://youtube.com/watch?v=J55JJCzKKA8"          },
-            new() { Id = "fortnitegod123_skip",                Title = "Fortnitegod123 Skip",                    Category = "Legacy",       Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=trcFjoHfz5g"          },
-            new() { Id = "water_treatment_skip",               Title = "Water Treatment Skip",                   Category = "Legacy",       Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=2lUwAA8QJa8"          },
-            new() { Id = "wack_a_wuggy_skip_old",              Title = "Wack-A-Wuggy Skip (Old)",                Category = "Legacy",       Description = "Out of Bounds",                                                                                    Url = "https://youtube.com/watch?v=KGRqhbB38f0"          }
+            new() { Id = "Sh0JLIJpudE",  Title = "Hyperspeed Swing (HSS)",                         Version = "1.0, 1.1", Author = "n0kitsune",    RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Glitches"],                     Url = "https://youtu.be/Sh0JLIJpudE",  OpenInBrowser = true },
+            new() { Id = "XdiDEVpVfxQ",  Title = "Pillow Clip Tutorial",                           Version = "1.0, 1.1", Author = "proac",        RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/XdiDEVpVfxQ",  OpenInBrowser = true },
+            new() { Id = "Rf0N2HS6GtI",  Title = "Pillow Boost Tutorial",                          Version = "1.0, 1.1", Author = "proac",        RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Glitches", "No Major Skips"],   Url = "https://youtu.be/Rf0N2HS6GtI",  OpenInBrowser = true },
+            new() { Id = "n7I348UI2U0",  Title = "Poppy Woppy Skip",                               Version = "1.1",       Author = "Nia",          RunCategories = ["Any%"],                          Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/n7I348UI2U0",  OpenInBrowser = true },
+            new() { Id = "SEfdsbruRI4",  Title = "Green Hand Early (GHE)",                         Version = "1.0",       Author = "Nia",          RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Out of Bounds", "Inbounds"],                                          Url = "https://youtu.be/SEfdsbruRI4",  OpenInBrowser = true },
+            new() { Id = "a6CpFrU5WQo",  Title = "NAM Skip",                                       Version = "1.0",       Author = "Nam (JMK)",    RunCategories = ["Any%", "All Minigames"],         Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/a6CpFrU5WQo",  OpenInBrowser = true },
+            new() { Id = "7jYyGEOUBAc",  Title = "100% NAM Skip",                                  Version = "1.0",       Author = "LilQuince",    RunCategories = ["100%"],                          Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/7jYyGEOUBAc",  OpenInBrowser = true },
+            new() { Id = "o37M1CTMeOw",  Title = "NAM Skip 1.1",                                   Version = "1.1",       Author = "Nia",          RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/o37M1CTMeOw",  OpenInBrowser = true },
+            new() { Id = "mDXk5kS9OGY",  Title = "Rukki Skip",                                     Version = "1.0, 1.1", Author = "n0kitsune",    RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Inbounds", "No Major Glitches", "No Major Skips"],                    Url = "https://youtu.be/mDXk5kS9OGY",  OpenInBrowser = true },
+            new() { Id = "0S0KuGMnrg4",  Title = "Mommy Hand Grab Skip",                           Version = "1.0, 1.1", Author = "n0kitsune",    RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Inbounds"],                                                           Url = "https://youtu.be/0S0KuGMnrg4",  OpenInBrowser = true },
+            new() { Id = "BK2MMxyq5Mg",  Title = "Small Green Hand Skip",                          Version = "1.0, 1.1", Author = "MutantEye",    RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["No Major Skips"],                                                     Url = "https://youtu.be/BK2MMxyq5Mg",  OpenInBrowser = true },
+            new() { Id = "OIv0kd9y-bo",  Title = "Green Hand Room Skip",                           Version = "1.0, 1.1", Author = "Nia",          RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Glitches"],                     Url = "https://youtu.be/OIv0kd9y-bo",  OpenInBrowser = true },
+            new() { Id = "qBB-ICLxX4w",  Title = "Standing on Buttons in Musical Memory",          Version = "1.0, 1.1", Author = "Hawkz",        RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Inbounds", "No Major Glitches"],                                      Url = "https://youtu.be/qBB-ICLxX4w",  OpenInBrowser = true },
+            new() { Id = "hNH0PRbAbs0",  Title = "Musical Memory Skip (MMS) | Hard Version",       Version = "1.0, 1.1", Author = "Mello",        RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/hNH0PRbAbs0",  OpenInBrowser = true },
+            new() { Id = "OBT-0fPhT2U",  Title = "Musical Memory Skip (MMS) | Easy Version",       Version = "1.0, 1.1", Author = "n0kitsune",    RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/OBT-0fPhT2U",  OpenInBrowser = true },
+            new() { Id = "BZ4Bdkj1k2U",  Title = "Musical Memory Load Manipulation",               Version = "1.0, 1.1", Author = "n0kitsune",    RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["No Major Skips"],                                                     Url = "https://youtu.be/BZ4Bdkj1k2U",  OpenInBrowser = true },
+            new() { Id = "5KIrOpgXKPE",  Title = "Cutout Jump",                                    Version = "1.2",       Author = "Technight",    RunCategories = ["Any%"],                          Routes = ["Inbounds", "No Major Skips"],                                         Url = "https://youtu.be/5KIrOpgXKPE",  OpenInBrowser = true },
+            new() { Id = "8A_TMcBmEk8",  Title = "Whack-a-Wuggy Skip Out of Bounds",               Version = "1.0",       Author = "Nia",          RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/8A_TMcBmEk8",  OpenInBrowser = true },
+            new() { Id = "_94xLVzYOXs",  Title = "Whack-a-Wuggy Skip New Patch",                   Version = "1.0, 1.1", Author = "Nerd Squared", RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds", "Inbounds"],                                          Url = "https://youtu.be/_94xLVzYOXs",  OpenInBrowser = true },
+            new() { Id = "gGNH_aNCqXI",  Title = "Barry Skip",                                     Version = "1.0",       Author = "Sangohanvde",  RunCategories = ["All Minigames"],                 Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/gGNH_aNCqXI",  OpenInBrowser = true },
+            new() { Id = "WG877Aaafrc",  Title = "Barry Skip | Hard Version",                      Version = "1.1",       Author = "Nia",          RunCategories = ["All Minigames"],                 Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/WG877Aaafrc",  OpenInBrowser = true },
+            new() { Id = "YFk9bjBmJ8E",  Title = "Barry Skip | Easy Version",                      Version = "1.1",       Author = "n0kitsune",    RunCategories = ["All Minigames"],                 Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/YFk9bjBmJ8E",  OpenInBrowser = true },
+            new() { Id = "AsNVxIypWkc",  Title = "Barry Skip Extended",                            Version = "1.1",       Author = "Nia",          RunCategories = ["Any%", "All Minigames"],         Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/AsNVxIypWkc",  OpenInBrowser = true },
+            new() { Id = "yaClb5aj5Fo",  Title = "100% Barry Skip",                                Version = "1.0, 1.1", Author = "Nerd Squared", RunCategories = ["100%"],                          Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/yaClb5aj5Fo",  OpenInBrowser = true },
+            new() { Id = "eEp6xB-ebOE",  Title = "Statues Skip w/ Objects",                        Version = "1.0, 1.1", Author = "Nia",          RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds", "Inbounds", "No Major Glitches"],                     Url = "https://youtu.be/eEp6xB-ebOE",  OpenInBrowser = true },
+            new() { Id = "uOxXseQ9iUo",  Title = "Statues Skip w/ Crouching",                      Version = "1.0, 1.1", Author = "Nia",          RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds", "Inbounds"],                                          Url = "https://youtu.be/uOxXseQ9iUo",  OpenInBrowser = true },
+            new() { Id = "k-eF3a7cwfI",  Title = "Hyperspeed Swing Over Tubes",                    Version = "1.0",       Author = "n0kitsune",    RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds", "Inbounds", "No Major Glitches"],                     Url = "https://youtu.be/k-eF3a7cwfI",  OpenInBrowser = true },
+            new() { Id = "u_JQEKfLT2o",  Title = "Caves Skip",                                     Version = "1.1",       Author = "Nia",          RunCategories = ["Any%", "All Minigames"],         Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/u_JQEKfLT2o",  OpenInBrowser = true },
+            new() { Id = "-xpfAY8EOLE",  Title = "Ruby Skip",                                      Version = "1.0, 1.1", Author = "n0kitsune",    RunCategories = ["All Minigames", "100%"],         Routes = ["Inbounds", "No Major Glitches"],                                      Url = "https://youtu.be/-xpfAY8EOLE",  OpenInBrowser = true },
+            new() { Id = "2lUwAA8QJa8",  Title = "Water Treatment Skip",                           Version = "1.0, 1.1", Author = "Laupig",       RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/2lUwAA8QJa8",  OpenInBrowser = true },
+            new() { Id = "-4RkZYFO95g",  Title = "Water Treatment Skip 100%",                      Version = "1.0, 1.1", Author = "Sangohanvde",  RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/-4RkZYFO95g",  OpenInBrowser = true },
+            new() { Id = "0OnrGhW8Jvw",  Title = "Water Treatment Skip Swing Variant",             Version = "1.1",       Author = "Nia",          RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/0OnrGhW8Jvw",  OpenInBrowser = true },
+            new() { Id = "Qg8z2TaWu-I",  Title = "GGD Skip",                                       Version = "1.0",       Author = "Sangohanvde",  RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/Qg8z2TaWu-I",  OpenInBrowser = true },
+            new() { Id = "gE2DgVK5oxI",  Title = "GGD Skip",                                       Version = "1.1",       Author = "Nia",          RunCategories = ["Any%", "All Minigames", "100%"], Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/gE2DgVK5oxI",  OpenInBrowser = true },
+            new() { Id = "mjKg1DPQ5mg",  Title = "proac Skip",                                     Version = "1.1",       Author = "Nia",          RunCategories = ["Any%", "All Minigames"],         Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/mjKg1DPQ5mg",  OpenInBrowser = true },
+            new() { Id = "kso--tLYwf8",  Title = "Mommy Chase Skip",                               Version = "1.0, 1.1", Author = "Sangohanvde",  RunCategories = ["All Minigames"],                 Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/kso--tLYwf8",  OpenInBrowser = true },
+            new() { Id = "bG2Hd3GGgOI",  Title = "Mommy Chase Skip w/ Barrels",                    Version = "1.0, 1.1", Author = "Nia",          RunCategories = ["All Minigames"],                 Routes = ["Inbounds", "No Major Glitches"],                                      Url = "https://youtu.be/bG2Hd3GGgOI",  OpenInBrowser = true },
+            new() { Id = "1kF6yKN5HrY",  Title = "Mommy Death Skip",                               Version = "1.0",       Author = "Sangohanvde",  RunCategories = ["100%"],                          Routes = ["Out of Bounds"],                                                      Url = "https://youtu.be/1kF6yKN5HrY",  OpenInBrowser = true },
+            new() { Id = "IDJreYBRPEQ",  Title = "Robin/Office Skip",                              Version = "1.0, 1.1", Author = "Ruby Rain",    RunCategories = ["All Minigames", "100%"],         Routes = ["Out of Bounds", "Inbounds", "No Major Glitches"],                     Url = "https://youtu.be/IDJreYBRPEQ",  OpenInBrowser = true },
+            new() { Id = "JwJ-NZRR6x0",  Title = "100% Office Skip",                               Version = "1.0, 1.1", Author = "n0kitsune",    RunCategories = ["100%"],                          Routes = ["Out of Bounds", "Inbounds", "No Major Glitches"],                     Url = "https://youtu.be/JwJ-NZRR6x0",  OpenInBrowser = true }
         ),
 
         // ─── CHAPTER 3 ────────────────────────────────────────────────────────
         ..InChapter("Chapter 3",
-
-            // Major Skips
-            new() { Id = "ch3_first_cycle",                      Title = "First Cycle",                      Category = "Major Skips", Description = "All Categories — Q on last footstep before CatNap opens gate; jump before pulling swing",               Url = "https://youtu.be/XYPp_BDuoxc"                },
-            new() { Id = "ch3_piston_skip",                      Title = "0 Cycle / Piston Skip Full Guide", Category = "Major Skips", Description = "All Categories",                                                                                        Url = "https://youtu.be/wjzT-FLMEwc"                },
-            new() { Id = "ch3_phone_call_skip",                  Title = "Phone Call Skip",                  Category = "Major Skips", Description = "All Categories — consistent setup found",                                                               Url = "https://youtu.be/KQQGQw2L6ME"                },
-            new() { Id = "ch3_first_area_skip",                  Title = "First Area Skip",                  Category = "Major Skips", Description = "Out of Bounds — must hit orange piston room trigger to spawn Train Station trigger",                    Url = "https://youtu.be/8hHfolxcKxk"                },
-            new() { Id = "ch3_puzzle_skip",                      Title = "Puzzle Skip",                      Category = "Major Skips", Description = "Out of Bounds, Inbounds — if missed on first try, marked as OOB",                                       Url = "https://youtu.be/JBBCngxUA0Y"                },
-            new() { Id = "ch3_tram_skip",                        Title = "Tram Skip",                        Category = "Major Skips", Description = "Out of Bounds — Q input when close to red flashing light",                                              Url = "https://youtu.be/m2C35NRPwa4"                },
-            new() { Id = "ch3_tram_skip_all_stages",             Title = "Tram Skip All Stages%",            Category = "Major Skips", Description = "Out of Bounds — normal version softlocks in gas room",                                                  Url = "https://youtu.be/I_yT2SQkur0"                },
-            new() { Id = "ch3_hsh_skip_all_stages",              Title = "HSH Skip All Stages%",             Category = "Major Skips", Description = "Out of Bounds",                                                                                         Url = "https://youtu.be/-OLSIOhu3u4"                },
-            new() { Id = "ch3_hsh_skip_mushy",                   Title = "HSH Skip",                         Category = "Major Skips", Description = "Out of Bounds, Inbounds — get HSH key and do the room before from the first key",                       Url = "https://youtu.be/deKXnsqJTa4"                },
-            new() { Id = "ch3_hsh_skip",                         Title = "HSH Skip",                         Category = "Major Skips", Description = "Out of Bounds, Inbounds — Video by LA",                                                                 Url = "https://youtu.be/Vsr8tfY0xhk"                },
-            new() { Id = "ch3_second_floor_skip",                Title = "Second Floor Skip",                Category = "Major Skips", Description = "Out of Bounds, Inbounds",                                                                               Url = "https://youtu.be/YwBX4QDMpso"                },
-            new() { Id = "ch3_elevator_skip_la",                 Title = "Elevator Skip",                    Category = "Major Skips", Description = "All Categories — Video by LA",                                                                          Url = "https://youtu.be/ciDdzeHyM40"                },
-            new() { Id = "ch3_school_skip",                      Title = "School Skip",                      Category = "Major Skips", Description = "Out of Bounds",                                                                                         Url = "https://youtu.be/9B35hRlswzU"                },
-            new() { Id = "ch3_third_electric_puzzle_skip",       Title = "3rd Electric Puzzle Skip",         Category = "Major Skips", Description = "Out of Bounds, Inbounds",                                                                               Url = "https://youtu.be/tn0duTft9CM"                },
-            new() { Id = "ch3_school_full_route",                Title = "School Full Route",                Category = "Major Skips", Description = "All Categories — ignore Caves part",                                                                    Url = "https://youtu.be/9s13jLuaeYM"                },
-            new() { Id = "ch3_caves_skip",                       Title = "Caves Skip",                       Category = "Major Skips", Description = "Out of Bounds, Inbounds",                                                                               Url = "https://youtu.be/5LYVMCytYgQ"                },
-            new() { Id = "ch3_box_puzzle_skip",                  Title = "Box Puzzle Skip",                  Category = "Major Skips", Description = "Out of Bounds, Inbounds",                                                                               Url = "https://youtu.be/aN_EbKmzcHg"                },
-            new() { Id = "ch3_playhouse_skip",                   Title = "PlayHouse Skip",                   Category = "Major Skips", Description = "Out of Bounds — requires View Distance set to Ultra",                                                   Url = "https://youtu.be/20KgR3B38DM"                },
-            new() { Id = "ch3_office_route_oob",                 Title = "Office Route OOB",                 Category = "Major Skips", Description = "Out of Bounds",                                                                                         Url = "https://youtu.be/FEJ9d4F_Bo4"                },
-            new() { Id = "ch3_office_caves_half_puzzle_skip",    Title = "Office Caves Half Puzzle Skip",    Category = "Major Skips", Description = "All Categories",                                                                                        Url = "https://youtu.be/cnNjH6JGJZk"                },
-            new() { Id = "ch3_office_caves_half_puzzle_skip_v2", Title = "Office Caves Half Puzzle Skip v2", Category = "Major Skips", Description = "All Categories",                                                                                        Url = "https://youtu.be/s2BGvsFSml8"                },
-            new() { Id = "ch3_last_puzzle_skip",                 Title = "Last Puzzle Skip",                 Category = "Major Skips", Description = "All Categories",                                                                                        Url = "https://youtu.be/lsuZO4UnmCk"                },
-            new() { Id = "ch3_catnap_jumpscare_skip",            Title = "CatNap Jumpscare Skip",            Category = "Major Skips", Description = "Out of Bounds, Inbounds",                                                                               Url = "https://youtu.be/sjvielVNElA"                },
-            new() { Id = "ch3_poppy_door_key_skip",              Title = "Poppy Door Key Skip",              Category = "Major Skips", Description = "All Categories — door opens early; plug doesn't spawn until later, door stays open",                    Url = "https://youtu.be/qeiBXf9-x0U"                },
-            new() { Id = "ch3_barrelevator_skip",                Title = "Barrelevator Skip",                Category = "Major Skips", Description = "Out of Bounds",                                                                                         Url = "https://youtu.be/PuCSfIOpOz8"                },
-            new() { Id = "ch3_elevator_skip",                    Title = "Elevator Skip",                    Category = "Major Skips", Description = "Out of Bounds — hit button then go back to elevator edge",                                              Url = "https://www.youtube.com/watch?v=IuDxsjIeVuY"  },
-            new() { Id = "ch3_hour_of_joy_skip",                 Title = "The Hour of Joy Skip",             Category = "Major Skips", Description = "Out of Bounds, Inbounds",                                                                               Url = "https://www.youtube.com/watch?v=mewCAtO8Ag4"  },
-
-            // Small Tricks
-            new() { Id = "ch3_tram_skip_flying",                 Title = "Tram Skip Flying Version",         Category = "Small Tricks", Description = "Out of Bounds — change FPS to hit trigger in red flashing area",                                      Url = "https://youtu.be/TMLl8k6toRI"                },
-            new() { Id = "ch3_elevator_clip",                    Title = "Elevator Clip",                    Category = "Small Tricks", Description = "Out of Bounds — bounce at end not necessary; press button and elevator rises",                          Url = "https://youtu.be/-xa06l9Od5A"                },
-            new() { Id = "ch3_purple_hand_skip",                 Title = "Purple Hand Skip (PHS)",           Category = "Small Tricks", Description = "Out of Bounds — Any% OOB only; get Green Charge at 5s left then scroll up",                            Url = "https://youtu.be/j9GRn98frEk"                },
-
-            // Legacy
-            new() { Id = "ch3_tram_early",                       Title = "Tram Early",                       Category = "Legacy",       Description = "Out of Bounds — very inconsistent, ~10-15s if perfect, not in use",                                    Url = "https://youtu.be/Am-4qQbOmBE"                },
-            new() { Id = "ch3_puzzle_skip_office_chair",         Title = "Puzzle Skip w/ Office Chair",      Category = "Legacy",       Description = "Out of Bounds, Inbounds — FPS-dependent, not in use",                                                   Url = "https://youtu.be/7w4dqkTMaRY"                }
+            new() { Id = "KQQGQw2L6ME",  Title = "Phone Call Skip",                    Author = "Sangohanvde",  RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/KQQGQw2L6ME",  OpenInBrowser = true },
+            new() { Id = "8hHfolxcKxk",  Title = "First Area Skip",                    Author = "ontrigger",    RunCategories = ["Any%", "All Stages"],         Routes = ["Out of Bounds"],                               Url = "https://youtu.be/8hHfolxcKxk",  OpenInBrowser = true },
+            new() { Id = "JBBCngxUA0Y",  Title = "First Puzzle Skip",                  Author = "Hawkz",        RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/JBBCngxUA0Y",  OpenInBrowser = true },
+            new() { Id = "TMLl8k6toRI",  Title = "Tram Skip | Prop Launch",            Author = "ClownTech",    RunCategories = ["Any%"],                       Routes = ["Out of Bounds"],                               Url = "https://youtu.be/TMLl8k6toRI",  OpenInBrowser = true },
+            new() { Id = "m2C35NRPwa4",  Title = "Tram Skip",                          Author = "Nia",          RunCategories = ["Any%"],                       Routes = ["Out of Bounds"],                               Url = "https://youtu.be/m2C35NRPwa4",  OpenInBrowser = true },
+            new() { Id = "sq3qA0Hs7-Y",  Title = "Tram Skip 100% / All Stages",        Author = "Nerd Squared", RunCategories = ["All Stages", "100%"],         Routes = ["Out of Bounds"],                               Url = "https://youtu.be/sq3qA0Hs7-Y",  OpenInBrowser = true },
+            new() { Id = "I_yT2SQkur0",  Title = "Tram Skip All Stages / 100%",        Author = "Hawkz",        RunCategories = ["All Stages", "100%"],         Routes = ["Out of Bounds"],                               Url = "https://youtu.be/I_yT2SQkur0",  OpenInBrowser = true },
+            new() { Id = "-OLSIOhu3u4",  Title = "HSH Skip All Stages",                Author = "ontrigger",    RunCategories = ["All Stages"],                 Routes = ["Out of Bounds"],                               Url = "https://youtu.be/-OLSIOhu3u4",  OpenInBrowser = true },
+            new() { Id = "YwBX4QDMpso",  Title = "Second Floor Skip",                  Author = "LA",           RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/YwBX4QDMpso",  OpenInBrowser = true },
+            new() { Id = "Vsr8tfY0xhk",  Title = "Early Dome",                         Author = "LA",           RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Inbounds"],                                    Url = "https://youtu.be/Vsr8tfY0xhk",  OpenInBrowser = true },
+            new() { Id = "ciDdzeHyM40",  Title = "Dome Elevator Skip",                 Author = "LA",           RunCategories = ["Any%", "All Stages", "100%"], Routes = ["No Major Skips"],                              Url = "https://youtu.be/ciDdzeHyM40",  OpenInBrowser = true },
+            new() { Id = "tn0duTft9CM",  Title = "Vent Skip",                          Author = "Sangohanvde",  RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/tn0duTft9CM",  OpenInBrowser = true },
+            new() { Id = "9s13jLuaeYM",  Title = "Full School Route",                  Author = "LA",           RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/9s13jLuaeYM",  OpenInBrowser = true },
+            new() { Id = "5LYVMCytYgQ",  Title = "Caves Skip",                         Author = "ontrigger",    RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/5LYVMCytYgQ",  OpenInBrowser = true },
+            new() { Id = "aN_EbKmzcHg",  Title = "Box Puzzle Skip",                    Author = "mushymeow",    RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Inbounds"],                                    Url = "https://youtu.be/aN_EbKmzcHg",  OpenInBrowser = true },
+            new() { Id = "20KgR3B38DM",  Title = "Playhouse Skip",                     Author = "Nam (JMK)",    RunCategories = ["All Stages", "100%"],         Routes = ["Out of Bounds"],                               Url = "https://youtu.be/20KgR3B38DM",  OpenInBrowser = true },
+            new() { Id = "cnNjH6JGJZk",  Title = "Office Caves Half Puzzle Skip",      Author = "LA",           RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/cnNjH6JGJZk",  OpenInBrowser = true },
+            new() { Id = "lsuZO4UnmCk",  Title = "Last Puzzle Skip",                   Author = "LA",           RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/lsuZO4UnmCk",  OpenInBrowser = true },
+            new() { Id = "sjvielVNElA",  Title = "Catnap Jumpscare Skip",              Author = "Cindorian",    RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/sjvielVNElA",  OpenInBrowser = true },
+            new() { Id = "U7IK1U4JEvo",  Title = "Poppy Door Key Skip",                Author = "Nia",          RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Inbounds", "No Major Skips"],                  Url = "https://youtu.be/U7IK1U4JEvo",  OpenInBrowser = true },
+            new() { Id = "PuCSfIOpOz8",  Title = "Barrelevator Skip",                  Author = "Nia",          RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds"],                               Url = "https://youtu.be/PuCSfIOpOz8",  OpenInBrowser = true },
+            new() { Id = "-xa06l9Od5A",  Title = "Elevator Clip",                      Author = "Laupig",       RunCategories = ["Any%"],                       Routes = ["Out of Bounds"],                               Url = "https://youtu.be/-xa06l9Od5A",  OpenInBrowser = true },
+            new() { Id = "j9GRn98frEk",  Title = "Purple Hand Skip",                   Author = "Danger1451",   RunCategories = ["Any%"],                       Routes = ["Out of Bounds"],                               Url = "https://youtu.be/j9GRn98frEk",  OpenInBrowser = true },
+            new() { Id = "IuDxsjIeVuY",  Title = "Elevator Skip",                      Author = "RayRay",       RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds"],                               Url = "https://youtu.be/IuDxsjIeVuY",  OpenInBrowser = true },
+            new() { Id = "mewCAtO8Ag4",  Title = "The Hour of Joy Skip",               Author = "RayRay",       RunCategories = ["Any%", "All Stages", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/mewCAtO8Ag4",  OpenInBrowser = true }
         ),
 
         // ─── CHAPTER 4 ────────────────────────────────────────────────────────
         ..InChapter("Chapter 4",
-
-            // Major Skips
-            new() { Id = "ch4_full_elevator_skip",       Title = "Full Elevator Skip",                              Category = "Major Skips",  Description = "All Categories",                        Url = "https://youtu.be/qIETQkA7AuQ"       },
-            new() { Id = "ch4_mug_skip",                 Title = "Mug Skip",                                        Category = "Major Skips",  Description = "All Categories",                        Url = "https://youtu.be/60xJGGq6zBY"       },
-            new() { Id = "ch4_gouda_puzzle_skip",        Title = "Gouda Cheese Puzzle Skip",                        Category = "Major Skips",  Description = "All Categories",                        Url = "https://youtu.be/Hehh430Azw0"       },
-            new() { Id = "ch4_prison_vent_clip",         Title = "Prison Vent Clip",                                Category = "Major Skips",  Description = "Out of Bounds, Unrestricted",           Url = "https://youtu.be/Yxs1H8eRV6o"       },
-            new() { Id = "ch4_prison_critters_skip",     Title = "Prison Critters Skip",                            Category = "Major Skips",  Description = "Inbounds, Out of Bounds, Unrestricted", Url = "https://youtu.be/AugaC6dccVM"       },
-            new() { Id = "ch4_jailbreak",                Title = "Jailbreak (Prison Skip)",                         Category = "Major Skips",  Description = "Out of Bounds, Unrestricted",           Url = "https://youtu.be/EM8ifBMwabc"       },
-            new() { Id = "ch4_rick_raft_skip",           Title = "I Mix The Rick With The Raft Skip",               Category = "Major Skips",  Description = "Out of Bounds, Unrestricted",           Url = "https://youtu.be/IQ3Y7lDr8cc"       },
-            new() { Id = "ch4_little_yarnaby_skip",      Title = "Little Yarnaby Skip",                             Category = "Major Skips",  Description = "Inbounds, Out of Bounds, Unrestricted", Url = "https://youtu.be/iRLPyT7DAJY"       },
-            new() { Id = "ch4_yarnaby1_prison_skip",     Title = "Skip First Yarnaby Encounter to Prison Utility Zone", Category = "Major Skips", Description = "Out of Bounds, Unrestricted",      Url = "https://youtu.be/OFyK8BmDTQI"       },
-            new() { Id = "ch4_nasa_skip",                Title = "NASA Skip",                                       Category = "Major Skips",  Description = "Unrestricted",                          Url = "https://youtu.be/066G2F4aNzQ"       },
-            new() { Id = "ch4_pianosaurus_skip",         Title = "Pianosaurus Skip",                                Category = "Major Skips",  Description = "Inbounds, Out of Bounds, Unrestricted", Url = "https://youtu.be/aHbj3oxmP0c"       },
-            new() { Id = "ch4_thick_of_it_skip",         Title = "Thick Of It Skip",                                Category = "Major Skips",  Description = "Out of Bounds, Unrestricted",           Url = "https://youtu.be/J9CnYkX20ss"       },
-            new() { Id = "ch4_yarnaby2_skip",            Title = "Second Yarnaby Encounter Skip",                   Category = "Major Skips",  Description = "Inbounds, Out of Bounds, Unrestricted", Url = "https://youtu.be/0Y1ellsmlpw"       },
-            new() { Id = "ch4_full_morgue_skip",         Title = "Full Morgue Skip",                                Category = "Major Skips",  Description = "Unrestricted",                          Url = "https://youtu.be/NdzquCagLuE"       },
-            new() { Id = "ch4_baba_chops_skip_easy",     Title = "Baba Chops Bossfight Skip (easy)",                Category = "Major Skips",  Description = "Inbounds, Out of Bounds, Unrestricted", Url = "https://youtu.be/WeNR2kRJKJA"       },
-            new() { Id = "ch4_baba_chops_elevator_skip", Title = "Baba Chops + Elevator Skip (hard)",               Category = "Major Skips",  Description = "Inbounds, Out of Bounds, Unrestricted", Url = "https://youtu.be/hJtrdSEgD20"       },
-            new() { Id = "ch4_doctor_fight_skip",        Title = "Doctor Fight Skip",                               Category = "Major Skips",  Description = "Inbounds, Out of Bounds, Unrestricted", Url = "https://youtu.be/KLvPEmIoVto"       },
-            new() { Id = "ch4_doctor_fight_skip_100",    Title = "Doctor Fight Skip (100% Version)",                Category = "Major Skips",  Description = "Inbounds, Out of Bounds, Unrestricted", Url = "https://youtu.be/cRrvjuGMKUY"       },
-            new() { Id = "ch4_foundation_skip",          Title = "Foundation Skip",                                 Category = "Major Skips",  Description = "Inbounds, Out of Bounds, Unrestricted", Url = "https://youtu.be/a2rjZrDu7qM"       },
-            new() { Id = "ch4_foundation_doey_cutscene", Title = "Foundation Doey Cutscene Skip",                   Category = "Major Skips",  Description = "All Categories",                        Url = "https://youtu.be/Oojyq5TYQcI"       },
-            new() { Id = "ch4_aidful_skip_morgue",       Title = "Aidful Skip (Morgue Skip Version)",               Category = "Major Skips",  Description = "Unrestricted",                          Url = "https://youtu.be/NdzquCagLuE?t=466" },
-            new() { Id = "ch4_aidful_skip",              Title = "Aidful Skip (Normal Version)",                    Category = "Major Skips",  Description = "Out of Bounds, Unrestricted",           Url = "https://youtu.be/7R7oSOLPwdQ"       },
-
-            // Small Tricks
-            new() { Id = "ch4_proacventing",             Title = "Proacventing (Fast Vents)",                       Category = "Small Tricks", Description = "Inbounds, Out of Bounds, Unrestricted", Url = "https://youtu.be/TdEvu_JCg4M"       },
-            new() { Id = "ch4_shimmying",                Title = "Shimmying",                                       Category = "Small Tricks", Description = "All Categories",                        Url = "https://youtu.be/wKvSSlMnBWk"       },
-            new() { Id = "ch4_quick_ac_puzzle",          Title = "Quick Air Conditioner Puzzle",                    Category = "Small Tricks", Description = "All Categories",                        Url = "https://youtu.be/weJXK5_jcYI"       },
-            new() { Id = "ch4_frozen_hand_bypass",       Title = "Frozen Hand Bypass",                              Category = "Small Tricks", Description = "All Categories",                        Url = "https://youtu.be/F7xWoQJ4ah8"       },
-            new() { Id = "ch4_le_parkour",               Title = "Le Parkour",                                      Category = "Small Tricks", Description = "All Categories",                        Url = "https://youtu.be/URySFMRsFDQ"       }
+            new() { Id = "qIETQkA7AuQ",  Title = "Full Elevator Skip",                    Author = "Weet",         RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/qIETQkA7AuQ",  OpenInBrowser = true },
+            new() { Id = "60xJGGq6zBY",  Title = "Mug Skip",                              Author = "BarneyGoose",  RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/60xJGGq6zBY",  OpenInBrowser = true },
+            new() { Id = "Hehh430Azw0",  Title = "Gouda Cheese Puzzle Skip",              Author = "Sangohanvde",  RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/Hehh430Azw0",  OpenInBrowser = true },
+            new() { Id = "VV5TYzxxYVo",  Title = "Crouch Trick",                          Author = "LA",           RunCategories = ["Any%", "100%"], Routes = ["No Major Skips"],                                              Url = "https://youtu.be/VV5TYzxxYVo",  OpenInBrowser = true },
+            new() { Id = "TdEvu_JCg4M",  Title = "Proacventing",                          Author = "proac",        RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/TdEvu_JCg4M",  OpenInBrowser = true },
+            new() { Id = "nsDaUU8oM2o",  Title = "Limon Skip",                            Author = "LA",           RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/nsDaUU8oM2o",  OpenInBrowser = true },
+            new() { Id = "AugaC6dccVM",  Title = "Prison Critters Skip",                  Author = "n0kitsune",    RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/AugaC6dccVM",  OpenInBrowser = true },
+            new() { Id = "EM8ifBMwabc",  Title = "Jailbreak (Prison Skip)",               Author = "Laupig",       RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds"],                              Url = "https://youtu.be/EM8ifBMwabc",  OpenInBrowser = true },
+            new() { Id = "s-hbIPkz9cQ",  Title = "Prison Rail Jump",                      Author = "LA",           RunCategories = ["Any%", "100%"], Routes = ["Inbounds", "No Major Skips"],                                 Url = "https://youtu.be/s-hbIPkz9cQ",  OpenInBrowser = true },
+            new() { Id = "IQ3Y7lDr8cc",  Title = "IMTRWTRATRWTR Skip (Mix Skip)",         Author = "Weet",         RunCategories = ["Any%"],         Routes = ["Out of Bounds"],                                              Url = "https://youtu.be/IQ3Y7lDr8cc",  OpenInBrowser = true },
+            new() { Id = "klGDuGQRg1E",  Title = "No Boxes Skip",                         Author = "LA",           RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/klGDuGQRg1E",  OpenInBrowser = true },
+            new() { Id = "iRLPyT7DAJY",  Title = "Little Yarnaby Skip",                   Author = "ZacGames25",   RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/iRLPyT7DAJY",  OpenInBrowser = true },
+            new() { Id = "ze17WlDp_AI",  Title = "Yarnaby Cutscene Skip",                 Author = "LA",           RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"],                 Url = "https://youtu.be/ze17WlDp_AI",  OpenInBrowser = true },
+            new() { Id = "OFyK8BmDTQI",  Title = "Small Yarnaby Skip",                    Author = "ontrigger",    RunCategories = ["Any%"],         Routes = ["Out of Bounds"],                                              Url = "https://youtu.be/OFyK8BmDTQI",  OpenInBrowser = true },
+            new() { Id = "f1bDGT2Jpm4",  Title = "NASA Skip Tutorial",                    Author = "Nia",          RunCategories = ["Any%"],         Routes = ["Unrestricted"],                                               Url = "https://youtu.be/f1bDGT2Jpm4",  OpenInBrowser = true },
+            new() { Id = "aHbj3oxmP0c",  Title = "Pianosaurus Skip",                      Author = "BarneyGoose",  RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/aHbj3oxmP0c",  OpenInBrowser = true },
+            new() { Id = "HcYNMeEG70I",  Title = "Cave Jump",                             Author = "LA",           RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                                  Url = "https://youtu.be/HcYNMeEG70I",  OpenInBrowser = true },
+            new() { Id = "wKvSSlMnBWk",  Title = "Shimmying",                             Author = "ontrigger",    RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/wKvSSlMnBWk",  OpenInBrowser = true },
+            new() { Id = "J9CnYkX20ss",  Title = "Thick Of It Skip (Safe Haven Skip)",    Author = "proac",        RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds"],                              Url = "https://youtu.be/J9CnYkX20ss",  OpenInBrowser = true },
+            new() { Id = "sX63cpBnDb4",  Title = "No Man's Land Puzzle Skip",             Author = "LA",           RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"],                 Url = "https://youtu.be/sX63cpBnDb4",  OpenInBrowser = true },
+            new() { Id = "0Y1ellsmlpw",  Title = "Big Yarnaby Skip",                      Author = "BarneyGoose",  RunCategories = ["Any%"],         Routes = ["Out of Bounds", "Inbounds"],                                  Url = "https://youtu.be/0Y1ellsmlpw",  OpenInBrowser = true },
+            new() { Id = "gMY7OBxKwf4",  Title = "Big Yarnaby Skip (100%)",               Author = "Nia",          RunCategories = ["100%"],         Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/gMY7OBxKwf4",  OpenInBrowser = true },
+            new() { Id = "weJXK5_jcYI",  Title = "Quick AC Puzzle",                       Author = "n0kitsune",    RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/weJXK5_jcYI",  OpenInBrowser = true },
+            new() { Id = "F7xWoQJ4ah8",  Title = "Frozen Hand Bypass",                    Author = "n0kitsune",    RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/F7xWoQJ4ah8",  OpenInBrowser = true },
+            new() { Id = "NdzquCagLuE",  Title = "Full Morgue Skip",                      Author = "Danger1451",   RunCategories = ["Any%"],         Routes = ["Unrestricted"],                                               Url = "https://youtu.be/NdzquCagLuE",  OpenInBrowser = true },
+            new() { Id = "DG6M5MKyK5g",  Title = "Grapple Skip",                          Author = "LA",           RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"],                 Url = "https://youtu.be/DG6M5MKyK5g",  OpenInBrowser = true },
+            new() { Id = "WeNR2kRJKJA",  Title = "Baba Chops Bossfight Skip (easy)",      Author = "n0kitsune",    RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/WeNR2kRJKJA",  OpenInBrowser = true },
+            new() { Id = "hJtrdSEgD20",  Title = "Baba Chops + Elevator Skip (hard)",     Author = "Nerd Squared", RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/hJtrdSEgD20",  OpenInBrowser = true },
+            new() { Id = "KLvPEmIoVto",  Title = "Doctor Fight Skip",                     Author = "Nia",          RunCategories = ["Any%"],         Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/KLvPEmIoVto",  OpenInBrowser = true },
+            new() { Id = "cRrvjuGMKUY",  Title = "Doctor Fight Skip (100%)",              Author = "Nia",          RunCategories = ["100%"],         Routes = ["Unrestricted", "Out of Bounds", "Inbounds"],                   Url = "https://youtu.be/cRrvjuGMKUY",  OpenInBrowser = true },
+            new() { Id = "URySFMRsFDQ",  Title = "Le Parkour",                            Author = "RNG_Retr0",    RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds", "Inbounds", "No Major Skips"],  Url = "https://youtu.be/URySFMRsFDQ",  OpenInBrowser = true },
+            new() { Id = "a2rjZrDu7qM",  Title = "Foundation Skip",                       Author = "n0kitsune",    RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                                  Url = "https://youtu.be/a2rjZrDu7qM",  OpenInBrowser = true },
+            new() { Id = "7R7oSOLPwdQ",  Title = "Aidful Skip",                           Author = "Danger1451",   RunCategories = ["Any%", "100%"], Routes = ["Unrestricted", "Out of Bounds"],                              Url = "https://youtu.be/7R7oSOLPwdQ",  OpenInBrowser = true }
         ),
 
         // ─── CHAPTER 5 ────────────────────────────────────────────────────────
         ..InChapter("Chapter 5",
 
             // Major Skips
-            new() { Id = "ch5_lower_taper_fade_skip",        Title = "Lower Taper Fade Skip",                  Category = "Major Skips",  Description = "Unrestricted",                                                                                                   Url = "https://youtu.be/0zp2M5Q3mF4"                    },
-            new() { Id = "ch5_fire_f11_skip",                Title = "Fire F11 Skip",                          Category = "Major Skips",  Description = "Unrestricted",                                                                                                   Url = "https://youtu.be/8pzFFrPFGVY"                    },
-            new() { Id = "ch5_elevator_skip",                Title = "Elevator Skip",                          Category = "Major Skips",  Description = "Unrestricted, Out of Bounds — get hit & time the Red hand while getting hit by Huggy (RNG); Headphone Warning",   Url = "https://www.youtube.com/watch?v=6bthrB9OhEg"      },
-            new() { Id = "ch5_outimals_oob_skip",            Title = "Outimals OOB Skip",                      Category = "Major Skips",  Description = "Unrestricted, Out of Bounds — grants Master Key early and skips to Giblet's hideout; precise movement required",  Url = "https://youtu.be/bT2YVHkzYzg"                    },
-            new() { Id = "ch5_early_grabpack",               Title = "Early Grabpack",                         Category = "Major Skips",  Description = "Unrestricted — Patch 1 only; reload checkpoint before getting eaten by Chum to prevent crashes",                  Url = "https://youtu.be/yBTanZRCbYA"                    },
-            new() { Id = "ch5_zero_gravity_67_skip",         Title = "0 Gravity (67 Skip)",                    Category = "Major Skips",  Description = "Unrestricted, Out of Bounds, Inbounds — get hit by Critter in 2nd elevator shaft grapple area to hover mid-air",  Url = "https://youtu.be/gkBFN_3WmHk"                    },
-            new() { Id = "ch5_zero_gravity_updated",         Title = "0 Gravity (67 Skip) Updated Route",      Category = "Major Skips",  Description = "Unrestricted",                                                                                                   Url = "https://www.youtube.com/watch?v=38M1-1PXDs4"      },
-            new() { Id = "ch5_zero_gravity_oob",             Title = "0 Gravity (67 Skip) Updated Route OOB",  Category = "Major Skips",  Description = "Unrestricted, Out of Bounds",                                                                                    Url = "https://youtu.be/jEuUNBPD8mo"                    },
-            new() { Id = "ch5_gilbert_skip",                 Title = "Gilbert Skip",                           Category = "Major Skips",  Description = "Unrestricted, Out of Bounds, Inbounds — difficult jumps; reload checkpoint when saving icon appears",              Url = "https://www.youtube.com/watch?v=DxtDrdUn4QA"      },
-            new() { Id = "ch5_magnet_cuff_box_skip",         Title = "Magnet Cuff Room Box Skip",              Category = "Major Skips",  Description = "Unrestricted, Out of Bounds, Inbounds — use the box to jump up on the shelves",                                   Url = "https://www.youtube.com/watch?v=m7nfM0Oa-IA"      },
-            new() { Id = "ch5_huggy_memories_inbounds",      Title = "Huggy's Memories Skip (Inbounds)",       Category = "Major Skips",  Description = "Unrestricted, Out of Bounds, Inbounds",                                                                          Url = "https://www.youtube.com/watch?v=yzuKwJAlzQg"      },
-            new() { Id = "ch5_huggy_memories_oob",           Title = "Huggy's Memories Skip (OOB)",            Category = "Major Skips",  Description = "Unrestricted, Out of Bounds — deposit 1 Memory into Machine & spam both hands while loading into first Dream",     Url = "https://youtu.be/iPBlDBxYls4"                    },
-            new() { Id = "ch5_huggy_memories_unrestricted",  Title = "Huggy's Memories Skip (Unrestricted)",   Category = "Major Skips",  Description = "Unrestricted — hardware-dependent; requires well-timed F11 presses or severely lowered PC performance",            Url = "https://youtu.be/0KYxlmu9bLM"                    },
-            new() { Id = "ch5_fent_skip",                    Title = "Fent Skip",                              Category = "Major Skips",  Description = "Unrestricted, Out of Bounds, Inbounds — skips the Valve Puzzle for one memory card",                              Url = "https://youtu.be/dMttzMp0bZ4"                    },
-            new() { Id = "ch5_sid_skip",                     Title = "SID Skip",                               Category = "Major Skips",  Description = "Unrestricted",                                                                                                   Url = "https://youtu.be/5qqmLbt5zDA"                    },
-            new() { Id = "ch5_sid_skip_no_f11",              Title = "SID Skip (No F11)",                      Category = "Major Skips",  Description = "Unrestricted, Out of Bounds",                                                                                    Url = "https://www.youtube.com/watch?v=Rx7y9Dzqe7o"      },
-            new() { Id = "ch5_megabonk_skip",                Title = "Megabonk Skip",                          Category = "Major Skips",  Description = "Unrestricted, Out of Bounds",                                                                                    Url = "https://youtu.be/lhJRbSbKlZw"                    },
-            new() { Id = "ch5_dollhouse_key_oob",            Title = "Dollhouse Key OOB",                      Category = "Major Skips",  Description = "Unrestricted, Out of Bounds — collect and place all friends first",                                               Url = "https://youtu.be/lhJRbSbKlZw"                    },
-            new() { Id = "ch5_dollhouse_key_oob_faster",     Title = "Dollhouse Key OOB but Faster",           Category = "Major Skips",  Description = "Unrestricted, Out of Bounds",                                                                                    Url = "https://www.youtube.com/watch?v=Z2g7l9GVz2Y"      },
-            new() { Id = "ch5_lily_chase_skip",              Title = "Lily Chase Skip",                        Category = "Major Skips",  Description = "Unrestricted, Out of Bounds, Inbounds — reload checkpoint after cutscene, then shoot hands at far magnetized wall", Url = "https://youtu.be/M5_f3a5yWzw"                   },
-            new() { Id = "ch5_peaks_of_yore_skip",           Title = "Peaks of Yore Skip",                     Category = "Major Skips",  Description = "Unrestricted, Out of Bounds, Inbounds — near end of Lily chase; grab magnet strip with both hands to get above",   Url = "https://youtu.be/OJl497Iq57w"                    },
-            new() { Id = "ch5_reanimation_skip",             Title = "Reanimation Skip",                       Category = "Major Skips",  Description = "Unrestricted, Out of Bounds — grab box, bring it OOB, jump on top to get above the map",                          Url = "https://youtu.be/8yn9rA5LI0Q"                    },
-            new() { Id = "ch5_clanker_skip",                 Title = "Clanker Skip",                           Category = "Major Skips",  Description = "Unrestricted, Out of Bounds — trigger 'no more games, no more lies' dialogue first; area won't load otherwise",    Url = "https://youtu.be/loEGTZXmedU"                    },
-            new() { Id = "ch5_computer_skip",                Title = "Computer Skip",                          Category = "Major Skips",  Description = "Unrestricted, Out of Bounds, Inbounds — pull levers through lockers by aiming above them",                        Url = "https://youtu.be/zIVch4Q4eq4"                    },
+            new() { Id = "ch5_lower_taper_fade_skip",        Title = "Lower Taper Fade Skip",                 Category = "Major Skips",  RunCategories = ["Unrestricted"],                               Description = "",                                                                                                        Url = "https://youtu.be/0zp2M5Q3mF4",                     OpenInBrowser = true },
+            new() { Id = "ch5_fire_f11_skip",                Title = "Fire F11 Skip",                         Category = "Major Skips",  RunCategories = ["Unrestricted"],                               Description = "",                                                                                                        Url = "https://youtu.be/8pzFFrPFGVY",                     OpenInBrowser = true },
+            new() { Id = "ch5_elevator_skip",                Title = "Elevator Skip",                         Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds"],              Description = "get hit & time the Red hand while getting hit by Huggy (RNG); Headphone Warning",                          Url = "https://www.youtube.com/watch?v=6bthrB9OhEg",      OpenInBrowser = true },
+            new() { Id = "ch5_outimals_oob_skip",            Title = "Outimals OOB Skip",                     Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds"],              Description = "grants Master Key early and skips to Giblet's hideout; precise movement required",                          Url = "https://youtu.be/bT2YVHkzYzg",                     OpenInBrowser = true },
+            new() { Id = "ch5_early_grabpack",               Title = "Early Grabpack",                        Category = "Major Skips",  RunCategories = ["Unrestricted"],                               Description = "Patch 1 only; reload checkpoint before getting eaten by Chum to prevent crashes",                          Url = "https://youtu.be/yBTanZRCbYA",                     OpenInBrowser = true },
+            new() { Id = "ch5_zero_gravity_67_skip",         Title = "0 Gravity (67 Skip)",                   Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "get hit by Critter in 2nd elevator shaft grapple area to hover mid-air",                                  Url = "https://youtu.be/gkBFN_3WmHk",                     OpenInBrowser = true },
+            new() { Id = "ch5_zero_gravity_updated",         Title = "0 Gravity (67 Skip) Updated Route",     Category = "Major Skips",  RunCategories = ["Unrestricted"],                               Description = "",                                                                                                        Url = "https://www.youtube.com/watch?v=38M1-1PXDs4",      OpenInBrowser = true },
+            new() { Id = "ch5_zero_gravity_oob",             Title = "0 Gravity (67 Skip) Updated Route OOB", Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds"],              Description = "",                                                                                                        Url = "https://youtu.be/jEuUNBPD8mo",                     OpenInBrowser = true },
+            new() { Id = "ch5_gilbert_skip",                 Title = "Gilbert Skip",                          Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "difficult jumps; reload checkpoint when saving icon appears",                                            Url = "https://www.youtube.com/watch?v=DxtDrdUn4QA",      OpenInBrowser = true },
+            new() { Id = "ch5_magnet_cuff_box_skip",         Title = "Magnet Cuff Room Box Skip",             Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "use the box to jump up on the shelves",                                                                  Url = "https://www.youtube.com/watch?v=m7nfM0Oa-IA",      OpenInBrowser = true },
+            new() { Id = "ch5_huggy_memories_inbounds",      Title = "Huggy's Memories Skip (Inbounds)",      Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "",                                                                                                        Url = "https://www.youtube.com/watch?v=yzuKwJAlzQg",      OpenInBrowser = true },
+            new() { Id = "ch5_huggy_memories_oob",           Title = "Huggy's Memories Skip (OOB)",           Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds"],              Description = "deposit 1 Memory into Machine & spam both hands while loading into first Dream",                          Url = "https://youtu.be/iPBlDBxYls4",                     OpenInBrowser = true },
+            new() { Id = "ch5_huggy_memories_unrestricted",  Title = "Huggy's Memories Skip (Unrestricted)",  Category = "Major Skips",  RunCategories = ["Unrestricted"],                               Description = "hardware-dependent; requires well-timed F11 presses or severely lowered PC performance",                  Url = "https://youtu.be/0KYxlmu9bLM",                     OpenInBrowser = true },
+            new() { Id = "ch5_fent_skip",                    Title = "Fent Skip",                             Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "skips the Valve Puzzle for one memory card",                                                             Url = "https://youtu.be/dMttzMp0bZ4",                     OpenInBrowser = true },
+            new() { Id = "ch5_sid_skip",                     Title = "SID Skip",                              Category = "Major Skips",  RunCategories = ["Unrestricted"],                               Description = "",                                                                                                        Url = "https://youtu.be/5qqmLbt5zDA",                     OpenInBrowser = true },
+            new() { Id = "ch5_sid_skip_no_f11",              Title = "SID Skip (No F11)",                     Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds"],              Description = "",                                                                                                        Url = "https://www.youtube.com/watch?v=Rx7y9Dzqe7o",      OpenInBrowser = true },
+            new() { Id = "ch5_megabonk_skip",                Title = "Megabonk Skip",                         Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds"],              Description = "",                                                                                                        Url = "https://youtu.be/lhJRbSbKlZw",                     OpenInBrowser = true },
+            new() { Id = "ch5_dollhouse_key_oob",            Title = "Dollhouse Key OOB",                     Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds"],              Description = "collect and place all friends first",                                                                    Url = "https://youtu.be/lhJRbSbKlZw",                     OpenInBrowser = true },
+            new() { Id = "ch5_dollhouse_key_oob_faster",     Title = "Dollhouse Key OOB but Faster",          Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds"],              Description = "",                                                                                                        Url = "https://www.youtube.com/watch?v=Z2g7l9GVz2Y",      OpenInBrowser = true },
+            new() { Id = "ch5_lily_chase_skip",              Title = "Lily Chase Skip",                       Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "reload checkpoint after cutscene, then shoot hands at far magnetized wall",                             Url = "https://youtu.be/M5_f3a5yWzw",                     OpenInBrowser = true },
+            new() { Id = "ch5_peaks_of_yore_skip",           Title = "Peaks of Yore Skip",                    Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "near end of Lily chase; grab magnet strip with both hands to get above",                               Url = "https://youtu.be/OJl497Iq57w",                     OpenInBrowser = true },
+            new() { Id = "ch5_reanimation_skip",             Title = "Reanimation Skip",                      Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds"],              Description = "grab box, bring it OOB, jump on top to get above the map",                                               Url = "https://youtu.be/8yn9rA5LI0Q",                     OpenInBrowser = true },
+            new() { Id = "ch5_clanker_skip",                 Title = "Clanker Skip",                          Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds"],              Description = "trigger 'no more games, no more lies' dialogue first; area won't load otherwise",                         Url = "https://youtu.be/loEGTZXmedU",                     OpenInBrowser = true },
+            new() { Id = "ch5_computer_skip",                Title = "Computer Skip",                         Category = "Major Skips",  RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "pull levers through lockers by aiming above them",                                                       Url = "https://youtu.be/zIVch4Q4eq4",                     OpenInBrowser = true },
 
             // Small Tricks
-            new() { Id = "ch5_small_intro_timesave",         Title = "Small Intro Timesave",                   Category = "Small Tricks", Description = "All Categories — grabs 2nd metal piece early",                                                               Url = "https://youtu.be/8hR_j6f27Rg"                    },
-            new() { Id = "ch5_first_scanner_gate_jump",      Title = "First Scanner Gate Jump",                Category = "Small Tricks", Description = "All Categories",                                                                                             Url = "https://youtu.be/gbzaSQoIM7Q"                    },
-            new() { Id = "ch5_fast_1st_elevator_shaft",      Title = "Fast 1st Elevator Shaft",                Category = "Small Tricks", Description = "All Categories",                                                                                             Url = "https://youtu.be/uzQPYh3quYI"                    },
-            new() { Id = "ch5_spiderman_grapples",           Title = "Spiderman Grapples",                     Category = "Small Tricks", Description = "All Categories — saves grappling time; mostly timing",                                                        Url = "https://youtu.be/srSg14GaCWg"                    },
-            new() { Id = "ch5_huggy_bossfight_route",        Title = "Huggy Bossfight Route (Any%)",           Category = "Small Tricks", Description = "All Categories",                                                                                             Url = "https://youtu.be/4uPKfRPgljc"                    },
-            new() { Id = "ch5_sweet_street_last_section",    Title = "Sweet Street Last Section Fast",         Category = "Small Tricks", Description = "All Categories",                                                                                             Url = "https://youtu.be/QdrPRI-MH3M"                    },
-            new() { Id = "ch5_finding_friends_route",        Title = "Finding Friends Route",                  Category = "Small Tricks", Description = "All Categories",                                                                                             Url = "https://youtu.be/SXvcGmZBJkA"                    },
-            new() { Id = "ch5_2_cycle_lily_rlgl",            Title = "2 Cycle Lily Red Light/Green Light",     Category = "Small Tricks", Description = "All Categories",                                                                                             Url = "https://youtu.be/AGNZiN8qejc"                    },
-            new() { Id = "ch5_small_last_huggy_chase_skip",  Title = "Small Last Huggy Chase Skip",            Category = "Small Tricks", Description = "All Categories",                                                                                             Url = "https://youtu.be/77cx0gpCvLQ"                    },
+            new() { Id = "ch5_small_intro_timesave",         Title = "Small Intro Timesave",                  Category = "Small Tricks", RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "grabs 2nd metal piece early",                                                                            Url = "https://youtu.be/8hR_j6f27Rg",                     OpenInBrowser = true },
+            new() { Id = "ch5_first_scanner_gate_jump",      Title = "First Scanner Gate Jump",               Category = "Small Tricks", RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "",                                                                                                        Url = "https://youtu.be/gbzaSQoIM7Q",                     OpenInBrowser = true },
+            new() { Id = "ch5_fast_1st_elevator_shaft",      Title = "Fast 1st Elevator Shaft",               Category = "Small Tricks", RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "",                                                                                                        Url = "https://youtu.be/uzQPYh3quYI",                     OpenInBrowser = true },
+            new() { Id = "ch5_spiderman_grapples",           Title = "Spiderman Grapples",                    Category = "Small Tricks", RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "saves grappling time; mostly timing",                                                                    Url = "https://youtu.be/srSg14GaCWg",                     OpenInBrowser = true },
+            new() { Id = "ch5_huggy_bossfight_route",        Title = "Huggy Bossfight Route (Any%)",          Category = "Small Tricks", RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "",                                                                                                        Url = "https://youtu.be/4uPKfRPgljc",                     OpenInBrowser = true },
+            new() { Id = "ch5_sweet_street_last_section",    Title = "Sweet Street Last Section Fast",        Category = "Small Tricks", RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "",                                                                                                        Url = "https://youtu.be/QdrPRI-MH3M",                     OpenInBrowser = true },
+            new() { Id = "ch5_finding_friends_route",        Title = "Finding Friends Route",                 Category = "Small Tricks", RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "",                                                                                                        Url = "https://youtu.be/SXvcGmZBJkA",                     OpenInBrowser = true },
+            new() { Id = "ch5_2_cycle_lily_rlgl",            Title = "2 Cycle Lily Red Light/Green Light",    Category = "Small Tricks", RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "",                                                                                                        Url = "https://youtu.be/AGNZiN8qejc",                     OpenInBrowser = true },
+            new() { Id = "ch5_small_last_huggy_chase_skip",  Title = "Small Last Huggy Chase Skip",           Category = "Small Tricks", RunCategories = ["Unrestricted", "Out of Bounds", "Inbounds"], Description = "",                                                                                                        Url = "https://youtu.be/77cx0gpCvLQ",                     OpenInBrowser = true },
 
             // Legacy
-            new() { Id = "ch5_dollhouse_early_lights_out",   Title = "Dollhouse Early Lights Out",             Category = "Legacy",       Description = "NG+ only — complete Dollhouse once without restarting before new run; not allowed in any regular category",    Url = "https://www.youtube.com/watch?v=htVnk7Uuw-c"      }
+            new() { Id = "ch5_dollhouse_early_lights_out",   Title = "Dollhouse Early Lights Out",            Category = "NG+",          RunCategories = [],                                             Description = "complete Dollhouse once without restarting before new run; not allowed in any regular category",          Url = "https://www.youtube.com/watch?v=htVnk7Uuw-c",      OpenInBrowser = true }
         ),
     ];
-    // ─────────────────────────────────────────────────────────────────────────
 
-    // Stamps all entries with the given chapter, so you don't repeat it on every line.
+    public static void Initialize() { }
+
+    private static readonly YoutubeClient _yt = new();
+    private static readonly Dictionary<string, string> _cache = new();
+
+    // Returns (url, errorMessage) — url is null on failure
+    public static async Task<(string? Url, string? Error)> GetStreamUrlAsync(TutorialVideo video)
+    {
+        try
+        {
+            var m = Regex.Match(video.Url, @"youtu\.be/([A-Za-z0-9_-]+)");
+            if (!m.Success) m = Regex.Match(video.Url, @"[?&]v=([A-Za-z0-9_-]+)");
+            if (!m.Success) return (null, "Could not extract video ID from URL");
+
+            var videoId = m.Groups[1].Value;
+
+            if (_cache.TryGetValue(videoId, out var cached))
+                return (cached, null);
+
+            var manifest = await _yt.Videos.Streams.GetManifestAsync(videoId);
+
+            var stream = manifest.GetMuxedStreams()
+                             .OrderByDescending(s => s.VideoQuality.MaxHeight)
+                             .FirstOrDefault();
+
+            if (stream != null)
+            {
+                _cache[videoId] = stream.Url;
+                return (stream.Url, null);
+            }
+
+            return (null, manifest.GetMuxedStreams().Any()
+                ? "No stream found"
+                : "No playable stream (DASH-only video)");
+        }
+        catch (Exception ex)
+        {
+            return (null, ex.Message);
+        }
+    }
+
+    // Pre-fetches stream URLs for a batch of videos in the background
+    public static void PrefetchAsync(IEnumerable<TutorialVideo> videos)
+    {
+        foreach (var video in videos)
+            _ = Task.Run(() => GetStreamUrlAsync(video));
+    }
+
     private static TutorialVideo[] InChapter(string chapter, params TutorialVideo[] videos)
     {
         foreach (var v in videos) v.Chapter = chapter;
         return videos;
-    }
-
-    public static readonly string TempFolder =
-        Path.Combine(Path.GetTempPath(), "SpeedrunLauncher", "TutorialVideos");
-
-    public static readonly string SavedFolder =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SpeedrunLauncher", "Tutorials");
-
-    private static readonly string YtDlpPath =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SpeedrunLauncher", "yt-dlp.exe");
-
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(30) };
-
-    /// <summary>
-    /// Clears the tutorial temp folder on startup. Videos are downloaded on demand.
-    /// </summary>
-    public static void Initialize()
-    {
-        try
-        {
-            if (Directory.Exists(TempFolder))
-                Directory.Delete(TempFolder, recursive: true);
-            Directory.CreateDirectory(TempFolder);
-        }
-        catch { }
-
-        try
-        {
-            Directory.CreateDirectory(SavedFolder);
-            foreach (var video in Videos)
-            {
-                var saved = Directory.GetFiles(SavedFolder, video.Id + ".*").FirstOrDefault();
-                if (saved != null) video.SavedPath = saved;
-            }
-            SaveEnabled = Videos.Any(v => v.IsSaved);
-        }
-        catch { }
-    }
-
-    /// <summary>
-    /// Downloads a single video on demand and reports progress (0–100).
-    /// Ensures yt-dlp is available first (downloads it if missing).
-    /// </summary>
-    public static async Task<bool> DownloadAsync(TutorialVideo video, IProgress<double>? progress = null)
-    {
-        try
-        {
-            if (video.IsSaved) { progress?.Report(100); return true; }
-            await EnsureYtDlpAsync();
-            await DownloadVideoAsync(video, progress);
-            if (video.IsDownloaded && SaveEnabled)
-                await SaveSingleAsync(video);
-            return video.IsDownloaded;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    public static bool SaveEnabled { get; private set; }
-
-    public static async Task ToggleSaveAsync()
-    {
-        SaveEnabled = !SaveEnabled;
-        if (SaveEnabled)
-        {
-            Directory.CreateDirectory(SavedFolder);
-            foreach (var video in Videos.Where(v => v.IsDownloaded && !v.IsSaved))
-                await SaveSingleAsync(video);
-        }
-        else
-        {
-            foreach (var video in Videos.Where(v => v.IsSaved))
-                await UnsaveSingleAsync(video);
-        }
-    }
-
-    private static async Task SaveSingleAsync(TutorialVideo video)
-    {
-        var src = video.PlayablePath;
-        var dst = Path.Combine(SavedFolder, video.Id + Path.GetExtension(src));
-        if (src != dst)
-            await Task.Run(() => File.Copy(src, dst, overwrite: true));
-        video.SavedPath = dst;
-    }
-
-    private static Task UnsaveSingleAsync(TutorialVideo video)
-    {
-        var path = video.SavedPath;
-        video.SavedPath = "";
-        return Task.Run(() => { try { File.Delete(path); } catch { } });
-    }
-
-    private static async Task EnsureYtDlpAsync()
-    {
-        if (File.Exists(YtDlpPath)) return;
-        Directory.CreateDirectory(Path.GetDirectoryName(YtDlpPath)!);
-        using var response = await Http.GetAsync(
-            "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
-            HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
-        await using var stream = await response.Content.ReadAsStreamAsync();
-        await using var file   = File.Create(YtDlpPath);
-        await stream.CopyToAsync(file);
-    }
-
-    private static async Task DownloadVideoAsync(TutorialVideo video, IProgress<double>? progress)
-    {
-        var outputTemplate = Path.Combine(TempFolder, video.Id + ".%(ext)s");
-
-        var psi = new ProcessStartInfo
-        {
-            FileName               = YtDlpPath,
-            Arguments              = $"-f \"best[height<=480][ext=mp4]/best[height<=480]/best[ext=mp4]/best\" " +
-                                     $"--no-playlist --no-warnings " +
-                                     $"-o \"{outputTemplate}\" " +
-                                     $"\"{video.Url}\"",
-            UseShellExecute        = false,
-            CreateNoWindow         = true,
-            RedirectStandardOutput = true,  // read asynchronously — avoids buffer deadlock
-        };
-
-        using var process = Process.Start(psi)!;
-
-        // Parse "[download]  45.3% of ..." lines from yt-dlp stdout
-        process.OutputDataReceived += (_, e) =>
-        {
-            if (e.Data is null) return;
-            var m = Regex.Match(e.Data, @"(\d+\.?\d*)%");
-            if (m.Success && double.TryParse(m.Groups[1].Value,
-                    NumberStyles.Float, CultureInfo.InvariantCulture, out var pct))
-                progress?.Report(Math.Clamp(pct, 0, 100));
-        };
-        process.BeginOutputReadLine();
-
-        await process.WaitForExitAsync();
-        process.WaitForExit(); // flush any remaining buffered output
-
-        var downloaded = Directory.GetFiles(TempFolder, video.Id + ".*")
-            .FirstOrDefault(f => !f.EndsWith(".part", StringComparison.OrdinalIgnoreCase));
-        if (downloaded != null)
-            video.LocalPath = downloaded;
     }
 }
