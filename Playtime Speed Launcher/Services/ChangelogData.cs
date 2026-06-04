@@ -7,6 +7,11 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("1.2.8", "04/06/2026",
+        [
+            "Improved the beginner tutorial",
+            "Updated the application icon",
+        ]),
         new("1.2.7", "03/06/2026",
         [
             "Updated the Skips Menu; videos no longer need to be downloaded",

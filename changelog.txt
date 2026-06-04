@@ -1,4 +1,3 @@
-1.2.7
-- Updated the Skips Menu; videos no longer need to be downloaded
-- Fixed category assignments for several strats
-- Added the ability to search for strats by author
+1.2.8
+- Improved the beginner tutorial
+- Updated the application icon

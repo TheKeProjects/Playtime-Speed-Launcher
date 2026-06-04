@@ -129,18 +129,6 @@
                     HorizontalAlignment="Center"
                     Margin="0,4,0,14">
 
-            <!-- YouTube tutorial video button -->
-            <Button x:Name="YoutubeTutorialBtn"
-                    Width="58" Height="58"
-                    local:ButtonHelper.CornerRadius="5"
-                    Background="#1A0000" BorderBrush="#660000"
-                    BorderThickness="1"
-                    Margin="0,0,8,0"
-                    Click="YoutubeTutorialBtn_Click">
-                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE714;"
-                           FontSize="22" Foreground="#CC3333"/>
-            </Button>
-
             <Grid>
                 <Button x:Name="SettingsButton"
                         Width="58" Height="58"
@@ -220,6 +208,24 @@
                            Text="REPORTAR ERROR"
                            FontFamily="Cascadia Code, Consolas, Courier New"
                            FontSize="9" FontWeight="Bold" Foreground="#5522AA"
+                           Margin="5,0,0,0"/>
+            </StackPanel>
+        </Button>
+
+        <Button x:Name="BeginnerTutorialsBtn"
+                Grid.Row="5"
+                Height="24"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                local:ButtonHelper.CornerRadius="3"
+                Background="#060F18" BorderBrush="#003322" BorderThickness="1"
+                Click="BeginnerTutorialsBtn_Click">
+            <StackPanel Orientation="Horizontal" Margin="8,0,8,0">
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE714;"
+                           FontSize="10" Foreground="#007755"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="TUTORIALS"
+                           FontFamily="Cascadia Code, Consolas, Courier New"
+                           FontSize="9" FontWeight="Bold" Foreground="#007755"
                            Margin="5,0,0,0"/>
             </StackPanel>
         </Button>
@@ -1264,31 +1270,6 @@
             </Border>
         </Grid>
 
-        <!-- ── TUTORIAL VIDEO OVERLAY ── -->
-        <Grid x:Name="TutorialVideoOverlay"
-              Grid.RowSpan="6"
-              Background="Black"
-              Visibility="Collapsed"
-              Focusable="True"
-              KeyDown="TutorialVideoOverlay_KeyDown"
-              MouseDown="TutorialVideoOverlay_MouseDown">
-            <MediaElement x:Name="TutorialPlayer"
-                          LoadedBehavior="Manual"
-                          UnloadedBehavior="Stop"
-                          Stretch="Uniform"
-                          MediaEnded="TutorialPlayer_MediaEnded"/>
-            <Button Click="CloseTutorialVideoBtn_Click"
-                    Width="36" Height="36"
-                    HorizontalAlignment="Right" VerticalAlignment="Top"
-                    Margin="0,12,12,0"
-                    Panel.ZIndex="10"
-                    local:ButtonHelper.CornerRadius="4"
-                    Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1">
-                <TextBlock Text="✕" FontSize="14" FontWeight="Bold"
-                           Foreground="#3A6A8A"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            </Button>
-        </Grid>
 
         <!-- ── BUG REPORT OVERLAY ── -->
         <Grid x:Name="BugReportOverlay"

@@ -207,6 +207,7 @@ public static class VideoTutorialService
 
     private static readonly YoutubeClient _yt = new();
     private static readonly Dictionary<string, string> _cache = new();
+    private static readonly Dictionary<string, (string Video, string Audio)> _adaptiveCache = new();
 
     // Returns (url, errorMessage) — url is null on failure
     public static async Task<(string? Url, string? Error)> GetStreamUrlAsync(TutorialVideo video)
@@ -241,6 +242,59 @@ public static class VideoTutorialService
         catch (Exception ex)
         {
             return (null, ex.Message);
+        }
+    }
+
+    // Returns separate high-quality video + audio stream URLs.
+    // Prefers mp4 adaptive streams (up to 1080p+); falls back to muxed.
+    // audioUrl is null when falling back to a muxed stream.
+    public static async Task<(string? VideoUrl, string? AudioUrl, string? Error)> GetAdaptiveStreamsAsync(TutorialVideo video)
+    {
+        try
+        {
+            var m = Regex.Match(video.Url, @"youtu\.be/([A-Za-z0-9_-]+)");
+            if (!m.Success) m = Regex.Match(video.Url, @"[?&]v=([A-Za-z0-9_-]+)");
+            if (!m.Success) return (null, null, "Could not extract video ID from URL");
+
+            var videoId = m.Groups[1].Value;
+
+            if (_adaptiveCache.TryGetValue(videoId, out var ac))
+                return (ac.Video, ac.Audio, null);
+
+            var manifest = await _yt.Videos.Streams.GetManifestAsync(videoId);
+
+            var bestVideo = manifest.GetVideoOnlyStreams()
+                .Where(s => s.Container.Name == "mp4")
+                .OrderByDescending(s => s.VideoQuality.MaxHeight)
+                .FirstOrDefault();
+
+            var bestAudio = manifest.GetAudioOnlyStreams()
+                .Where(s => s.Container.Name == "mp4")
+                .OrderByDescending(s => s.Bitrate)
+                .FirstOrDefault();
+
+            if (bestVideo != null && bestAudio != null)
+            {
+                _adaptiveCache[videoId] = (bestVideo.Url, bestAudio.Url);
+                return (bestVideo.Url, bestAudio.Url, null);
+            }
+
+            // Fallback: best muxed stream
+            var muxed = manifest.GetMuxedStreams()
+                .OrderByDescending(s => s.VideoQuality.MaxHeight)
+                .FirstOrDefault();
+
+            if (muxed != null)
+            {
+                _adaptiveCache[videoId] = (muxed.Url, string.Empty);
+                return (muxed.Url, null, null);
+            }
+
+            return (null, null, "No playable stream found");
+        }
+        catch (Exception ex)
+        {
+            return (null, null, ex.Message);
         }
     }
 

@@ -39,8 +39,9 @@ public partial class MainWindow : Window
     private int  _saveCardChapter = 0;
 
     // ── Global hotkey ─────────────────────────────────────────────────────────
-    private HotkeyOverlay?         _hotkeyOverlay;
-    private VideoTutorialOverlay?  _tutorialOverlay;
+    private HotkeyOverlay?          _hotkeyOverlay;
+    private VideoTutorialOverlay?   _tutorialOverlay;
+    private BeginnerTutorialOverlay? _beginnerTutorialOverlay;
     private uint             _hotkeyModifiers = MOD_CONTROL | MOD_SHIFT;
     private uint             _hotkeyVk        = VK_RETURN;
     private bool             _capturingHotkey;
@@ -424,6 +425,7 @@ public partial class MainWindow : Window
         UnregisterHotKey(hwnd, TUTORIAL_HOTKEY_ID);
         _hotkeyOverlay?.Close();
         _tutorialOverlay?.Close();
+        _beginnerTutorialOverlay?.Close();
         _gameToast?.Close();
         _tutorialToast?.Close();
         _liveSplitPollCts?.Cancel();
@@ -3124,33 +3126,21 @@ public partial class MainWindow : Window
         Close();
     }
 
-    // ── Tutorial video ────────────────────────────────────────────────────────
+    // ── Beginner tutorials ────────────────────────────────────────────────────
 
-    private void YoutubeTutorialBtn_Click(object sender, RoutedEventArgs e)
+    private void BeginnerTutorialsBtn_Click(object sender, RoutedEventArgs e)
     {
-        var videoPath = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Videos", "Ingles.mp4");
-        if (!File.Exists(videoPath)) return;
-
-        TutorialPlayer.Source = new Uri(videoPath);
-        TutorialVideoOverlay.Visibility = Visibility.Visible;
-        TutorialVideoOverlay.Focus();
-        TutorialPlayer.Play();
-    }
-
-    private void CloseTutorialVideo()
-    {
-        TutorialPlayer.Stop();
-        TutorialPlayer.Source           = null;
-        TutorialVideoOverlay.Visibility = Visibility.Collapsed;
-    }
-
-    private void CloseTutorialVideoBtn_Click(object sender, RoutedEventArgs e) => CloseTutorialVideo();
-    private void TutorialPlayer_MediaEnded(object sender, RoutedEventArgs e)   => CloseTutorialVideo();
-    private void TutorialVideoOverlay_MouseDown(object sender, MouseButtonEventArgs e) => CloseTutorialVideo();
-
-    private void TutorialVideoOverlay_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Escape) CloseTutorialVideo();
+        if (_beginnerTutorialOverlay is { IsVisible: true })
+        {
+            _beginnerTutorialOverlay.Close();
+        }
+        else
+        {
+            _beginnerTutorialOverlay = new BeginnerTutorialOverlay();
+            _beginnerTutorialOverlay.Closed += (_, _) => _beginnerTutorialOverlay = null;
+            _beginnerTutorialOverlay.Show();
+            _beginnerTutorialOverlay.Activate();
+        }
     }
 
     // ── Updates ───────────────────────────────────────────────────────────────
