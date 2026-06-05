@@ -424,8 +424,8 @@ public partial class VideoTutorialOverlay : Window
         if (isProac)
         {
             const double avatarSize = 28;
-            var avatarImg = new Image { Stretch = Stretch.UniformToFill };
             var avatarPath = Path.Combine(ResourceExtractor.TempDir, "Assets", "Images", "proacventure.png");
+            Brush? fill = null;
             if (File.Exists(avatarPath))
             {
                 var bmp = new BitmapImage();
@@ -433,21 +433,20 @@ public partial class VideoTutorialOverlay : Window
                 bmp.UriSource   = new Uri(avatarPath);
                 bmp.CacheOption = BitmapCacheOption.OnLoad;
                 bmp.EndInit();
-                avatarImg.Source = bmp;
+                fill = new ImageBrush { ImageSource = bmp, Stretch = Stretch.UniformToFill };
             }
-            var avatarBorder = new Border
+            var avatarEllipse = new System.Windows.Shapes.Ellipse
             {
-                Width = avatarSize, Height = avatarSize,
-                CornerRadius = new CornerRadius(avatarSize / 2),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(180, 218, 165, 32)),
-                BorderThickness = new Thickness(1.5),
-                ClipToBounds = true,
-                Child = avatarImg,
+                Width             = avatarSize,
+                Height            = avatarSize,
+                Fill              = fill ?? Brushes.Transparent,
+                Stroke            = new SolidColorBrush(Color.FromArgb(180, 218, 165, 32)),
+                StrokeThickness   = 1.5,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(8, 0, 0, 0)
+                Margin            = new Thickness(8, 0, 0, 0)
             };
-            Grid.SetColumn(avatarBorder, 1);
-            row.Children.Add(avatarBorder);
+            Grid.SetColumn(avatarEllipse, 1);
+            row.Children.Add(avatarEllipse);
         }
 
         var isSelected = _selectedVideoId == video.Id;
@@ -587,12 +586,13 @@ public partial class VideoTutorialOverlay : Window
 
     private void Player_MediaEnded(object sender, RoutedEventArgs e)
     {
-        _isPlaying = false;
-        PlayPauseIcon.Text = IconPlay;
         _updatingSlider = true;
         ProgressSlider.Value = 0;
         _updatingSlider = false;
         Player.Position = TimeSpan.Zero;
+        Player.Play();
+        _isPlaying = true;
+        PlayPauseIcon.Text = IconPause;
     }
 
     private void PlayPause_Click(object sender, RoutedEventArgs e)

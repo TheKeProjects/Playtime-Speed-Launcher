@@ -324,6 +324,7 @@
                                 Style="{StaticResource SeekSlider}"
                                 Minimum="0" Maximum="100" Value="0"
                                 IsEnabled="False"
+                                IsMoveToPointEnabled="True"
                                 VerticalAlignment="Center" Margin="14,0"
                                 ValueChanged="ProgressSlider_ValueChanged"/>
                     </Grid>

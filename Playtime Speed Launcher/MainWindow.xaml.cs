@@ -404,6 +404,10 @@ public partial class MainWindow : Window
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "tutorial_hotkey.cfg");
 
+    private static readonly string VolumeFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "volume.cfg");
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
@@ -412,6 +416,7 @@ public partial class MainWindow : Window
         source?.AddHook(WndProc);
         LoadHotkey();
         LoadTutorialHotkey();
+        LoadVolume();
         RegisterHotKey(helper.Handle, HOTKEY_ID, _hotkeyModifiers, _hotkeyVk);
         RegisterHotKey(helper.Handle, TUTORIAL_HOTKEY_ID, _tutorialHotkeyModifiers, _tutorialHotkeyVk);
         RefreshHotkeyButton();
@@ -658,6 +663,35 @@ public partial class MainWindow : Window
             var dir = IOPath.GetDirectoryName(TutorialHotkeyFile)!;
             Directory.CreateDirectory(dir);
             File.WriteAllText(TutorialHotkeyFile, $"{_tutorialHotkeyModifiers},{_tutorialHotkeyVk}");
+        }
+        catch { }
+    }
+
+    private void LoadVolume()
+    {
+        try
+        {
+            if (!File.Exists(VolumeFile)) return;
+            if (float.TryParse(File.ReadAllText(VolumeFile).Trim(),
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var vol))
+            {
+                _sfxVolume = Math.Clamp(vol, 0f, 1f);
+                VolumeSlider.Value = _sfxVolume * 100.0;
+            }
+        }
+        catch { }
+    }
+
+    private void SaveVolume()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(VolumeFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(VolumeFile,
+                _sfxVolume.ToString("F4", System.Globalization.CultureInfo.InvariantCulture));
         }
         catch { }
     }
@@ -3112,6 +3146,7 @@ public partial class MainWindow : Window
         _sfxVolume = (float)(e.NewValue / 100.0);
         if (VolumeValueText is not null)
             VolumeValueText.Text = $"{(int)e.NewValue}%";
+        SaveVolume();
     }
 
     private void QuitButton_Click(object sender, RoutedEventArgs e)

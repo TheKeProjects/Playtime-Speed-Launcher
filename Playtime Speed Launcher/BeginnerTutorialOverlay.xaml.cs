@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -29,10 +29,10 @@ public partial class BeginnerTutorialOverlay : Window
     private double           _volumeBeforeMute = 0.8;
     private DispatcherTimer? _progressTimer;
 
-    private const string IconPlay  = "";
-    private const string IconPause = "";
-    private const string IconVol   = "";
-    private const string IconMute  = "";
+    private const string IconPlay  = "";
+    private const string IconPause = "";
+    private const string IconVol   = "";
+    private const string IconMute  = "";
 
     public BeginnerTutorialOverlay()
     {
@@ -166,12 +166,13 @@ public partial class BeginnerTutorialOverlay : Window
 
     private void Player_MediaEnded(object sender, RoutedEventArgs e)
     {
-        _isPlaying = false;
-        PlayPauseIcon.Text = IconPlay;
         _updatingSlider = true;
         ProgressSlider.Value = 0;
         _updatingSlider = false;
         Player.Position = TimeSpan.Zero;
+        Player.Play();
+        _isPlaying = true;
+        PlayPauseIcon.Text = IconPause;
     }
 
     private void PlayPause_Click(object sender, RoutedEventArgs e)
