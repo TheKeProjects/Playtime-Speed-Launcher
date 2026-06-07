@@ -7,6 +7,11 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("1.2.10", "07/06/2026",
+        [
+            "Added full controller support across all chapters",
+            "Discord is now required for submitting bug reports and feedback",
+        ]),
         new("1.2.9", "05/06/2026",
         [
             "Fixed issues with the audio system",

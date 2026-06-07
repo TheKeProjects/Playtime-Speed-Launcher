@@ -201,6 +201,7 @@ public partial class MainWindow : Window
         OpenLiveSplitBtnText.Text      = "LiveSplit";
         OpenLiveSplitBtnBadge.Text     = "↑ UPDATE";
         CopyForSteamBtnText.Text       = Loc.Get("steam_launch_btn");
+        SteamTutorialBtnText.Text      = Loc.Get("steam_tutorial_btn");
         CloseLiveSplitBtnText.Text     = Loc.Get("back");
         LiveSplitInstalledVersionLabel.Text = Loc.Get("livesplit_installed_version");
         LiveSplitLatestVersionLabel.Text    = Loc.Get("livesplit_latest_version");
@@ -3139,6 +3140,150 @@ public partial class MainWindow : Window
         popup.Show();
     }
 
+    // ── Step-by-step image tutorials (Steam launch setup / Controller setup) ──
+
+    private sealed record TutorialStep(string? ImagePath, string? Caption, bool ShowCopyButton = false, bool ShowControllerIcon = false);
+
+    private void SteamTutorialBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var dir = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "Tutorial");
+        ShowTutorialStepsPopup(
+            new TutorialStep(IOPath.Combine(dir, "1.png"), null),
+            new TutorialStep(IOPath.Combine(dir, "2.png"), Loc.Get("steam_tutorial_paste_here"), ShowCopyButton: true),
+            new TutorialStep(IOPath.Combine(dir, "3.png"), null),
+            new TutorialStep(null, Loc.Get("controller_setup_restart"), ShowControllerIcon: true));
+    }
+
+    private void ShowTutorialStepsPopup(params TutorialStep[] steps)
+    {
+        if (steps.Length == 0) return;
+
+        var teal = new SolidColorBrush(Teal);
+        var dim  = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+        int step = 0;
+        int last = steps.Length - 1;
+
+        var image = new Image { Stretch = Stretch.Uniform, MaxHeight = 320, Margin = new Thickness(0, 0, 0, 14) };
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+
+        var controllerIcon = new TextBlock
+        {
+            FontFamily = new FontFamily("Segoe MDL2 Assets"), Text = "",
+            FontSize = 72, Foreground = teal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 30, 0, 20),
+            Visibility = Visibility.Collapsed,
+        };
+
+        var caption = new TextBlock
+        {
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 13, FontWeight = FontWeights.Bold, Foreground = dim,
+            TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12),
+        };
+
+        var copyBtn = MakeSmallButton(Loc.Get("steam_tutorial_copy_btn"), Teal);
+        copyBtn.MinWidth = 170;
+        copyBtn.HorizontalAlignment = HorizontalAlignment.Center;
+
+        var copiedMsg = new TextBlock
+        {
+            Text = Loc.Get("steam_tutorial_copied"),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 11, Foreground = teal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 8, 0, 0),
+            Visibility = Visibility.Hidden,
+        };
+
+        copyBtn.Click += (_, _) =>
+        {
+            var exePath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName;
+            if (string.IsNullOrEmpty(exePath)) return;
+            try { Clipboard.SetText($"\"{exePath}\" %command%"); }
+            catch { return; }
+            copiedMsg.Visibility = Visibility.Visible;
+        };
+
+        var stepLabel = new TextBlock
+        {
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 10, Foreground = dim,
+            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        var prevBtn = MakeSmallButton(Loc.Get("steam_tutorial_prev"), dim.Color);
+        var nextBtn = MakeSmallButton(Loc.Get("steam_tutorial_next"), Teal);
+        prevBtn.MinWidth = 90;
+        nextBtn.MinWidth = 90;
+
+        Window? popup = null;
+
+        void Render()
+        {
+            var s = steps[step];
+            copiedMsg.Visibility = Visibility.Hidden;
+
+            var hasImage = s.ImagePath is not null && File.Exists(s.ImagePath);
+            image.Visibility = hasImage ? Visibility.Visible : Visibility.Collapsed;
+            image.Source     = hasImage ? new BitmapImage(new Uri(s.ImagePath!)) : null;
+
+            controllerIcon.Visibility = s.ShowControllerIcon ? Visibility.Visible : Visibility.Collapsed;
+            copyBtn.Visibility        = s.ShowCopyButton     ? Visibility.Visible : Visibility.Collapsed;
+
+            caption.Text       = s.Caption ?? "";
+            caption.Visibility = string.IsNullOrEmpty(s.Caption) ? Visibility.Collapsed : Visibility.Visible;
+
+            stepLabel.Text    = $"{step + 1} / {steps.Length}";
+            prevBtn.IsEnabled = step > 0;
+            ((TextBlock)nextBtn.Content).Text = step == last ? Loc.Get("steam_tutorial_done") : Loc.Get("steam_tutorial_next");
+        }
+
+        prevBtn.Click += (_, _) => { if (step > 0) { step--; Render(); } };
+        nextBtn.Click += (_, _) =>
+        {
+            if (step < last) { step++; Render(); }
+            else popup?.Close();
+        };
+
+        var nav = new Grid { Margin = new Thickness(0, 16, 0, 0) };
+        nav.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        nav.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        nav.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(prevBtn, 0);
+        Grid.SetColumn(stepLabel, 1);
+        Grid.SetColumn(nextBtn, 2);
+        nav.Children.Add(prevBtn);
+        nav.Children.Add(stepLabel);
+        nav.Children.Add(nextBtn);
+
+        var panel = new StackPanel { Margin = new Thickness(28), VerticalAlignment = VerticalAlignment.Center };
+        panel.Children.Add(image);
+        panel.Children.Add(controllerIcon);
+        panel.Children.Add(caption);
+        panel.Children.Add(copyBtn);
+        panel.Children.Add(copiedMsg);
+        panel.Children.Add(nav);
+
+        popup = new Window
+        {
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            Width = 640,
+            Height = 580,
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = new SolidColorBrush(Color.FromRgb(9, 12, 30)),
+            ShowInTaskbar = false,
+            Content = panel,
+        };
+        popup.KeyDown += (_, ev) => { if (ev.Key == Key.Escape) popup.Close(); };
+
+        Render();
+        popup.Show();
+    }
+
     private void VersionBtn_Click(object sender, RoutedEventArgs e) => OpenVersionsOverlay();
 
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -3892,11 +4037,80 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_bugReportDiscordUser is null)
+        {
+            var content = new StackPanel();
+            content.Children.Add(new TextBlock
+            {
+                Text         = Loc.Get("bug_report_err_discord_required"),
+                TextWrapping = TextWrapping.Wrap,
+                FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize     = 12,
+                Foreground   = new SolidColorBrush(Color.FromArgb(255, 160, 180, 200)),
+                Margin       = new Thickness(0, 0, 0, 16),
+            });
+            content.Children.Add(new TextBlock
+            {
+                Text       = Loc.Get("bug_report_discord_info_perms_title"),
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize   = 10, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x44, 0xCC)),
+                Margin     = new Thickness(0, 0, 0, 8),
+            });
+
+            var permRow = new Border
+            {
+                Background      = new SolidColorBrush(Color.FromArgb(40, 119, 85, 204)),
+                BorderBrush     = new SolidColorBrush(Color.FromArgb(90, 119, 85, 204)),
+                BorderThickness = new Thickness(1),
+                CornerRadius    = new CornerRadius(4),
+                Padding         = new Thickness(10, 8, 10, 8),
+                Margin          = new Thickness(0, 0, 0, 10),
+            };
+            var permStack = new StackPanel();
+            permStack.Children.Add(new TextBlock
+            {
+                Text       = Loc.Get("bug_report_discord_info_perm_name"),
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize   = 10, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromRgb(119, 85, 204)),
+            });
+            permStack.Children.Add(new TextBlock
+            {
+                Text         = Loc.Get("bug_report_discord_info_perm_desc"),
+                FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize     = 9,
+                Foreground   = new SolidColorBrush(Color.FromRgb(74, 90, 122)),
+                TextWrapping = TextWrapping.Wrap,
+                Margin       = new Thickness(0, 3, 0, 0),
+            });
+            permRow.Child = permStack;
+            content.Children.Add(permRow);
+
+            content.Children.Add(new TextBlock
+            {
+                Text         = Loc.Get("bug_report_discord_info_no_access"),
+                FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize     = 9,
+                Foreground   = new SolidColorBrush(Color.FromRgb(51, 68, 68)),
+                TextWrapping = TextWrapping.Wrap,
+            });
+
+            var discordResult = await WpfDialog.ShowAsync(this,
+                Loc.Get("bug_report_discord_required_title"), content,
+                primaryText: Loc.Get("bug_report_discord_connect_btn"),
+                closeText:   Loc.Get("back"));
+
+            if (discordResult == WpfDialogResult.Primary)
+                BugDiscordConnectBtn_Click(sender, e);
+            return;
+        }
+
         SendBugReportBtn.IsEnabled = false;
         SendBugReportBtnText.Text  = Loc.Get("bug_report_sending");
         BugStatusText.Visibility   = Visibility.Collapsed;
 
-        var ok = await SendDiscordBugReportAsync(_bugReportDiscordUser, title, desc, _bugImagePath);
+        var ok = await SendDiscordBugReportAsync(_bugReportDiscordUser.Value, title, desc, _bugImagePath);
 
         if (ok)
         {
@@ -3918,7 +4132,7 @@ public partial class MainWindow : Window
     }
 
     private static async Task<bool> SendDiscordBugReportAsync(
-        (string Id, string Username)? discordUser, string title, string description, string? imagePath)
+        (string Id, string Username) discordUser, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
             "YourWebhookUrl";
@@ -3927,9 +4141,7 @@ public partial class MainWindow : Window
         {
             using var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30) };
 
-            var authorName = discordUser.HasValue
-                ? $"{discordUser.Value.Username}  ·  ID: {discordUser.Value.Id}"
-                : "Anonymous";
+            var authorName = $"{discordUser.Username}  ·  ID: {discordUser.Id}";
             var footer     = $"Playtime Speed Launcher  ·  {AppVersion.GetDisplayVersion()}";
 
             string json;

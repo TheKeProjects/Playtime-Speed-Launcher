@@ -158,6 +158,14 @@ updates_close = VOLVER
 
 # Steam
 steam_launch_btn = ABRIR LAUNCHER CON STEAM
+steam_tutorial_btn = CONFIGURAR EL MANDO
+steam_tutorial_paste_here = Pega el comando aquí
+steam_tutorial_copy_btn = COPIAR COMANDO
+steam_tutorial_copied = ¡Comando copiado!
+steam_tutorial_prev = ATRÁS
+steam_tutorial_next = SIGUIENTE
+steam_tutorial_done = ENTENDIDO
+controller_setup_restart = Reinicia la app desde Steam
 
 # LiveSplit
 livesplit_checking = Comprobando...
@@ -247,7 +255,7 @@ bug_report_discord_waiting            = Esperando autorización en el navegador.
 bug_report_discord_cancel             = CANCELAR
 bug_report_discord_info_header        = [ CUENTA DE DISCORD ]
 bug_report_discord_info_why_title     = ¿Por qué se necesita Discord?
-bug_report_discord_info_why_text      = Si necesito más detalles sobre el error, Discord me permite contactarte directamente de forma rápida. Es completamente opcional.
+bug_report_discord_info_why_text      = Conectar Discord es necesario para enviar un reporte. Me permite contactarte directa y rápidamente si necesito más detalles sobre el error.
 bug_report_discord_info_perms_title   = Permisos solicitados:
 bug_report_discord_info_perm_name     = identify
 bug_report_discord_info_perm_desc     = Lee tu nombre de usuario e ID de Discord. Nada más.
@@ -262,3 +270,5 @@ bug_report_sending     = ENVIANDO...
 bug_report_success     = ¡Reporte enviado! Gracias.
 bug_report_err_empty   = Por favor completa el título y la descripción.
 bug_report_err_send    = No se pudo enviar. Revisa tu conexión.
+bug_report_discord_required_title = [ SE REQUIERE DISCORD ]
+bug_report_err_discord_required = Conecta tu cuenta de Discord primero — ya no se aceptan reportes anónimos, y así tengo una forma rápida de hacerte preguntas sobre el reporte.

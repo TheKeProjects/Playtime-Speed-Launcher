@@ -158,6 +158,14 @@ updates_close = BACK
 
 # Steam
 steam_launch_btn = OPEN LAUNCHER WITH STEAM
+steam_tutorial_btn = SET UP CONTROLLER SUPPORT
+steam_tutorial_paste_here = Paste the command here
+steam_tutorial_copy_btn = COPY COMMAND
+steam_tutorial_copied = Command copied!
+steam_tutorial_prev = BACK
+steam_tutorial_next = NEXT
+steam_tutorial_done = GOT IT
+controller_setup_restart = Restart the app from Steam
 
 # LiveSplit
 livesplit_checking = Checking...
@@ -247,7 +255,7 @@ bug_report_discord_waiting            = Waiting for browser authorization...
 bug_report_discord_cancel             = CANCEL
 bug_report_discord_info_header        = [ DISCORD ACCOUNT ]
 bug_report_discord_info_why_title     = Why is Discord required?
-bug_report_discord_info_why_text      = If I need more details about the bug, Discord lets me contact you directly and quickly. It is completely optional.
+bug_report_discord_info_why_text      = Connecting Discord is required to send a report. It lets me contact you directly and quickly if I need more details about the bug.
 bug_report_discord_info_perms_title   = Requested permissions:
 bug_report_discord_info_perm_name     = identify
 bug_report_discord_info_perm_desc     = Reads your Discord username and user ID. Nothing else.
@@ -262,3 +270,5 @@ bug_report_sending     = SENDING...
 bug_report_success     = Report sent! Thank you.
 bug_report_err_empty   = Please fill in the title and description.
 bug_report_err_send    = Could not send the report. Check your connection.
+bug_report_discord_required_title = [ DISCORD REQUIRED ]
+bug_report_err_discord_required = Connect your Discord account first — anonymous reports are no longer accepted, and it gives me a quick way to ask you follow-up questions about the report.
