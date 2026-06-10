@@ -197,6 +197,9 @@ save_card_save_btn = SAVE FILE
 # Checkpoint select overlay (Chapter 1)
 checkpoint_select_header = [ SELECT CHECKPOINT ]
 
+# Auto splitter select overlay
+auto_splitter_header = [ AUTO SPLITTER ]
+
 # Hotkey overlay (Ctrl+Shift+Enter)
 hotkey_header   = [ LOAD CHECKPOINT ]
 hotkey_hint     = Esc · close
@@ -231,10 +234,10 @@ discord_sign_out = DISCONNECT DISCORD
 # LiveSplit TCP notice
 livesplit_tcp_title = LiveSplit Server required
 livesplit_tcp_desc = This option shows your timer in Discord, but it requires the LiveSplit Server to be running.
-livesplit_tcp_steps_label = Every time you open LiveSplit, do this:
-livesplit_tcp_step1 = 1.  Right-click LiveSplit
-livesplit_tcp_step2 = 2.  Control  →  Start Server
-livesplit_tcp_reminder = You need to activate the server every time you open LiveSplit.
+livesplit_tcp_steps_label = Only do this once, the first time you use LiveSplit:
+livesplit_tcp_step1 = 1.  Right-click LiveSplit  →  Settings
+livesplit_tcp_step2 = 2.  Set  'Startup Behavior'  to  'Start TCP Server'
+livesplit_tcp_reminder = You only need to do this once. LiveSplit will start the server automatically from now on.
 
 # Epic Games
 epic_not_found_content = Could not find the Poppy Playtime Epic Games installation.\n\nSelect the PoppyPlaytimeChapterOne folder inside your Epic Games installation.

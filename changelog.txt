@@ -1,3 +1,3 @@
-1.2.10
-- Added full controller support across all chapters
-- Discord is now required for submitting bug reports and feedback
+1.2.11
+- Added a tutorial on how to automatically connect LiveSplit to Discord
+- Added auto splitters for Chapters 1 and 2

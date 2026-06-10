@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+﻿﻿﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -236,6 +236,9 @@ public partial class MainWindow : Window
 
         CheckpointSelectHeaderText.Text   = Loc.Get("checkpoint_select_header");
         CloseCheckpointSelectBtnText.Text = Loc.Get("back");
+
+        AutoSplitterHeaderText.Text   = Loc.Get("auto_splitter_header");
+        CloseAutoSplitterBtnText.Text = Loc.Get("back");
 
         ChangelogBtnText.Text      = Loc.Get("changelog_btn");
         ChangelogHeaderText.Text   = Loc.Get("changelog_header");
@@ -1174,14 +1177,45 @@ public partial class MainWindow : Window
 
         if (chapter.Number == 1 || chapter.Number == 2 || chapter.Number == 3 || chapter.Number >= 4)
         {
+            var actionsPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 8, 0, 0),
+            };
+
+            var splitsDir = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Splits", $"Chapter {chapter.Number}");
+            if (Directory.Exists(splitsDir))
+            {
+                var autoSplitterBtn = new Button
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(10, 5, 10, 5),
+                    Margin = new Thickness(0, 0, 6, 0),
+                    Tag = chapter.Number,
+                };
+                ButtonHelper.SetCornerRadius(autoSplitterBtn, new CornerRadius(3));
+                autoSplitterBtn.Content = new TextBlock
+                {
+                    FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                    Text = "",
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                autoSplitterBtn.MouseDown += (s, ev) => ev.Handled = true;
+                autoSplitterBtn.Click += AutoSplitterCardBtn_Click;
+                actionsPanel.Children.Add(autoSplitterBtn);
+            }
+
             var saveBtn = new Button
             {
                 Background = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
                 BorderBrush = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(10, 5, 10, 5),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Margin = new Thickness(0, 8, 0, 0),
                 Tag = chapter.Number,
             };
             ButtonHelper.SetCornerRadius(saveBtn, new CornerRadius(3));
@@ -1206,7 +1240,9 @@ public partial class MainWindow : Window
             saveBtn.Content = saveBtnContent;
             saveBtn.MouseDown += (s, ev) => ev.Handled = true;
             saveBtn.Click += SaveCardOpenBtn_Click;
-            bottom.Children.Add(saveBtn);
+            actionsPanel.Children.Add(saveBtn);
+
+            bottom.Children.Add(actionsPanel);
         }
 
         grid.Children.Add(bottom);
@@ -3002,6 +3038,82 @@ public partial class MainWindow : Window
     private void CloseCheckpointSelectBtn_Click(object sender, RoutedEventArgs e) =>
         CheckpointSelectOverlay.Visibility = Visibility.Collapsed;
 
+    // ── Auto splitter ────────────────────────────────────────────────────────
+
+    private void AutoSplitterCardBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not int chapterNum) return;
+
+        PopulateAutoSplitterList(chapterNum);
+        AutoSplitterOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void PopulateAutoSplitterList(int chapterNum)
+    {
+        AutoSplitterListPanel.Children.Clear();
+        var splitsDir = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Splits", $"Chapter {chapterNum}");
+        if (!Directory.Exists(splitsDir)) return;
+
+        bool first = true;
+        foreach (var file in Directory.EnumerateFiles(splitsDir, "*.asl").OrderBy(IOPath.GetFileName))
+        {
+            var btn = new Button
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Background = new SolidColorBrush(Color.FromArgb(0xFF, 0x0A, 0x18, 0x25)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0x0D, 0x25, 0x35)),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(14, 9, 14, 9),
+                Margin = first ? new Thickness(0) : new Thickness(0, 6, 0, 0),
+                Tag = (file, chapterNum),
+            };
+            ButtonHelper.SetCornerRadius(btn, new CornerRadius(4));
+            btn.Click += AutoSplitterFileBtn_Click;
+
+            var content = new StackPanel { Orientation = Orientation.Horizontal };
+            content.Children.Add(new TextBlock
+            {
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                Text = "",
+                FontSize = 13,
+                Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0x00, 0xCC, 0xAA)),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            content.Children.Add(new TextBlock
+            {
+                Text = IOPath.GetFileNameWithoutExtension(file),
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize = 11,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0xCC, 0xDD, 0xEE)),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(10, 0, 0, 0),
+            });
+            btn.Content = content;
+            AutoSplitterListPanel.Children.Add(btn);
+            first = false;
+        }
+    }
+
+    private void AutoSplitterFileBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not (string sourcePath, int chapterNum)) return;
+
+        try
+        {
+            var destDir = IOPath.Combine(LiveSplitService.DefaultInstallDir, "Components", "CUSTOM SPLITS", $"CHAPTER {chapterNum}");
+            Directory.CreateDirectory(destDir);
+            File.Copy(sourcePath, IOPath.Combine(destDir, IOPath.GetFileName(sourcePath)), overwrite: true);
+        }
+        catch { }
+
+        AutoSplitterOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void CloseAutoSplitterBtn_Click(object sender, RoutedEventArgs e) =>
+        AutoSplitterOverlay.Visibility = Visibility.Collapsed;
+
     private void SaveCardDeleteBtn_Click(object sender, RoutedEventArgs e)
     {
         var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -3777,64 +3889,91 @@ public partial class MainWindow : Window
     private void ShowLiveSplitTcpNotice()
     {
         var mono   = new FontFamily("Cascadia Code, Consolas, Courier New");
-        var bright = new SolidColorBrush(Color.FromArgb(200, 160, 200, 230));
-        var muted  = new SolidColorBrush(Color.FromArgb(150, 120, 160, 190));
-        var teal   = new SolidColorBrush(Color.FromArgb(255,   0, 204, 170));
+        var muted  = Color.FromArgb(255, 138, 170, 187);
+        var tutDir = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", "Tutorial Live Split");
+
+        var pages = new[]
+        {
+            (Step: Loc.Get("livesplit_tcp_step1"), Img: IOPath.Combine(tutDir, "1.png"), Footer: (string?)null),
+            (Step: Loc.Get("livesplit_tcp_step2"), Img: IOPath.Combine(tutDir, "2.png"), Footer: Loc.Get("livesplit_tcp_reminder")),
+        };
+        int page = 0;
+        int last = pages.Length - 1;
+
+        var stepText = new TextBlock
+        {
+            FontFamily = mono, FontSize = 11,
+            Foreground = new SolidColorBrush(Teal),
+            Margin     = new Thickness(0, 0, 0, 10),
+        };
+
+        var img = new Image { MaxWidth = 340, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left };
+        RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
+
+        var footerText = new TextBlock
+        {
+            FontFamily   = mono, FontSize = 10,
+            Foreground   = new SolidColorBrush(Color.FromArgb(150, 120, 160, 190)),
+            TextWrapping = TextWrapping.Wrap,
+            Margin       = new Thickness(0, 12, 0, 0),
+        };
+
+        var pageLabel = new TextBlock
+        {
+            FontFamily          = mono, FontSize = 10,
+            Foreground          = new SolidColorBrush(muted),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment   = VerticalAlignment.Center,
+        };
+        var prevBtn = MakeSmallButton(Loc.Get("steam_tutorial_prev"), muted);
+        var nextBtn = MakeSmallButton(Loc.Get("steam_tutorial_next"), Teal);
+        prevBtn.MinWidth = 80;
+        nextBtn.MinWidth = 80;
+
+        WpfDialog? dlg = null;
+
+        void RenderPage()
+        {
+            var p = pages[page];
+            stepText.Text = p.Step;
+            img.Source    = new BitmapImage(new Uri(p.Img));
+            footerText.Text       = p.Footer ?? "";
+            footerText.Visibility = p.Footer != null ? Visibility.Visible : Visibility.Collapsed;
+            pageLabel.Text    = $"{page + 1} / {pages.Length}";
+            prevBtn.IsEnabled = page > 0;
+            ((TextBlock)nextBtn.Content).Text = page == last
+                ? Loc.Get("steam_tutorial_done")
+                : Loc.Get("steam_tutorial_next");
+        }
+
+        prevBtn.Click += (_, _) => { if (page > 0) { page--; RenderPage(); } };
+        nextBtn.Click += (_, _) =>
+        {
+            if (page < last) { page++; RenderPage(); }
+            else dlg?.Close();
+        };
+
+        var nav = new Grid { Margin = new Thickness(0, 16, 0, 0) };
+        nav.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        nav.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        nav.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(prevBtn,   0);
+        Grid.SetColumn(pageLabel, 1);
+        Grid.SetColumn(nextBtn,   2);
+        nav.Children.Add(prevBtn);
+        nav.Children.Add(pageLabel);
+        nav.Children.Add(nextBtn);
 
         var panel = new StackPanel { MinWidth = 370 };
+        panel.Children.Add(stepText);
+        panel.Children.Add(img);
+        panel.Children.Add(footerText);
+        panel.Children.Add(nav);
 
-        panel.Children.Add(new TextBlock
-        {
-            Text         = Loc.Get("livesplit_tcp_desc"),
-            FontFamily   = mono, FontSize = 11,
-            Foreground   = bright,
-            TextWrapping = TextWrapping.Wrap,
-            Margin       = new Thickness(0, 0, 0, 14),
-        });
+        RenderPage();
 
-        panel.Children.Add(new TextBlock
-        {
-            Text       = Loc.Get("livesplit_tcp_steps_label"),
-            FontFamily = mono, FontSize = 10,
-            Foreground = muted,
-            Margin     = new Thickness(0, 0, 0, 6),
-        });
-
-        var stepBox = new Border
-        {
-            Background      = new SolidColorBrush(Color.FromArgb(25, 0, 204, 170)),
-            BorderBrush     = new SolidColorBrush(Color.FromArgb(55, 0, 204, 170)),
-            BorderThickness = new Thickness(1),
-            CornerRadius    = new CornerRadius(3),
-            Padding         = new Thickness(14, 10, 14, 10),
-            Margin          = new Thickness(0, 0, 0, 14),
-        };
-        var steps = new StackPanel();
-        steps.Children.Add(new TextBlock
-        {
-            Text = Loc.Get("livesplit_tcp_step1"),
-            FontFamily = mono, FontSize = 11, Foreground = teal,
-            Margin = new Thickness(0, 0, 0, 5),
-        });
-        steps.Children.Add(new TextBlock
-        {
-            Text = Loc.Get("livesplit_tcp_step2"),
-            FontFamily = mono, FontSize = 11, Foreground = teal,
-        });
-        stepBox.Child = steps;
-        panel.Children.Add(stepBox);
-
-        panel.Children.Add(new TextBlock
-        {
-            Text         = Loc.Get("livesplit_tcp_reminder"),
-            FontFamily   = mono, FontSize = 10,
-            Foreground   = muted,
-            TextWrapping = TextWrapping.Wrap,
-        });
-
-        WpfDialog.Show(this,
-            Loc.Get("livesplit_tcp_title"), panel,
-            primaryText: Loc.Get("understood"));
+        dlg = new WpfDialog(this, Loc.Get("livesplit_tcp_title"), panel);
+        dlg.ShowDialog();
     }
 
     // ── Changelog ─────────────────────────────────────────────────────────────

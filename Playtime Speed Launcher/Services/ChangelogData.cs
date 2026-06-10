@@ -7,6 +7,11 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("1.2.11", "10/06/2026",
+        [
+            "Added a tutorial on how to automatically connect LiveSplit to Discord", 
+            "Added auto splitters for Chapters 1 and 2",
+        ]),
         new("1.2.10", "07/06/2026",
         [
             "Added full controller support across all chapters",
