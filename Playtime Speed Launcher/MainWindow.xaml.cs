@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private int   _versionsChapter = 0;
     private bool  _hidePresetRows  = true;
     private float _sfxVolume       = 0.5f;
+    private bool  _volumeLoaded    = false;
     private static readonly Dictionary<string, string> LangNames = new()
     {
         ["es"] = "Español",
@@ -50,6 +51,13 @@ public partial class MainWindow : Window
     private uint             _tutorialHotkeyVk        = VK_F9;
     private bool             _capturingTutorialHotkey;
     private KeyEventHandler? _tutorialHotkeyCapture;
+
+    // ── F11 remap ─────────────────────────────────────────────────────────────
+    private readonly F11RemapService _f11Remap = new();
+    private bool                     _capturingF11Remap;
+    private int?                     _f11RemapCaptureIndex;
+    private KeyEventHandler?         _f11RemapKeyCapture;
+    private MouseButtonEventHandler? _f11RemapMouseCapture;
 
     // ── Game watcher ──────────────────────────────────────────────────────────
     private readonly bool[] _gameWasRunning        = new bool[3];
@@ -193,6 +201,10 @@ public partial class MainWindow : Window
         TutorialHotkeyLabel.Text   = Loc.Get("tutorial_hotkey_label");
         RefreshHotkeyButton();
         RefreshTutorialHotkeyButton();
+        F11RemapSectionLabel.Text  = Loc.Get("f11_remap_section");
+        F11RemapEnableLabel.Text   = Loc.Get("f11_remap_enable_label");
+        F11RemapHintText.Text      = Loc.Get("f11_remap_hint");
+        RefreshF11RemapUI();
         ToolTipService.SetToolTip(SettingsButton, Loc.Get("settings_tooltip"));
 
         OpenUpdatesBtnText.Text        = Loc.Get("updates_header");
@@ -424,6 +436,9 @@ public partial class MainWindow : Window
         RegisterHotKey(helper.Handle, HOTKEY_ID, _hotkeyModifiers, _hotkeyVk);
         RegisterHotKey(helper.Handle, TUTORIAL_HOTKEY_ID, _tutorialHotkeyModifiers, _tutorialHotkeyVk);
         RefreshHotkeyButton();
+        _f11Remap.Load();
+        _f11Remap.Refresh();
+        RefreshF11RemapUI();
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
@@ -440,6 +455,7 @@ public partial class MainWindow : Window
         _liveSplitPollCts?.Cancel();
         _liveSplitClient.Dispose();
         _discordPresence.Dispose();
+        _f11Remap.Dispose();
     }
 
     private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
@@ -686,10 +702,15 @@ public partial class MainWindow : Window
             }
         }
         catch { }
+        finally { _volumeLoaded = true; }
     }
 
     private void SaveVolume()
     {
+        // Skip saves triggered by the XAML default Value or by LoadVolume itself,
+        // so a restart doesn't overwrite the stored volume with the slider's default.
+        if (!_volumeLoaded) return;
+
         try
         {
             var dir = IOPath.GetDirectoryName(VolumeFile)!;
@@ -770,6 +791,233 @@ public partial class MainWindow : Window
 
         e.Handled = true;
     }
+
+    // ── F11 remap configuration ───────────────────────────────────────────────
+
+    private const int F11RemapAddSlot = -1;
+
+    private void F11RemapEnableBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_capturingF11Remap)
+            CancelF11RemapCapture();
+
+        _f11Remap.SetEnabled(!_f11Remap.Enabled);
+        RefreshF11RemapUI();
+    }
+
+    private void F11RemapAddKeyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_capturingF11Remap)
+        {
+            var wasAdding = _f11RemapCaptureIndex == F11RemapAddSlot;
+            CancelF11RemapCapture();
+            if (wasAdding)
+            {
+                RefreshF11RemapUI();
+                return;
+            }
+        }
+
+        StartF11RemapCapture(F11RemapAddSlot);
+    }
+
+    private void F11RemapKeyBtn_Click(int index)
+    {
+        if (_capturingF11Remap)
+        {
+            var wasThis = _f11RemapCaptureIndex == index;
+            CancelF11RemapCapture();
+            if (wasThis)
+            {
+                RefreshF11RemapUI();
+                return;
+            }
+        }
+
+        StartF11RemapCapture(index);
+    }
+
+    private void StartF11RemapCapture(int slot)
+    {
+        _capturingF11Remap    = true;
+        _f11RemapCaptureIndex = slot;
+
+        _f11RemapKeyCapture = CaptureF11RemapKeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _f11RemapKeyCapture, true);
+
+        _f11RemapMouseCapture = CaptureF11RemapMouseDown;
+        AddHandler(UIElement.PreviewMouseDownEvent, _f11RemapMouseCapture, true);
+
+        RefreshF11RemapUI();
+    }
+
+    private void CancelF11RemapCapture()
+    {
+        _capturingF11Remap    = false;
+        _f11RemapCaptureIndex = null;
+        if (_f11RemapKeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewKeyDownEvent, _f11RemapKeyCapture);
+            _f11RemapKeyCapture = null;
+        }
+        if (_f11RemapMouseCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewMouseDownEvent, _f11RemapMouseCapture);
+            _f11RemapMouseCapture = null;
+        }
+    }
+
+    private void CaptureF11RemapKeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key is Key.LeftCtrl or Key.RightCtrl
+                or Key.LeftShift or Key.RightShift
+                or Key.LeftAlt or Key.RightAlt
+                or Key.LWin or Key.RWin
+                or Key.None)
+            return;
+
+        var slot = _f11RemapCaptureIndex;
+        CancelF11RemapCapture();
+
+        if (key != Key.Escape && key != Key.F11)
+        {
+            var vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+            if (slot is null or F11RemapAddSlot)
+                _f11Remap.AddBinding(F11RemapInputType.Keyboard, keyVk: vk);
+            else
+                _f11Remap.ReplaceBinding(slot.Value, F11RemapInputType.Keyboard, keyVk: vk);
+        }
+
+        RefreshF11RemapUI();
+        e.Handled = true;
+    }
+
+    private void CaptureF11RemapMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        int? mouseButton = e.ChangedButton switch
+        {
+            MouseButton.Middle   => F11RemapService.MouseMiddle,
+            MouseButton.XButton1 => F11RemapService.MouseXButton1,
+            MouseButton.XButton2 => F11RemapService.MouseXButton2,
+            _ => null,
+        };
+
+        if (mouseButton is null) return;
+
+        var slot = _f11RemapCaptureIndex;
+        CancelF11RemapCapture();
+
+        if (slot is null or F11RemapAddSlot)
+            _f11Remap.AddBinding(F11RemapInputType.Mouse, mouseButton: mouseButton.Value);
+        else
+            _f11Remap.ReplaceBinding(slot.Value, F11RemapInputType.Mouse, mouseButton: mouseButton.Value);
+
+        RefreshF11RemapUI();
+        e.Handled = true;
+    }
+
+    private void RefreshF11RemapUI()
+    {
+        SetToggle(F11RemapEnableText, _f11Remap.Enabled);
+
+        F11RemapBindingsPanel.Children.Clear();
+        for (var i = 0; i < _f11Remap.Bindings.Count; i++)
+            F11RemapBindingsPanel.Children.Add(BuildF11RemapBindingRow(i));
+
+        var addingNew = _f11RemapCaptureIndex == F11RemapAddSlot;
+        F11RemapAddKeyText.Text       = addingNew ? Loc.Get("f11_remap_press_input") : Loc.Get("f11_remap_add_key");
+        F11RemapAddKeyText.Foreground = new SolidColorBrush(addingNew
+            ? Color.FromArgb(255, 0, 204, 170) : Color.FromArgb(255, 138, 170, 187));
+        F11RemapAddKeyBtn.BorderBrush = new SolidColorBrush(addingNew
+            ? Color.FromArgb(255, 0, 204, 170) : Color.FromArgb(255, 26, 58, 85));
+    }
+
+    private Grid BuildF11RemapBindingRow(int index)
+    {
+        var row = new Grid { Margin = new Thickness(0, index == 0 ? 0 : 8, 0, 0) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var label = new TextBlock
+        {
+            Text = _f11Remap.Bindings.Count > 1
+                ? Loc.Get("f11_remap_key_label_n", index + 1)
+                : Loc.Get("f11_remap_key_label"),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 12,
+            Foreground = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187)),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        Grid.SetColumn(label, 0);
+        row.Children.Add(label);
+
+        var capturing = _f11RemapCaptureIndex == index;
+        var accent    = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170));
+        var normal    = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+
+        var keyBtn = new Button
+        {
+            Height = 30, MinWidth = 130,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Background = new SolidColorBrush(Color.FromArgb(255, 10, 24, 37)),
+            BorderBrush = capturing ? accent : new SolidColorBrush(Color.FromArgb(255, 26, 58, 85)),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(10, 0, 10, 0),
+            Content = new TextBlock
+            {
+                Text = capturing ? Loc.Get("f11_remap_press_input") : BindingToString(_f11Remap.Bindings[index]),
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize = 10,
+                Foreground = capturing ? accent : normal,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        ButtonHelper.SetCornerRadius(keyBtn, new CornerRadius(4));
+        keyBtn.Click += (_, _) => F11RemapKeyBtn_Click(index);
+        Grid.SetColumn(keyBtn, 1);
+        row.Children.Add(keyBtn);
+
+        var removeBtn = new Button
+        {
+            Width = 26, Height = 30,
+            Margin = new Thickness(6, 0, 0, 0),
+            Background = new SolidColorBrush(Color.FromArgb(40, 180, 30, 30)),
+            BorderThickness = new Thickness(0), Padding = new Thickness(0),
+            Content = new TextBlock
+            {
+                Text = "×", FontSize = 14,
+                Foreground = new SolidColorBrush(Color.FromArgb(200, 200, 60, 60)),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        ButtonHelper.SetCornerRadius(removeBtn, new CornerRadius(3));
+        removeBtn.Click += (_, _) =>
+        {
+            if (_capturingF11Remap) CancelF11RemapCapture();
+            _f11Remap.RemoveBinding(index);
+            RefreshF11RemapUI();
+        };
+        Grid.SetColumn(removeBtn, 2);
+        row.Children.Add(removeBtn);
+
+        return row;
+    }
+
+    private string BindingToString(F11RemapBinding binding) => binding.Type switch
+    {
+        F11RemapInputType.Keyboard => KeyToString(KeyInterop.KeyFromVirtualKey((int)binding.KeyVk)),
+        F11RemapInputType.Mouse => binding.MouseButton switch
+        {
+            F11RemapService.MouseMiddle   => Loc.Get("f11_remap_mouse3"),
+            F11RemapService.MouseXButton1 => Loc.Get("f11_remap_mouse4"),
+            F11RemapService.MouseXButton2 => Loc.Get("f11_remap_mouse5"),
+            _ => Loc.Get("f11_remap_none"),
+        },
+        _ => Loc.Get("f11_remap_none"),
+    };
 
     // ── Game watcher ──────────────────────────────────────────────────────────
 

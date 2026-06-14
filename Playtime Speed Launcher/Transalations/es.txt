@@ -214,6 +214,19 @@ tutorial_hotkey_label   = Atajo menú de tutoriales
 tutorial_save_explain   = Conserva los videos descargados entre sesiones
 hotkey_press_keys      = Presiona teclas...
 
+# Remapeo de F11 (sección en configuración)
+f11_remap_section      = REMAPEO DE F11
+f11_remap_enable_label = Activar remapeo de F11
+f11_remap_key_label    = Activador
+f11_remap_key_label_n  = Activador {0}
+f11_remap_add_key      = + Añadir tecla
+f11_remap_press_input  = Presiona una tecla o botón del ratón...
+f11_remap_none         = Sin asignar
+f11_remap_mouse3       = Ratón 3
+f11_remap_mouse4       = Ratón 4
+f11_remap_mouse5       = Ratón 5
+f11_remap_hint         = Mientras esté activo, la tecla F11 queda bloqueada y el botón de arriba la simula en su lugar, mientras el launcher esté abierto.
+
 # Toast de inicio de juego
 game_toast_hint     = Abre el checkpoint loader con:
 tutorial_toast_hint = Abre el menú de tutoriales con:

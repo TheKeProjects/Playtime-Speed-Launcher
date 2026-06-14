@@ -733,6 +733,50 @@
                                            VerticalAlignment="Center"/>
                             </Button>
                         </Grid>
+
+                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
+
+                        <TextBlock x:Name="F11RemapSectionLabel"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="9" FontWeight="Bold"
+                                   Foreground="#00CCAA"
+                                   Margin="0,0,0,10"/>
+
+                        <Grid>
+                            <TextBlock x:Name="F11RemapEnableLabel"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="12" Foreground="#8AAABB"
+                                       VerticalAlignment="Center"/>
+                            <Button x:Name="F11RemapEnableBtn"
+                                    Height="26" MinWidth="60"
+                                    HorizontalAlignment="Right"
+                                    local:ButtonHelper.CornerRadius="3"
+                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                    Padding="10,0" Click="F11RemapEnableBtn_Click">
+                                <TextBlock x:Name="F11RemapEnableText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="10" FontWeight="Bold"/>
+                            </Button>
+                        </Grid>
+                        <StackPanel x:Name="F11RemapBindingsPanel" Margin="0,8,0,0"/>
+                        <Button x:Name="F11RemapAddKeyBtn"
+                                Height="30" MinWidth="130"
+                                HorizontalAlignment="Right"
+                                local:ButtonHelper.CornerRadius="4"
+                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                Padding="10,0,10,0"
+                                Margin="0,8,0,0"
+                                Click="F11RemapAddKeyBtn_Click">
+                            <TextBlock x:Name="F11RemapAddKeyText"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="10" Foreground="#8AAABB"
+                                       VerticalAlignment="Center"/>
+                        </Button>
+                        <TextBlock x:Name="F11RemapHintText"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="9" Foreground="#3A6A8A"
+                                   TextWrapping="Wrap"
+                                   Margin="0,8,0,0"/>
                     </StackPanel>
                     <Border Grid.Row="2" Background="#060F18"
                             BorderBrush="#0D2030" BorderThickness="0,1,0,0">

@@ -214,6 +214,19 @@ tutorial_hotkey_label   = Tutorials menu shortcut
 tutorial_save_explain   = Keep downloaded videos between sessions
 hotkey_press_keys      = Press keys...
 
+# F11 remap (section in settings)
+f11_remap_section      = F11 REMAP
+f11_remap_enable_label = Enable F11 remap
+f11_remap_key_label    = Trigger
+f11_remap_key_label_n  = Trigger {0}
+f11_remap_add_key      = + Add key
+f11_remap_press_input  = Press a key or mouse button...
+f11_remap_none         = Not set
+f11_remap_mouse3       = Mouse 3
+f11_remap_mouse4       = Mouse 4
+f11_remap_mouse5       = Mouse 5
+f11_remap_hint         = While enabled, the F11 key is blocked and the button above presses F11 instead, for as long as the launcher stays open.
+
 # Game launch toast
 game_toast_hint     = Open checkpoint loader with:
 tutorial_toast_hint = Open the tutorials menu with:
