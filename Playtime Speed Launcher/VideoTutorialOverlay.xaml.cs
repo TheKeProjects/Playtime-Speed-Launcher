@@ -31,6 +31,7 @@ public partial class VideoTutorialOverlay : Window
     private string? _runCategoryFilter;
     private string? _versionFilter;
     private string? _routeFilter;
+    private string? _restrictionsFilter;
 
     private static readonly Color NormalBg   = Color.FromArgb( 12, 255, 255, 255);
     private static readonly Color HoverBg    = Color.FromArgb( 28, 255, 255, 255);
@@ -85,7 +86,7 @@ public partial class VideoTutorialOverlay : Window
             row.Children.Add(MakePill("All", _chapterFilter == null, () =>
             {
                 _chapterFilter = null; _categoryFilter = null; _runCategoryFilter = null;
-                _versionFilter = null; _routeFilter = null;
+                _versionFilter = null; _routeFilter = null; _restrictionsFilter = null;
                 BuildFilters(); BuildVideoList();
             }));
             foreach (var ch in allChapters)
@@ -94,7 +95,7 @@ public partial class VideoTutorialOverlay : Window
                 row.Children.Add(MakePill(cap, _chapterFilter == cap, () =>
                 {
                     _chapterFilter = cap; _categoryFilter = null; _runCategoryFilter = null;
-                    _versionFilter = null; _routeFilter = null;
+                    _versionFilter = null; _routeFilter = null; _restrictionsFilter = null;
                     BuildFilters(); BuildVideoList();
                 }));
             }
@@ -177,6 +178,20 @@ public partial class VideoTutorialOverlay : Window
                 var row = new WrapPanel { Margin = new Thickness(0, 3, 0, 4) };
                 row.Children.Add(MakePill("All", _routeFilter == null, () => { _routeFilter = null; BuildFilters(); BuildVideoList(); }));
                 foreach (var rt in routes) { var r = rt; row.Children.Add(MakePill(r, _routeFilter == r, () => { _routeFilter = r; BuildFilters(); BuildVideoList(); })); }
+                FiltersPanel.Children.Add(row);
+            }
+
+            var restrictions = scopedVideos
+                .Where(v => !string.IsNullOrEmpty(v.Restrictions))
+                .SelectMany(v => v.Restrictions.Split(',').Select(s => s.Trim()))
+                .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(r => r).ToList();
+
+            if (restrictions.Count > 0)
+            {
+                FiltersPanel.Children.Add(MakeFilterLabel("RESTRICTIONS"));
+                var row = new WrapPanel { Margin = new Thickness(0, 3, 0, 4) };
+                row.Children.Add(MakePill("All", _restrictionsFilter == null, () => { _restrictionsFilter = null; BuildFilters(); BuildVideoList(); }));
+                foreach (var rs in restrictions) { var r = rs; row.Children.Add(MakePill(r, _restrictionsFilter == r, () => { _restrictionsFilter = r; BuildFilters(); BuildVideoList(); })); }
                 FiltersPanel.Children.Add(row);
             }
         }
@@ -275,6 +290,9 @@ public partial class VideoTutorialOverlay : Window
                                      .Contains(_versionFilter, StringComparer.OrdinalIgnoreCase)) &&
                         (_routeFilter == null || v.Routes.Length == 0 ||
                             v.Routes.Contains(_routeFilter, StringComparer.OrdinalIgnoreCase)) &&
+                        (_restrictionsFilter == null || string.IsNullOrEmpty(v.Restrictions) ||
+                            v.Restrictions.Split(',').Select(s => s.Trim())
+                                         .Contains(_restrictionsFilter, StringComparer.OrdinalIgnoreCase)) &&
                         (string.IsNullOrEmpty(search) ||
                             (authorOnly
                                 ? v.Author.Contains(search, StringComparison.OrdinalIgnoreCase)
@@ -350,6 +368,23 @@ public partial class VideoTutorialOverlay : Window
         }
     }
 
+    private static Border MakeItemTag(string label, Color fg, Color bg) => new()
+    {
+        Padding = new Thickness(5, 1, 5, 1),
+        Margin = new Thickness(0, 0, 4, 0),
+        CornerRadius = new CornerRadius(3),
+        Background = new SolidColorBrush(bg),
+        BorderBrush = new SolidColorBrush(Color.FromArgb((byte)(fg.A / 3), fg.R, fg.G, fg.B)),
+        BorderThickness = new Thickness(1),
+        Child = new TextBlock
+        {
+            Text = label,
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 8, FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(fg)
+        }
+    };
+
     private static Border MakeDivider(double vMargin) => new()
     {
         BorderBrush = new SolidColorBrush(Color.FromArgb(50, 13, 32, 48)),
@@ -391,15 +426,20 @@ public partial class VideoTutorialOverlay : Window
         var stack = new StackPanel();
         stack.Children.Add(title);
 
-        if (!string.IsNullOrEmpty(video.Version))
-            stack.Children.Add(new TextBlock
+        if (!string.IsNullOrEmpty(video.Version) || video.Routes.Length > 0)
+        {
+            var metaRow = new WrapPanel { Margin = new Thickness(0, 3, 0, 0) };
+
+            if (!string.IsNullOrEmpty(video.Version))
+                metaRow.Children.Add(MakeItemTag(video.Version, Color.FromArgb(180, 0, 204, 170), Color.FromArgb(30, 0, 204, 170)));
+
+            foreach (var route in video.Routes)
             {
-                Text = video.Version,
-                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
-                FontSize = 8,
-                Foreground = new SolidColorBrush(Color.FromArgb(120, 0, 204, 170)),
-                Margin = new Thickness(0, 2, 0, 0)
-            });
+                metaRow.Children.Add(MakeItemTag(route, Color.FromArgb(140, 160, 180, 200), Color.FromArgb(15, 160, 180, 200)));
+            }
+
+            stack.Children.Add(metaRow);
+        }
 
         if (isLoading)
             stack.Children.Add(new TextBlock
@@ -496,7 +536,8 @@ public partial class VideoTutorialOverlay : Window
         if (video.RunCategories.Length > 0)
         {
             var ver = string.IsNullOrEmpty(video.Version) ? "" : $"  ·  {video.Version}";
-            VideoCategoryLabel.Text = $"{video.Chapter}  ·  {string.Join(", ", video.RunCategories)}{ver}".ToUpperInvariant();
+            var rest = string.IsNullOrEmpty(video.Restrictions) ? "" : $"  ·  {video.Restrictions}";
+            VideoCategoryLabel.Text = $"{video.Chapter}  ·  {string.Join(", ", video.RunCategories)}{ver}{rest}".ToUpperInvariant();
             VideoDescription.Text   = string.IsNullOrEmpty(video.Author)     ? video.Description
                                     : string.IsNullOrEmpty(video.Description) ? $"Video by {video.Author}"
                                     : $"Video by {video.Author}  ·  {video.Description}";

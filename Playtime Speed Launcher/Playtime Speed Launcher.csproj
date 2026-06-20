@@ -6,10 +6,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <LgbtqMode>true</LgbtqMode>
+    <ApplicationIcon Condition="'$(LgbtqMode)' == 'true'">iconHD LGBTQ+.ico</ApplicationIcon>
+    <ApplicationIcon Condition="'$(LgbtqMode)' != 'true'">icon.ico</ApplicationIcon>
+    <DefineConstants Condition="'$(LgbtqMode)' == 'true'">$(DefineConstants);LGBTQ_MODE</DefineConstants>
     <AssemblyName>PlaytimeSpeedLauncher</AssemblyName>
     <RootNamespace>SpeedrunLauncher</RootNamespace>
-    <Version>1.3.0</Version>
+    <Version>1.3.1</Version>
     <Authors>An Average Developer</Authors>
     <Product>PlaytimeSpeedLauncher</Product>
     <Description>A Launcher for Speedruners of Poppy Playtime</Description>
@@ -34,6 +37,9 @@
     <Content Include="icon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <EmbeddedResource Include="iconHD LGBTQ+.ico">
+      <LogicalName>lgbtq_icon</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="Assets\**">
       <LogicalName>assets___%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>

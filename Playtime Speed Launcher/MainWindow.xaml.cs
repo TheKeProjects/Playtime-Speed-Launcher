@@ -94,6 +94,13 @@ public partial class MainWindow : Window
     private LiveSplitInfo? _liveSplitInfo         = null;
     private bool           _isLiveSplitDownloading = false;
 
+    // ── Changelog Discord users ──────────────────────────────────────────────
+    private static readonly Dictionary<string, string> ChangelogDiscordUsers = new()
+    {
+        ["Edwin"] = "460391445690449922",
+        ["Technight"] = "257300997322440704",
+    };
+
     // ── Palette ───────────────────────────────────────────────────────────────
     private static readonly Color Teal       = Color.FromArgb(255,   0, 204, 170);
     private static readonly Color TealDim    = Color.FromArgb(120,   0, 204, 170);
@@ -105,6 +112,7 @@ public partial class MainWindow : Window
     {
         Loc.LoadSaved();
         InitializeComponent();
+        ApplyLgbtqIcon();
         var trophyPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "GoldTrophy.png");
         if (System.IO.File.Exists(trophyPath))
             TrophyImage.Source = new BitmapImage(new Uri(trophyPath));
@@ -3821,16 +3829,16 @@ public partial class MainWindow : Window
             InstallTitleText.Text    = Loc.Get("updates_install_ready", $"v{_gbUpdateInfo.LatestVersion}");
             InstallSubtitleText.Text = Loc.Get("updates_install_subtitle",
                 _gbUpdateInfo.FileName, UpdateService.FormatFileSize(_gbUpdateInfo.FileSize));
-            ChangelogText.Text       = string.IsNullOrWhiteSpace(_gbUpdateInfo.Changelog)
-                ? "—" : _gbUpdateInfo.Changelog;
+            SetChangelogTextWithMentions(ChangelogText,
+                string.IsNullOrWhiteSpace(_gbUpdateInfo.Changelog) ? "—" : _gbUpdateInfo.Changelog);
         }
         else if (_updateInfo != null)
         {
             InstallTitleText.Text    = Loc.Get("updates_install_ready", $"v{_updateInfo.LatestVersion}");
             InstallSubtitleText.Text = Loc.Get("updates_install_subtitle",
                 _updateInfo.FileName, UpdateService.FormatFileSize(_updateInfo.FileSize));
-            ChangelogText.Text       = string.IsNullOrWhiteSpace(_updateInfo.Changelog)
-                ? "—" : _updateInfo.Changelog;
+            SetChangelogTextWithMentions(ChangelogText,
+                string.IsNullOrWhiteSpace(_updateInfo.Changelog) ? "—" : _updateInfo.Changelog);
         }
 
         WhatsNewLabel.Text = Loc.Get("updates_whats_new");
@@ -4134,6 +4142,21 @@ public partial class MainWindow : Window
             ShowLiveSplitTcpNotice();
     }
 
+    private void ApplyLgbtqIcon()
+    {
+        if (!AppVersion.LGBTQ_MODE) return;
+        using var stream = System.Reflection.Assembly.GetExecutingAssembly()
+            .GetManifestResourceStream("lgbtq_icon");
+        if (stream == null) return;
+        var bitmap = new BitmapImage();
+        bitmap.BeginInit();
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.StreamSource = stream;
+        bitmap.EndInit();
+        bitmap.Freeze();
+        Icon = bitmap;
+    }
+
     private void ShowLiveSplitTcpNotice()
     {
         var mono   = new FontFamily("Cascadia Code, Consolas, Courier New");
@@ -4306,19 +4329,66 @@ public partial class MainWindow : Window
             // Change items
             foreach (var change in entry.Changes)
             {
-                card.Children.Add(new TextBlock
+                var tb = new TextBlock
                 {
-                    Text        = $"  ·  {change}",
-                    FontFamily  = new System.Windows.Media.FontFamily("Cascadia Code, Consolas, Courier New"),
-                    FontSize    = 12,
-                    Foreground  = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187)),
+                    FontFamily   = new System.Windows.Media.FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize     = 12,
+                    Foreground   = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187)),
                     TextWrapping = TextWrapping.Wrap,
-                    Margin      = new Thickness(0, 2, 0, 0),
-                });
+                    Margin       = new Thickness(0, 2, 0, 0),
+                };
+
+                tb.Inlines.Add(new System.Windows.Documents.Run("  ·  "));
+                SetChangelogTextWithMentions(tb, change, clear: false);
+
+                card.Children.Add(tb);
             }
 
             ChangelogPanel.Children.Add(card);
         }
+    }
+
+    private void SetChangelogTextWithMentions(TextBlock tb, string text, bool clear = true)
+    {
+        if (clear) { tb.Text = null; tb.Inlines.Clear(); }
+        var parts = System.Text.RegularExpressions.Regex.Split(text, @"(@\w+)");
+        foreach (var part in parts)
+        {
+            if (part.StartsWith("@") && part.Length > 1)
+                tb.Inlines.Add(MakeMentionInline(part));
+            else if (part.Length > 0)
+                tb.Inlines.Add(new System.Windows.Documents.Run(part));
+        }
+    }
+
+    private System.Windows.Documents.InlineUIContainer MakeMentionInline(string mention)
+    {
+        var tag = new Border
+        {
+            Padding         = new Thickness(5, 1, 5, 1),
+            Margin          = new Thickness(2, 0, 2, 0),
+            CornerRadius    = new CornerRadius(3),
+            Background      = new SolidColorBrush(Color.FromArgb(30, 88, 101, 242)),
+            BorderBrush     = new SolidColorBrush(Color.FromArgb(80, 88, 101, 242)),
+            BorderThickness = new Thickness(1),
+            Cursor          = Cursors.Hand,
+            Child = new TextBlock
+            {
+                Text       = mention,
+                FontFamily = new System.Windows.Media.FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize   = 10,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 88, 101, 242)),
+            }
+        };
+        var discordId = ChangelogDiscordUsers.GetValueOrDefault(mention[1..]);
+        if (discordId != null)
+            tag.MouseDown += (_, _) => Process.Start(new ProcessStartInfo
+                { FileName = $"https://discord.com/users/{discordId}", UseShellExecute = true });
+        tag.MouseEnter += (_, _) => tag.Background = new SolidColorBrush(Color.FromArgb(50, 88, 101, 242));
+        tag.MouseLeave += (_, _) => tag.Background = new SolidColorBrush(Color.FromArgb(30, 88, 101, 242));
+        return new System.Windows.Documents.InlineUIContainer(tag)
+            { BaselineAlignment = BaselineAlignment.Center };
     }
 
     // ── Bug report ────────────────────────────────────────────────────────────
@@ -4522,13 +4592,14 @@ public partial class MainWindow : Window
         (string Id, string Username) discordUser, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
-            "YourWebhookUrl";
+            "YorWebhookUrl";
 
         try
         {
             using var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30) };
 
             var authorName = $"{discordUser.Username}  ·  ID: {discordUser.Id}";
+            var mention    = $"<@{discordUser.Id}>";
             var footer     = $"Playtime Speed Launcher  ·  {AppVersion.GetDisplayVersion()}";
 
             string json;
@@ -4537,6 +4608,7 @@ public partial class MainWindow : Window
                 var fileName = IOPath.GetFileName(imagePath);
                 json = System.Text.Json.JsonSerializer.Serialize(new
                 {
+                    content = mention,
                     embeds = new[] { new
                     {
                         author      = new { name = authorName },
@@ -4566,6 +4638,7 @@ public partial class MainWindow : Window
             {
                 json = System.Text.Json.JsonSerializer.Serialize(new
                 {
+                    content = mention,
                     embeds = new[] { new
                     {
                         author      = new { name = authorName },

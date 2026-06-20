@@ -7,9 +7,15 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
-        new("1.3.0", "10/06/2026",
+        new("1.3.1", "20/06/2026",
         [
-            "Added a key remapping system for F11", 
+            "Updated skips across all categories (Thanks to @Edwin for all chapters and @Technight for the new patch Chapter 4 skips)",
+            "Improved and updated Discord Rich Presence",
+            "Redesigned the application icon",
+        ]),
+        new("1.3.0", "14/06/2026",
+        [
+            "Added a key remapping system for F11",
             "Fixed audio system issues (again)",
         ]),
         new("1.2.11", "10/06/2026",

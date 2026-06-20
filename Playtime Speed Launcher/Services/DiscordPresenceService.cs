@@ -124,7 +124,7 @@ public sealed class DiscordPresenceService : IDisposable
             Timestamps = new Timestamps(_sessionStart),
             Assets     = new Assets
             {
-                LargeImageKey  = "launcher",
+                LargeImageKey  = AppVersion.LauncherImageKey,
                 LargeImageText = "Playtime Speed Launcher",
             },
         }, version: "");
@@ -138,7 +138,7 @@ public sealed class DiscordPresenceService : IDisposable
             Timestamps = new Timestamps(_sessionStart),
             Assets     = new Assets
             {
-                LargeImageKey  = "launcher",
+                LargeImageKey  = AppVersion.LauncherImageKey,
                 LargeImageText = "Playtime Speed Launcher",
                 SmallImageKey  = $"chapter_{chapter.Number}",
                 SmallImageText = chapter.SubTitle,
@@ -156,7 +156,7 @@ public sealed class DiscordPresenceService : IDisposable
             {
                 LargeImageKey  = $"chapter_{chapter.Number}",
                 LargeImageText = chapter.SubTitle,
-                SmallImageKey  = "launcher",
+                SmallImageKey  = AppVersion.LauncherImageKey,
                 SmallImageText = "Installing via SteamCMD",
             },
         }, version: presetName);
@@ -170,7 +170,7 @@ public sealed class DiscordPresenceService : IDisposable
             Timestamps = new Timestamps(DateTime.UtcNow),
             Assets     = new Assets
             {
-                LargeImageKey  = "launcher",
+                LargeImageKey  = AppVersion.LauncherImageKey,
                 LargeImageText = "Playtime Speed Launcher",
                 SmallImageKey  = $"chapter_{chapter.Number}",
                 SmallImageText = chapter.SubTitle,
@@ -186,7 +186,7 @@ public sealed class DiscordPresenceService : IDisposable
             Timestamps = new Timestamps(DateTime.UtcNow),
             Assets     = new Assets
             {
-                LargeImageKey  = "launcher",
+                LargeImageKey  = AppVersion.LauncherImageKey,
                 LargeImageText = "Playtime Speed Launcher",
                 SmallImageKey  = "checkpoint",
                 SmallImageText = videoTitle,
@@ -202,7 +202,7 @@ public sealed class DiscordPresenceService : IDisposable
             Timestamps = new Timestamps(DateTime.UtcNow),
             Assets     = new Assets
             {
-                LargeImageKey  = "launcher",
+                LargeImageKey  = AppVersion.LauncherImageKey,
                 LargeImageText = "Playtime Speed Launcher",
                 SmallImageKey  = "checkpoint",
                 SmallImageText = chapter.SubTitle,
