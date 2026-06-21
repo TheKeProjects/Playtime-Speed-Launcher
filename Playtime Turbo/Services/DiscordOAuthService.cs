@@ -21,7 +21,7 @@ namespace SpeedrunLauncher.Services;
 
 public static class DiscordOAuthService
 {
-    private const string ClientId    = "956862634945310750";
+    private const string ClientId    = "YourClientId";
     private const int    Port        = 45678;
     public  const string RedirectUri = "http://localhost:45678/callback";
 
