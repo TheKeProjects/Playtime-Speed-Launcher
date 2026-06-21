@@ -1,8 +1,8 @@
-# Playtime Speed Launcher
+# Playtime Turbo!
 
 **A dedicated launcher for speedrunning *Poppy Playtime* — select any chapter, manage multiple game versions, download specific patches via SteamCMD, and launch instantly. Fully free, no strings attached.**
 
-[![Version](https://img.shields.io/badge/Version-1.3.1-green)](https://github.com/TheKeProjects/Playtime-Speed-Launcher/releases/latest)
+[![Version](https://img.shields.io/badge/Version-2.0.0-green)](https://github.com/TheKeProjects/Playtime-Speed-Launcher/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-lightgrey)](https://github.com/TheKeProjects/Playtime-Speed-Launcher/releases/latest)
 [![Free](https://img.shields.io/badge/Price-Free-brightgreen)](https://github.com/TheKeProjects/Playtime-Speed-Launcher/releases/latest)
 

@@ -32,7 +32,7 @@ namespace SpeedrunLauncher.Services;
 public sealed class DiscordPresenceService : IDisposable
 {
     // ── Replace with YourDiscordApplicationID ─────────────────────────────────
-    private static readonly string AppId = "YourDiscordApplicationID";
+    private static readonly string AppId = "956862634945310750";
     // ──────────────────────────────────────────────────────────────────────────
 
     private DiscordRpcClient? _client;
@@ -125,7 +125,7 @@ public sealed class DiscordPresenceService : IDisposable
             Assets     = new Assets
             {
                 LargeImageKey  = AppVersion.LauncherImageKey,
-                LargeImageText = "Playtime Speed Launcher",
+                LargeImageText = "Playtime Turbo!",
             },
         }, version: "");
     }
@@ -139,7 +139,7 @@ public sealed class DiscordPresenceService : IDisposable
             Assets     = new Assets
             {
                 LargeImageKey  = AppVersion.LauncherImageKey,
-                LargeImageText = "Playtime Speed Launcher",
+                LargeImageText = "Playtime Turbo!",
                 SmallImageKey  = $"chapter_{chapter.Number}",
                 SmallImageText = chapter.SubTitle,
             },
@@ -171,7 +171,7 @@ public sealed class DiscordPresenceService : IDisposable
             Assets     = new Assets
             {
                 LargeImageKey  = AppVersion.LauncherImageKey,
-                LargeImageText = "Playtime Speed Launcher",
+                LargeImageText = "Playtime Turbo!",
                 SmallImageKey  = $"chapter_{chapter.Number}",
                 SmallImageText = chapter.SubTitle,
             },
@@ -187,7 +187,7 @@ public sealed class DiscordPresenceService : IDisposable
             Assets     = new Assets
             {
                 LargeImageKey  = AppVersion.LauncherImageKey,
-                LargeImageText = "Playtime Speed Launcher",
+                LargeImageText = "Playtime Turbo!",
                 SmallImageKey  = "checkpoint",
                 SmallImageText = videoTitle,
             },
@@ -203,7 +203,7 @@ public sealed class DiscordPresenceService : IDisposable
             Assets     = new Assets
             {
                 LargeImageKey  = AppVersion.LauncherImageKey,
-                LargeImageText = "Playtime Speed Launcher",
+                LargeImageText = "Playtime Turbo!",
                 SmallImageKey  = "checkpoint",
                 SmallImageText = chapter.SubTitle,
             },

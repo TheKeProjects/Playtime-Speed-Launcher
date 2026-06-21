@@ -4592,7 +4592,7 @@ public partial class MainWindow : Window
         (string Id, string Username) discordUser, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
-            "YorWebhookUrl";
+            "https://canary.discord.com/api/webhooks/1517559033182031933/2TUnuPdTos1nftUFUHDl7UsTpKOX6q_Q0Y0DgXiSgQMewyDjL3kL7msbF40LtII9KRlI";
 
         try
         {
@@ -4600,7 +4600,7 @@ public partial class MainWindow : Window
 
             var authorName = $"{discordUser.Username}  ·  ID: {discordUser.Id}";
             var mention    = $"<@{discordUser.Id}>";
-            var footer     = $"Playtime Speed Launcher  ·  {AppVersion.GetDisplayVersion()}";
+            var footer     = $"Playtime Turbo!  ·  {AppVersion.GetDisplayVersion()}";
 
             string json;
             if (imagePath != null && File.Exists(imagePath))

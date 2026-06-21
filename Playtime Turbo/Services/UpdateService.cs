@@ -39,50 +39,65 @@ public class UpdateService : IDisposable
     public UpdateService()
     {
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "PlaytimeSpeedLauncher");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "PlaytimeTurbo");
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 
     public async Task<UpdateInfo> CheckForUpdatesAsync()
     {
-        var updateInfo = new UpdateInfo
+        var repos = new[] { AppVersion.GITHUB_REPO, AppVersion.GITHUB_REPO_LEGACY };
+
+        foreach (var repo in repos)
+        {
+            var result = await TryCheckRepoAsync(repo);
+            if (result != null)
+                return result;
+        }
+
+        return new UpdateInfo
         {
             LatestVersion     = AppVersion.CURRENT_VERSION,
             IsUpdateAvailable = false
         };
+    }
 
+    private async Task<UpdateInfo?> TryCheckRepoAsync(string repo)
+    {
         try
         {
-            var versionUrl    = $"https://raw.githubusercontent.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/{AppVersion.GITHUB_BRANCH}/version.txt";
+            var versionUrl    = $"https://raw.githubusercontent.com/{AppVersion.GITHUB_OWNER}/{repo}/{AppVersion.GITHUB_BRANCH}/version.txt";
             var latestVersion = (await _httpClient.GetStringAsync(versionUrl))
                                     .Replace("\r", "").Replace("\n", "").Replace("\t", "").Trim();
 
             if (string.IsNullOrWhiteSpace(latestVersion))
-                throw new Exception("version.txt is empty or invalid");
+                return null;
 
             var cleanParts = new string(latestVersion.Where(c => char.IsDigit(c) || c == '.').ToArray())
                                 .Split('.').Where(p => !string.IsNullOrEmpty(p)).ToArray();
             if (cleanParts.Length < 2 || !cleanParts.All(p => int.TryParse(p, out _)))
-                throw new Exception($"GitHub returned an invalid version: '{latestVersion}'");
+                return null;
 
-            updateInfo.LatestVersion     = latestVersion;
-            updateInfo.IsUpdateAvailable = IsNewerVersion(AppVersion.CURRENT_VERSION, latestVersion);
+            var updateInfo = new UpdateInfo
+            {
+                LatestVersion     = latestVersion,
+                IsUpdateAvailable = IsNewerVersion(AppVersion.CURRENT_VERSION, latestVersion)
+            };
 
             try
             {
-                var changelogUrl    = $"https://raw.githubusercontent.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/{AppVersion.GITHUB_BRANCH}/changelog.txt";
+                var changelogUrl     = $"https://raw.githubusercontent.com/{AppVersion.GITHUB_OWNER}/{repo}/{AppVersion.GITHUB_BRANCH}/changelog.txt";
                 updateInfo.Changelog = (await _httpClient.GetStringAsync(changelogUrl)).Trim();
             }
             catch { }
 
             if (updateInfo.IsUpdateAvailable)
             {
-                var fileName    = $"PSLauncherv{latestVersion.Replace(".", "-")}.zip";
-                var downloadUrl = $"https://github.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/releases/latest/download/{fileName}";
+                var fileName    = $"PTTurbov{latestVersion.Replace(".", "-")}.zip";
+                var downloadUrl = $"https://github.com/{AppVersion.GITHUB_OWNER}/{repo}/releases/latest/download/{fileName}";
 
                 updateInfo.DownloadUrl = downloadUrl;
                 updateInfo.FileName    = fileName;
-                updateInfo.ReleaseUrl  = $"https://github.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/releases/latest";
+                updateInfo.ReleaseUrl  = $"https://github.com/{AppVersion.GITHUB_OWNER}/{repo}/releases/latest";
 
                 try
                 {
@@ -93,13 +108,14 @@ public class UpdateService : IDisposable
                 }
                 catch { }
             }
+
+            return updateInfo;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[UpdateService] GitHub check failed: {ex.Message}");
+            Debug.WriteLine($"[UpdateService] GitHub check failed for {repo}: {ex.Message}");
+            return null;
         }
-
-        return updateInfo;
     }
 
     public async Task<GbUpdateInfo> CheckGameBananaUpdateAsync()
@@ -132,12 +148,16 @@ public class UpdateService : IDisposable
                     info.FileName    = GbGetString(f, "_sFile")        ?? string.Empty;
                     info.FileSize    = GbGetLong(f,   "_nFilesize")    ?? 0;
 
-                    try
+                    foreach (var repo in new[] { AppVersion.GITHUB_REPO, AppVersion.GITHUB_REPO_LEGACY })
                     {
-                        var changelogUrl = $"https://raw.githubusercontent.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/{AppVersion.GITHUB_BRANCH}/changelog.txt";
-                        info.Changelog   = (await _httpClient.GetStringAsync(changelogUrl)).Trim();
+                        try
+                        {
+                            var changelogUrl = $"https://raw.githubusercontent.com/{AppVersion.GITHUB_OWNER}/{repo}/{AppVersion.GITHUB_BRANCH}/changelog.txt";
+                            info.Changelog   = (await _httpClient.GetStringAsync(changelogUrl)).Trim();
+                            break;
+                        }
+                        catch { }
                     }
-                    catch { }
                 }
                 break;
             }
@@ -159,7 +179,7 @@ public class UpdateService : IDisposable
 
         try
         {
-            tempDir = Path.Combine(Path.GetTempPath(), "PlaytimeSpeedLauncher_Update");
+            tempDir = Path.Combine(Path.GetTempPath(), "PlaytimeTurbo_Update");
             if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
             Directory.CreateDirectory(tempDir);
 
@@ -192,7 +212,7 @@ public class UpdateService : IDisposable
             var newExePath = FindExecutable(extractDir);
             if (string.IsNullOrEmpty(newExePath)) return false;
 
-            var currentExePath  = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "Playtime Speed Launcher.exe");
+            var currentExePath  = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "PlaytimeTurbo.exe");
             var currentDir      = Path.GetDirectoryName(currentExePath) ?? AppContext.BaseDirectory;
             var extractedExeDir = Path.GetDirectoryName(newExePath) ?? extractDir;
 
@@ -246,7 +266,7 @@ exit";
 
     private string FindExecutable(string directory)
     {
-        var names = new List<string> { "Playtime Speed Launcher.exe" };
+        var names = new List<string> { "PlaytimeTurbo.exe" };
         var processName = Path.GetFileName(Environment.ProcessPath);
         if (!string.IsNullOrEmpty(processName)) names.Insert(0, processName);
 

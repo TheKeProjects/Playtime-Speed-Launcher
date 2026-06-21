@@ -2,11 +2,12 @@ namespace SpeedrunLauncher.Services;
 
 public static class AppVersion
 {
-    public const string CURRENT_VERSION = "1.3.1";
+    public const string CURRENT_VERSION = "2.0.0";
 
     // TODO: Update these when the GitHub repository is created
     public const string GITHUB_OWNER  = "TheKeProjects";
-    public const string GITHUB_REPO   = "Playtime-Speed-Launcher";
+    public const string GITHUB_REPO   = "Playtime-Turbo";
+    public const string GITHUB_REPO_LEGACY = "Playtime-Speed-Launcher";
     public const string GITHUB_BRANCH = "main";
 
     // TODO: Set to the actual GameBanana tool ID when published (0 = disabled)

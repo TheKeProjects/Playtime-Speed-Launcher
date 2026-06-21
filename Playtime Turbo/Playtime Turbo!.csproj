@@ -10,11 +10,11 @@
     <ApplicationIcon Condition="'$(LgbtqMode)' == 'true'">iconHD LGBTQ+.ico</ApplicationIcon>
     <ApplicationIcon Condition="'$(LgbtqMode)' != 'true'">icon.ico</ApplicationIcon>
     <DefineConstants Condition="'$(LgbtqMode)' == 'true'">$(DefineConstants);LGBTQ_MODE</DefineConstants>
-    <AssemblyName>PlaytimeSpeedLauncher</AssemblyName>
+    <AssemblyName>Playtime Turbo!</AssemblyName>
     <RootNamespace>SpeedrunLauncher</RootNamespace>
-    <Version>1.3.1</Version>
+    <Version>2.0.0</Version>
     <Authors>An Average Developer</Authors>
-    <Product>PlaytimeSpeedLauncher</Product>
+    <Product>PlaytimeTurbo</Product>
     <Description>A Launcher for Speedruners of Poppy Playtime</Description>
   </PropertyGroup>
 

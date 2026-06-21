@@ -36,7 +36,7 @@ public class LiveSplitService : IDisposable
     public LiveSplitService()
     {
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "PlaytimeSpeedLauncher");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "PlaytimeTurbo");
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 
@@ -103,7 +103,7 @@ public class LiveSplitService : IDisposable
 
         try
         {
-            tempDir = Path.Combine(Path.GetTempPath(), "PlaytimeSpeedLauncher_LiveSplit");
+            tempDir = Path.Combine(Path.GetTempPath(), "PlaytimeTurbo_LiveSplit");
             if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
             Directory.CreateDirectory(tempDir);
 
