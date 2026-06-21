@@ -1,0 +1,290 @@
+# Playtime Speed Launcher — English
+
+# Main buttons
+play_button = PLAY CHAPTER
+settings_tooltip = Settings
+back = BACK
+add_install = ADD
+
+# Settings
+settings_title = [ SETTINGS ]
+sound_effects = Sound effects
+language_label = Language
+
+# Intro
+intro_skip = [ click to skip ]
+
+# Chapters
+coming_soon = COMING SOON
+ch1_title = A TIGHT SQUEEZE
+ch1_desc = As a former employee of Playtime Co., you finally return to the factory many years after everyone inside disappeared.
+ch2_title = FLY IN A WEB
+ch2_desc = Delve deeper into the dark secrets of Playtime Co. as you escape from Mommy Long Legs' grasp in the Game Station.
+ch3_title = DEEP SLEEP
+ch3_desc = Descend into the Game Station and face the horrors lurking in the deepest levels of the abandoned factory.
+ch4_title = SAFE HAVEN
+ch4_desc = Venture through the dark corridors of the factory in search of the truth about Playtime Co.'s experiments.
+ch5_title = BROKEN THINGS
+ch5_desc = Venture even deeper into the horrifying depths of the factory as Huggy Wuggy, Playtime's security system, hunts you down.
+patch = Patch
+
+# Versions overlay
+versions_header = [ VERSIONS  ·  CHAPTER {0} ]
+show_installers = SHOW INSTALLERS
+hide_installers = HIDE INSTALLERS
+section_historic = HISTORIC VERSIONS
+section_custom = CUSTOM INSTALLATIONS
+
+# Install rows
+auto_name = Automatic
+auto_subtitle = Automatic Steam version
+selected_label = Selected!
+select_btn = SELECT
+downloading = DOWNLOADING...
+install_btn = INSTALL
+install_with_size = INSTALL  —  {0}
+
+# Chapter info
+version_prefix = VERSION:
+version_auto_steam = Automatic Steam version
+version_not_installed = Not installed
+version_none = —
+status_installed = ● INSTALLED
+status_not_found = ○ Not found
+status_coming_soon = — Coming soon
+status_playing = ▶ PLAYING
+
+# Edit panel
+edit_install_title = EDIT INSTALLATION
+name_placeholder = Installation name
+icon_btn = ICON
+save_btn = SAVE
+name_label = NAME
+icon_label = ICON
+
+# Install mode selection
+install_mode_label = Choose an installation method:
+install_mode_auto_title = AUTO
+install_mode_auto_desc = Runs SteamCMD in the background. Handles Steam Guard automatically via a popup.
+install_mode_manual_title = MANUAL
+install_mode_manual_desc = Opens the Steam Console (no login needed). Copy and paste the command — no Steam Guard required.
+install_mode_auto_btn = AUTO
+install_mode_manual_btn = MANUAL
+install_manual_title = [ MANUAL INSTALL ]
+install_manual_step1 = Open the Steam Console (it will open automatically when you click the button below).
+install_manual_step2 = Paste the command below into the Steam Console and press Enter:
+install_manual_step3 = Wait for the download to finish. Files will be saved to:
+install_manual_step4 = Once the download is complete, move the downloaded folder to your desired installation location.
+install_manual_step5 = Come back to this app, open the versions panel for this chapter, and use the ADD button to register the version manually.
+install_manual_confirm = I have read and understood all the steps above.
+install_manual_open_btn = OPEN CONSOLE & FOLDER
+install_manual_waiting = Waiting for the download to finish in the Steam Console.\n\nOnce it completes, click Continue.
+
+# SteamCMD dialogs
+steamcmd_not_found_title = SteamCMD not found
+steamcmd_not_found_content = SteamCMD is required to download historic versions.\n\nDownload it now? (~4 MB, official from Valve)\nOr choose 'Browse' if you already have it installed.
+steamcmd_download_auto = Download automatically
+steamcmd_find = Browse on my PC
+cancel = Cancel
+downloading_steamcmd_title = Downloading SteamCMD…
+starting = Starting…
+steamcmd_initializing = Starting SteamCMD…
+steamcmd_in_progress = SteamCMD in progress…
+
+# Files not found
+files_not_found_title = Files not found
+files_not_found_content = SteamCMD finished but no downloaded files were found.\n\nThe login may have failed. Check the log above and try again.\n\nIf the files are in another folder, select it manually.
+select_folder_manually = Select folder manually
+close = Close
+
+# Credentials dialog
+credentials_version_label = Version to download:
+detected_user = User detected from Steam:
+username_placeholder = Steam username
+password_placeholder = Password  (empty = use saved Steam session)
+start_download = Start download
+install_dialog_title = Install  ·  {0}
+save_password = Save your password
+use_another_account = Use another account
+
+# Download complete dialog
+files_downloaded_msg = Files downloaded successfully.\nCustomize the name and icon before saving.
+version_name_placeholder = Version name
+choose_icon = CHOOSE ICON
+select_folder = Select folder
+later = Later
+download_ready_title = Download ready  ·  {0}
+
+# Progress
+moving_files = Moving files…
+moving_files_dest = Moving files to destination…
+cleaning_temp = Cleaning up temporary files…
+registering = Registering installation…
+preparing_version_title = Preparing version…
+
+# Steam Guard dialog
+steamguard_title = Steam confirmation
+steamguard_content = Steam will send a notification to your phone.\n\nApprove it in the Steam app to continue the download.
+steamguard_code_label = Enter the Steam Guard code sent to your email or authenticator app:
+steamguard_phone_title = Check your phone
+steamguard_phone_body = Steam will send a validation request to your Steam mobile app. Click Continue and then approve the notification when it appears on your phone.\n\nWhy are we asking this?\nThis app uses SteamCMD to download game files. SteamCMD is a separate tool from the Steam client, so Steam treats it as an independent login and asks for verification.
+steamguard_phone_continue = Continue
+understood = Got it
+
+# Updates
+updates_header = [ UPDATES ]
+updates_current_version = Current version
+updates_check_hint = Click to check for updates
+updates_checking = Checking...
+updates_available_title = Update available!
+updates_available_msg = New version {0} is ready. Click here to install.
+updates_up_to_date_title = Up to date ✓
+updates_up_to_date_msg = You have the latest version installed.
+updates_error_title = Check failed
+updates_error_msg = Could not check for updates. Try again later.
+updates_gb_title = GameBanana Update Available!
+updates_gb_msg = New version {0} available. Click here to install.
+updates_details_label = NEW VERSION DETAILS
+updates_latest_version = Latest version:
+updates_file_name = File name:
+updates_file_size = File size:
+updates_whats_new = WHAT'S NEW:
+updates_install_ready = Version {0} ready to install
+updates_install_subtitle = {0}  |  {1}
+updates_download_btn = DOWNLOAD & UPDATE
+updates_cancel_btn = CANCEL
+updates_downloading = Downloading...  {0}%
+updates_close = BACK
+
+# Steam
+steam_launch_btn = OPEN LAUNCHER WITH STEAM
+steam_tutorial_btn = SET UP CONTROLLER SUPPORT
+steam_tutorial_paste_here = Paste the command here
+steam_tutorial_copy_btn = COPY COMMAND
+steam_tutorial_copied = Command copied!
+steam_tutorial_prev = BACK
+steam_tutorial_next = NEXT
+steam_tutorial_done = GOT IT
+controller_setup_restart = Restart the app from Steam
+
+# LiveSplit
+livesplit_checking = Checking...
+livesplit_not_installed = Not installed
+livesplit_up_to_date = Installed ✓
+livesplit_update_available = Update available!
+livesplit_installed_version = Installed version
+livesplit_latest_version = Latest version
+livesplit_install_btn = DOWNLOAD & INSTALL
+livesplit_update_btn = DOWNLOAD & UPDATE
+livesplit_launch_btn = LAUNCH LIVESPLIT
+livesplit_downloading = Downloading...  {0}%
+livesplit_none = —
+
+# Errors
+error_title = Error
+error_no_exe = No executable found in:
+error_steamcmd_msg = SteamCMD error:
+error_unexpected = Unexpected error:
+error_register = Error registering the version:
+error_download_steamcmd = Error downloading SteamCMD:
+error_move = Error moving files:
+
+# Save card overlay
+save_card_header = [ SAVE FILE ]
+save_card_delete_btn = DELETE ALL FILES
+save_card_save_btn = SAVE FILE
+
+# Checkpoint select overlay (Chapter 1)
+checkpoint_select_header = [ SELECT CHECKPOINT ]
+
+# Auto splitter select overlay
+auto_splitter_header = [ AUTO SPLITTER ]
+
+# Hotkey overlay (Ctrl+Shift+Enter)
+hotkey_header   = [ LOAD CHECKPOINT ]
+hotkey_hint     = Esc · close
+hotkey_load_btn     = LOAD 100%
+hotkey_load_all_btn = LOAD
+hotkey_delete_btn   = DELETE SAVES
+
+# Controls (section in settings)
+controls_section       = CONTROLS
+checkpoint_hotkey_label = Checkpoint loader shortcut
+tutorial_hotkey_label   = Tutorials menu shortcut
+tutorial_save_explain   = Keep downloaded videos between sessions
+hotkey_press_keys      = Press keys...
+
+# F11 remap (section in settings)
+f11_remap_section      = F11 REMAP
+f11_remap_enable_label = Enable F11 remap
+f11_remap_key_label    = Trigger
+f11_remap_key_label_n  = Trigger {0}
+f11_remap_add_key      = + Add key
+f11_remap_press_input  = Press a key or mouse button...
+f11_remap_none         = Not set
+f11_remap_mouse3       = Mouse 3
+f11_remap_mouse4       = Mouse 4
+f11_remap_mouse5       = Mouse 5
+f11_remap_hint         = While enabled, the F11 key is blocked and the button above presses F11 instead, for as long as the launcher stays open.
+
+# Game launch toast
+game_toast_hint     = Open checkpoint loader with:
+tutorial_toast_hint = Open the tutorials menu with:
+
+# Chapter 4 save card
+ch4_load_btn = LOAD 100%
+
+# Chapter 5 save card
+ch5_load_btn = LOAD 100%
+
+# Discord presence settings
+discord_settings_btn = Discord Status
+discord_show_activity = Show what I'm playing
+discord_show_version = Show version
+discord_show_livesplit = Show LiveSplit
+discord_sign_out = DISCONNECT DISCORD
+
+# LiveSplit TCP notice
+livesplit_tcp_title = LiveSplit Server required
+livesplit_tcp_desc = This option shows your timer in Discord, but it requires the LiveSplit Server to be running.
+livesplit_tcp_steps_label = Only do this once, the first time you use LiveSplit:
+livesplit_tcp_step1 = 1.  Right-click LiveSplit  →  Settings
+livesplit_tcp_step2 = 2.  Set  'Startup Behavior'  to  'Start TCP Server'
+livesplit_tcp_reminder = You only need to do this once. LiveSplit will start the server automatically from now on.
+
+# Epic Games
+epic_not_found_content = Could not find the Poppy Playtime Epic Games installation.\n\nSelect the PoppyPlaytimeChapterOne folder inside your Epic Games installation.
+epic_no_exe_error = No Poppy Playtime executables were found in the selected folder.
+version_auto_epic = Automatic Epic Games version
+
+# Version history
+changelog_btn     = CHANGELOG
+changelog_header  = [ VERSION HISTORY ]
+changelog_current = (current version)
+
+# Bug report
+bug_report_btn                   = REPORT BUG
+bug_report_title                 = [ REPORT A BUG ]
+bug_report_discord_label              = DISCORD ACCOUNT
+bug_report_discord_connect_btn        = CONNECT DISCORD
+bug_report_discord_waiting            = Waiting for browser authorization...
+bug_report_discord_cancel             = CANCEL
+bug_report_discord_info_header        = [ DISCORD ACCOUNT ]
+bug_report_discord_info_why_title     = Why is Discord required?
+bug_report_discord_info_why_text      = Connecting Discord is required to send a report. It lets me contact you directly and quickly if I need more details about the bug.
+bug_report_discord_info_perms_title   = Requested permissions:
+bug_report_discord_info_perm_name     = identify
+bug_report_discord_info_perm_desc     = Reads your Discord username and user ID. Nothing else.
+bug_report_discord_info_no_access     = No access to: email · servers · friends · messages · avatar · any other data.
+bug_report_etitle_label          = Error title *
+bug_report_desc_label  = Description *
+bug_report_image_label = Screenshot (optional)
+bug_report_image_btn   = ATTACH IMAGE
+bug_report_image_none  = No image selected
+bug_report_send_btn    = SEND REPORT
+bug_report_sending     = SENDING...
+bug_report_success     = Report sent! Thank you.
+bug_report_err_empty   = Please fill in the title and description.
+bug_report_err_send    = Could not send the report. Check your connection.
+bug_report_discord_required_title = [ DISCORD REQUIRED ]
+bug_report_err_discord_required = Connect your Discord account first — anonymous reports are no longer accepted, and it gives me a quick way to ask you follow-up questions about the report.
