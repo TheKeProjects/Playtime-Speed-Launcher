@@ -216,13 +216,28 @@ public class UpdateService : IDisposable
             var currentDir      = Path.GetDirectoryName(currentExePath) ?? AppContext.BaseDirectory;
             var extractedExeDir = Path.GetDirectoryName(newExePath) ?? extractDir;
             var restartExePath  = Path.Combine(currentDir, Path.GetFileName(newExePath));
+            var currentExeName  = Path.GetFileName(currentExePath);
+            var newExeName      = Path.GetFileName(newExePath);
+
+            var renamePatch = "";
+            if (!currentExeName.Equals(newExeName, StringComparison.OrdinalIgnoreCase))
+            {
+                var oldPath = Path.Combine(currentDir, currentExeName);
+                renamePatch = $@"
+del /F ""{oldPath}"" 2>nul
+copy /Y ""{restartExePath}"" ""{oldPath}"" >nul 2>&1";
+            }
 
             var batchPath    = Path.Combine(tempDir, "update.bat");
             var batchContent = $@"@echo off
 chcp 65001 >nul
-timeout /t 2 /nobreak >nul
+timeout /t 3 /nobreak >nul
 xcopy ""{extractedExeDir}\*"" ""{currentDir}"" /E /Y /I /Q
-if %ERRORLEVEL% NEQ 0 (pause & exit /b 1)
+if %ERRORLEVEL% NEQ 0 (
+    timeout /t 3 /nobreak >nul
+    xcopy ""{extractedExeDir}\*"" ""{currentDir}"" /E /Y /I /Q
+)
+if %ERRORLEVEL% NEQ 0 (pause & exit /b 1){renamePatch}
 start """" ""{restartExePath}""
 rd /s /q ""{tempDir}""
 exit";

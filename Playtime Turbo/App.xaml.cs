@@ -23,11 +23,27 @@ public partial class App : Application
         try
         {
             var legacyPath = Path.Combine(AppContext.BaseDirectory, LegacyExeName);
-            if (File.Exists(legacyPath))
+            if (!File.Exists(legacyPath)) return;
+
+            var currentExeName = Path.GetFileName(Environment.ProcessPath ?? "");
+            if (currentExeName.Equals(LegacyExeName, StringComparison.OrdinalIgnoreCase))
             {
-                File.Delete(legacyPath);
                 CameFromLegacy = true;
+                return;
             }
+
+            var currentExePath = Environment.ProcessPath;
+            if (currentExePath != null)
+            {
+                try { File.Copy(currentExePath, legacyPath, overwrite: true); }
+                catch { try { File.Delete(legacyPath); } catch { } }
+            }
+            else
+            {
+                try { File.Delete(legacyPath); } catch { }
+            }
+
+            CameFromLegacy = true;
         }
         catch { }
     }
