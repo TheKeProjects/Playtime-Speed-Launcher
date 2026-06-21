@@ -426,7 +426,7 @@ public partial class VideoTutorialOverlay : Window
         var stack = new StackPanel();
         stack.Children.Add(title);
 
-        if (!string.IsNullOrEmpty(video.Version) || video.Routes.Length > 0 || video.Cores)
+        if (!string.IsNullOrEmpty(video.Version) || video.Routes.Length > 0)
         {
             var metaRow = new WrapPanel { Margin = new Thickness(0, 3, 0, 0) };
 
@@ -437,9 +437,6 @@ public partial class VideoTutorialOverlay : Window
             {
                 metaRow.Children.Add(MakeItemTag(route, Color.FromArgb(140, 160, 180, 200), Color.FromArgb(15, 160, 180, 200)));
             }
-
-            if (video.Cores)
-                metaRow.Children.Add(MakeItemTag("Cores", Color.FromArgb(200, 255, 170, 0), Color.FromArgb(30, 255, 170, 0)));
 
             stack.Children.Add(metaRow);
         }

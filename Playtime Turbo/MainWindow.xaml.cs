@@ -377,8 +377,6 @@ public partial class MainWindow : Window
         if (!File.Exists(videoPath))
         {
             IntroOverlay.Visibility = Visibility.Collapsed;
-            if (App.CameFromLegacy)
-                Dispatcher.BeginInvoke(new Action(ShowRenameNotice));
             return;
         }
         IntroPlayer.Source = new Uri(videoPath);
@@ -390,25 +388,8 @@ public partial class MainWindow : Window
     {
         IntroPlayer.Stop();
         IntroOverlay.Visibility = Visibility.Collapsed;
-        if (App.CameFromLegacy)
-            ShowRenameNotice();
         if (SteamCmdRunner.Find() is null)
             _ = AcquireSteamCmdAsync();
-    }
-
-    private void ShowRenameNotice()
-    {
-        var message = new TextBlock
-        {
-            Text = Loc.Get("rename_notice_message"),
-            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
-            FontSize = 13,
-            Foreground = new SolidColorBrush(Color.FromArgb(220, 200, 215, 230)),
-            TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 420,
-        };
-        WpfDialog.Show(this, Loc.Get("rename_notice_title"), message,
-            primaryText: Loc.Get("rename_notice_ok"));
     }
 
     private void IntroOverlay_MouseDown(object sender, MouseButtonEventArgs e) => HideIntro();
@@ -4611,7 +4592,7 @@ public partial class MainWindow : Window
         (string Id, string Username) discordUser, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
-            "WebhookUrl";
+            "YorWebhookUrl";
 
         try
         {
@@ -4619,7 +4600,7 @@ public partial class MainWindow : Window
 
             var authorName = $"{discordUser.Username}  ·  ID: {discordUser.Id}";
             var mention    = $"<@{discordUser.Id}>";
-            var footer     = $"Playtime Turbo!  ·  {AppVersion.GetDisplayVersion()}";
+            var footer     = $"Playtime Speed Launcher  ·  {AppVersion.GetDisplayVersion()}";
 
             string json;
             if (imagePath != null && File.Exists(imagePath))

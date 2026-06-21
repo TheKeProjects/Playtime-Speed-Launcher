@@ -125,7 +125,7 @@ public sealed class DiscordPresenceService : IDisposable
             Assets     = new Assets
             {
                 LargeImageKey  = AppVersion.LauncherImageKey,
-                LargeImageText = "Playtime Turbo!",
+                LargeImageText = "Playtime Speed Launcher",
             },
         }, version: "");
     }
@@ -139,7 +139,7 @@ public sealed class DiscordPresenceService : IDisposable
             Assets     = new Assets
             {
                 LargeImageKey  = AppVersion.LauncherImageKey,
-                LargeImageText = "Playtime Turbo!",
+                LargeImageText = "Playtime Speed Launcher",
                 SmallImageKey  = $"chapter_{chapter.Number}",
                 SmallImageText = chapter.SubTitle,
             },
@@ -171,7 +171,7 @@ public sealed class DiscordPresenceService : IDisposable
             Assets     = new Assets
             {
                 LargeImageKey  = AppVersion.LauncherImageKey,
-                LargeImageText = "Playtime Turbo!",
+                LargeImageText = "Playtime Speed Launcher",
                 SmallImageKey  = $"chapter_{chapter.Number}",
                 SmallImageText = chapter.SubTitle,
             },
@@ -187,7 +187,7 @@ public sealed class DiscordPresenceService : IDisposable
             Assets     = new Assets
             {
                 LargeImageKey  = AppVersion.LauncherImageKey,
-                LargeImageText = "Playtime Turbo!",
+                LargeImageText = "Playtime Speed Launcher",
                 SmallImageKey  = "checkpoint",
                 SmallImageText = videoTitle,
             },
@@ -203,7 +203,7 @@ public sealed class DiscordPresenceService : IDisposable
             Assets     = new Assets
             {
                 LargeImageKey  = AppVersion.LauncherImageKey,
-                LargeImageText = "Playtime Turbo!",
+                LargeImageText = "Playtime Speed Launcher",
                 SmallImageKey  = "checkpoint",
                 SmallImageText = chapter.SubTitle,
             },
