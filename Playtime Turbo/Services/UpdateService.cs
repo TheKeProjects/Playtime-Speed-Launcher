@@ -215,6 +215,7 @@ public class UpdateService : IDisposable
             var currentExePath  = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "PlaytimeTurbo.exe");
             var currentDir      = Path.GetDirectoryName(currentExePath) ?? AppContext.BaseDirectory;
             var extractedExeDir = Path.GetDirectoryName(newExePath) ?? extractDir;
+            var restartExePath  = Path.Combine(currentDir, Path.GetFileName(newExePath));
 
             var batchPath    = Path.Combine(tempDir, "update.bat");
             var batchContent = $@"@echo off
@@ -222,7 +223,7 @@ chcp 65001 >nul
 timeout /t 2 /nobreak >nul
 xcopy ""{extractedExeDir}\*"" ""{currentDir}"" /E /Y /I /Q
 if %ERRORLEVEL% NEQ 0 (pause & exit /b 1)
-start """" ""{currentExePath}""
+start """" ""{restartExePath}""
 rd /s /q ""{tempDir}""
 exit";
 

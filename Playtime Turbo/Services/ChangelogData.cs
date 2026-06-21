@@ -7,6 +7,10 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.0.1", "21/06/2026",
+        [
+            "Fixed some errors with the rename of the app",
+        ]),
         new("2.0.0", "21/06/2026",
         [
             "Updated more skips (Thanks to @Edwin and @Technight)",

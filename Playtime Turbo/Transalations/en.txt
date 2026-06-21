@@ -288,3 +288,8 @@ bug_report_err_empty   = Please fill in the title and description.
 bug_report_err_send    = Could not send the report. Check your connection.
 bug_report_discord_required_title = [ DISCORD REQUIRED ]
 bug_report_err_discord_required = Connect your Discord account first — anonymous reports are no longer accepted, and it gives me a quick way to ask you follow-up questions about the report.
+
+# App rename notice
+rename_notice_title = [ IMPORTANT NOTICE ]
+rename_notice_message = The app has been renamed from PlaytimeSpeedLauncher to PlaytimeTurbo.\n\nIf you launch the game from Steam, update the launch command in the game properties, as the previous executable has been removed.
+rename_notice_ok = GOT IT
