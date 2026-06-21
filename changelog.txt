@@ -1,2 +1,4 @@
 2.0.1
 - Fixed some errors with the rename of the app
+- Updated more skips (Thanks to @Edwin and @Technight)
+- The app has been renamed!
