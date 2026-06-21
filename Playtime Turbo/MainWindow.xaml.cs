@@ -4592,7 +4592,7 @@ public partial class MainWindow : Window
         (string Id, string Username) discordUser, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
-            "YorWebhookUrl";
+            "WebhookUrl";
 
         try
         {
