@@ -94,6 +94,23 @@ public partial class MainWindow : Window
     private LiveSplitInfo? _liveSplitInfo         = null;
     private bool           _isLiveSplitDownloading = false;
 
+    // ── Load Manipulator ─────────────────────────────────────────────────────
+    private readonly LoadManipService _loadManip = new();
+    private uint _loadManipFreezeVk   = 0x49; // I
+    private uint _loadManipSlowerVk   = 0x4F; // O
+    private uint _loadManipNormalVk   = 0x50; // P
+    private Window? _loadManipToast;
+
+    private bool _coresEnabled;
+
+    private static readonly string LoadManipHotkeyFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "loadmanip_hotkeys.cfg");
+
+    private static readonly string CoresEnabledFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "cores_enabled.cfg");
+
     // ── Changelog Discord users ──────────────────────────────────────────────
     private static readonly Dictionary<string, string> ChangelogDiscordUsers = new()
     {
@@ -213,6 +230,21 @@ public partial class MainWindow : Window
         F11RemapEnableLabel.Text   = Loc.Get("f11_remap_enable_label");
         F11RemapHintText.Text      = Loc.Get("f11_remap_hint");
         RefreshF11RemapUI();
+        LoadManipSectionLabel.Text = Loc.Get("loadmanip_section");
+        LoadManipFreezeLabel.Text  = Loc.Get("loadmanip_freeze_label");
+        LoadManipSlowerLabel.Text  = Loc.Get("loadmanip_slower_label");
+        LoadManipNormalLabel.Text  = Loc.Get("loadmanip_normal_label");
+        RefreshLoadManipButtons();
+        SettingsTabGeneralText.Text      = Loc.Get("settings_tab_general");
+        SettingsTabControlsText.Text     = Loc.Get("settings_tab_controls");
+        SettingsTabSteamText.Text        = Loc.Get("settings_tab_steam");
+        SettingsTabControllerText.Text   = Loc.Get("settings_tab_controller");
+        SettingsTabDiscordText.Text      = Loc.Get("settings_tab_discord");
+        SettingsTabUpdatesText.Text      = Loc.Get("settings_tab_updates");
+        SettingsTabLiveSplitText.Text    = Loc.Get("settings_tab_livesplit");
+        SettingsTabCoresText.Text        = Loc.Get("settings_tab_cores");
+        CoresWarningText.Text            = Loc.Get("cores_warning");
+        CoresEnableLabel.Text            = Loc.Get("cores_enable_label");
         ToolTipService.SetToolTip(SettingsButton, Loc.Get("settings_tooltip"));
 
         OpenUpdatesBtnText.Text        = Loc.Get("updates_header");
@@ -242,12 +274,10 @@ public partial class MainWindow : Window
         CancelInstallBtnText.Text      = Loc.Get("updates_cancel_btn");
         CloseUpdatesBtnText.Text       = Loc.Get("updates_close");
 
-        DiscordStatusBtnText.Text        = Loc.Get("discord_settings_btn");
         DiscordShowActivityLabel.Text    = Loc.Get("discord_show_activity");
         DiscordShowVersionLabel.Text     = Loc.Get("discord_show_version");
         DiscordShowLiveSplitLabel.Text   = Loc.Get("discord_show_livesplit");
-        if (DiscordStatusPanel.Visibility == Visibility.Visible)
-            RefreshDiscordToggles();
+        RefreshDiscordToggles();
 
         SaveCardHeaderText.Text        = Loc.Get("save_card_header");
         SaveCardDeleteBtnText.Text     = Loc.Get("save_card_delete_btn");
@@ -444,6 +474,9 @@ public partial class MainWindow : Window
         RegisterHotKey(helper.Handle, HOTKEY_ID, _hotkeyModifiers, _hotkeyVk);
         RegisterHotKey(helper.Handle, TUTORIAL_HOTKEY_ID, _tutorialHotkeyModifiers, _tutorialHotkeyVk);
         RefreshHotkeyButton();
+        LoadLoadManipHotkeys();
+        LoadCoresEnabled();
+        if (_coresEnabled) InstallLoadManipHook();
         _f11Remap.Load();
         _f11Remap.Refresh();
         RefreshF11RemapUI();
@@ -452,14 +485,17 @@ public partial class MainWindow : Window
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         base.OnClosing(e);
+        _loadManip.RestoreIfActive();
         var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
         UnregisterHotKey(hwnd, HOTKEY_ID);
         UnregisterHotKey(hwnd, TUTORIAL_HOTKEY_ID);
+        UninstallLoadManipHook();
         _hotkeyOverlay?.Close();
         _tutorialOverlay?.Close();
         _beginnerTutorialOverlay?.Close();
         _gameToast?.Close();
         _tutorialToast?.Close();
+        _loadManipToast?.Close();
         _liveSplitPollCts?.Cancel();
         _liveSplitClient.Dispose();
         _discordPresence.Dispose();
@@ -798,6 +834,444 @@ public partial class MainWindow : Window
         RefreshTutorialHotkeyButton();
 
         e.Handled = true;
+    }
+
+    // ── Settings tabs ───────────────────────────────────────────────────────
+
+    private int _settingsTab;
+
+    private void SettingsTabGeneral_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(0);
+    private void SettingsTabControls_Click(object sender, RoutedEventArgs e)     => SelectSettingsTab(1);
+    private void SettingsTabSteam_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(2);
+    private void SettingsTabController_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(3);
+    private void SettingsTabDiscord_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(4);
+    private void SettingsTabUpdates_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(5);
+    private void SettingsTabLiveSplit_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(6);
+    private void SettingsTabCores_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(7);
+
+    private void SelectSettingsTab(int index)
+    {
+        _settingsTab = index;
+
+        SettingsGeneralScroll.Visibility      = index == 0 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsControlsScroll.Visibility     = index == 1 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsSteamScroll.Visibility        = index == 2 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsControllerScroll.Visibility   = index == 3 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsDiscordScroll.Visibility      = index == 4 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsUpdatesScroll.Visibility      = index == 5 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsLiveSplitScroll.Visibility    = index == 6 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsCoresScroll.Visibility        = index == 7 ? Visibility.Visible : Visibility.Collapsed;
+
+        if (index == 4) RefreshDiscordToggles();
+        if (index == 7) RefreshCoresToggle();
+
+        var tabs = new[]
+        {
+            (SettingsTabGeneralBorder,      SettingsTabGeneralText),
+            (SettingsTabControlsBorder,     SettingsTabControlsText),
+            (SettingsTabSteamBorder,        SettingsTabSteamText),
+            (SettingsTabControllerBorder,   SettingsTabControllerText),
+            (SettingsTabDiscordBorder,      SettingsTabDiscordText),
+            (SettingsTabUpdatesBorder,      SettingsTabUpdatesText),
+            (SettingsTabLiveSplitBorder,    SettingsTabLiveSplitText),
+            (SettingsTabCoresBorder,        SettingsTabCoresText),
+        };
+
+        var tealBrush  = new SolidColorBrush(Teal);
+        var transBrush = Brushes.Transparent;
+        var dimBrush   = new SolidColorBrush(Color.FromArgb(255, 58, 106, 138));
+
+        var redBrush = new SolidColorBrush(Color.FromRgb(204, 34, 0));
+
+        for (int i = 0; i < tabs.Length; i++)
+        {
+            var (border, text) = tabs[i];
+            bool isUpdatesTab = i == 5 && _updateAlertActive && i != index;
+            border.BorderBrush = i == index ? tealBrush : transBrush;
+            text.Foreground    = i == index ? tealBrush : isUpdatesTab ? redBrush : dimBrush;
+        }
+    }
+
+    // ── Load Manipulator hotkeys ─────────────────────────────────────────────
+
+    private bool             _capturingLoadManipHotkey;
+    private int              _loadManipCaptureTarget; // 0=freeze, 1=slower, 2=normal
+    private KeyEventHandler? _loadManipHotkeyCapture;
+
+    // Low-level keyboard hook for load manip (only fires when game is foreground)
+    private nint _loadManipKeyboardHook;
+    private LowLevelKeyboardProc? _loadManipKeyboardProc;
+    private delegate nint LowLevelKeyboardProc(int nCode, nint wParam, nint lParam);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern nint SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern bool UnhookWindowsHookEx(nint hhk);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern nint CallNextHookEx(nint hhk, int nCode, nint wParam, nint lParam);
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+    private static extern nint GetModuleHandle(string? lpModuleName);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hWnd, out uint processId);
+
+    private void InstallLoadManipHook()
+    {
+        UninstallLoadManipHook();
+        using var curProcess = System.Diagnostics.Process.GetCurrentProcess();
+        using var curModule  = curProcess.MainModule!;
+        var hMod = GetModuleHandle(curModule.ModuleName);
+        _loadManipKeyboardProc = LoadManipKeyboardHookProc;
+        _loadManipKeyboardHook = SetWindowsHookEx(13, _loadManipKeyboardProc, hMod, 0);
+    }
+
+    private void UninstallLoadManipHook()
+    {
+        if (_loadManipKeyboardHook != 0)
+        {
+            UnhookWindowsHookEx(_loadManipKeyboardHook);
+            _loadManipKeyboardHook = 0;
+        }
+        _loadManipKeyboardProc = null;
+    }
+
+    private bool IsGameForeground()
+    {
+        var fg = GetForegroundWindow();
+        if (fg == 0) return false;
+        GetWindowThreadProcessId(fg, out var pid);
+        for (int i = 0; i < _chapters.Count; i++)
+        {
+            var path = _chapters[i].GameExePath;
+            if (string.IsNullOrEmpty(path)) continue;
+            var name = IOPath.GetFileNameWithoutExtension(path);
+            try
+            {
+                foreach (var p in System.Diagnostics.Process.GetProcessesByName(name))
+                {
+                    var match = p.Id == (int)pid;
+                    p.Dispose();
+                    if (match) return true;
+                }
+            }
+            catch { }
+        }
+        return false;
+    }
+
+    private nint LoadManipKeyboardHookProc(int nCode, nint wParam, nint lParam)
+    {
+        if (nCode >= 0 && (int)wParam == 0x0100) // WM_KEYDOWN
+        {
+            var vkCode = (uint)System.Runtime.InteropServices.Marshal.ReadInt32(lParam);
+            if ((vkCode == _loadManipFreezeVk || vkCode == _loadManipSlowerVk || vkCode == _loadManipNormalVk) && IsGameForeground())
+            {
+                var mode = vkCode == _loadManipFreezeVk ? LoadManipMode.Freeze
+                         : vkCode == _loadManipSlowerVk ? LoadManipMode.Slower
+                         : LoadManipMode.Normal;
+                Dispatcher.BeginInvoke(() => HandleLoadManipHotkey(mode));
+            }
+        }
+        return CallNextHookEx(_loadManipKeyboardHook, nCode, wParam, lParam);
+    }
+
+    private void LoadLoadManipHotkeys()
+    {
+        try
+        {
+            if (!File.Exists(LoadManipHotkeyFile)) return;
+            var lines = File.ReadAllLines(LoadManipHotkeyFile);
+            if (lines.Length >= 3)
+            {
+                if (uint.TryParse(lines[0].Trim().Split(',').Last(), out var nVk)) _loadManipNormalVk = nVk;
+                if (uint.TryParse(lines[1].Trim().Split(',').Last(), out var sVk)) _loadManipSlowerVk = sVk;
+                if (uint.TryParse(lines[2].Trim().Split(',').Last(), out var fVk)) _loadManipFreezeVk = fVk;
+            }
+        }
+        catch { }
+    }
+
+    private void SaveLoadManipHotkeys()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(LoadManipHotkeyFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(LoadManipHotkeyFile,
+                $"0,{_loadManipNormalVk}\n" +
+                $"0,{_loadManipSlowerVk}\n" +
+                $"0,{_loadManipFreezeVk}");
+        }
+        catch { }
+    }
+
+    private void RefreshLoadManipButtons()
+    {
+        LoadManipFreezeText.Text = FormatKeyName(_loadManipFreezeVk);
+        LoadManipSlowerText.Text = FormatKeyName(_loadManipSlowerVk);
+        LoadManipNormalText.Text = FormatKeyName(_loadManipNormalVk);
+
+        var normalBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        var normalFg    = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+        LoadManipFreezeBtn.BorderBrush = normalBrush;
+        LoadManipFreezeText.Foreground = normalFg;
+        LoadManipSlowerBtn.BorderBrush = normalBrush;
+        LoadManipSlowerText.Foreground = normalFg;
+        LoadManipNormalBtn.BorderBrush = normalBrush;
+        LoadManipNormalText.Foreground = normalFg;
+    }
+
+    private void LoadCoresEnabled()
+    {
+        try
+        {
+            if (File.Exists(CoresEnabledFile))
+                _coresEnabled = File.ReadAllText(CoresEnabledFile).Trim() == "1";
+        }
+        catch { }
+    }
+
+    private void SaveCoresEnabled()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(CoresEnabledFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(CoresEnabledFile, _coresEnabled ? "1" : "0");
+        }
+        catch { }
+    }
+
+    private void RefreshCoresToggle()
+    {
+        SetToggle(CoresEnableText, _coresEnabled);
+    }
+
+    private void CoresEnableBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _coresEnabled = !_coresEnabled;
+        SaveCoresEnabled();
+        RefreshCoresToggle();
+
+        if (_coresEnabled)
+            InstallLoadManipHook();
+        else
+            UninstallLoadManipHook();
+    }
+
+    private static string FormatKeyName(uint vk)
+    {
+        var key = KeyInterop.KeyFromVirtualKey((int)vk);
+        return key.ToString().ToUpperInvariant();
+    }
+
+    private void LoadManipFreezeBtn_Click(object sender, RoutedEventArgs e) =>
+        StartLoadManipCapture(0, LoadManipFreezeBtn, LoadManipFreezeText);
+    private void LoadManipSlowerBtn_Click(object sender, RoutedEventArgs e) =>
+        StartLoadManipCapture(1, LoadManipSlowerBtn, LoadManipSlowerText);
+    private void LoadManipNormalBtn_Click(object sender, RoutedEventArgs e) =>
+        StartLoadManipCapture(2, LoadManipNormalBtn, LoadManipNormalText);
+
+    private void StartLoadManipCapture(int target, Button btn, TextBlock text)
+    {
+        if (_capturingLoadManipHotkey)
+        {
+            var wasThis = _loadManipCaptureTarget == target;
+            CancelLoadManipCapture();
+            RefreshLoadManipButtons();
+            if (wasThis) return;
+        }
+
+        _capturingLoadManipHotkey = true;
+        _loadManipCaptureTarget   = target;
+        text.Text       = Loc.Get("hotkey_press_keys");
+        text.Foreground = new SolidColorBrush(Teal);
+        btn.BorderBrush = new SolidColorBrush(Teal);
+
+        _loadManipHotkeyCapture = CaptureLoadManipKeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _loadManipHotkeyCapture, true);
+    }
+
+    private void CancelLoadManipCapture()
+    {
+        _capturingLoadManipHotkey = false;
+        if (_loadManipHotkeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewKeyDownEvent, _loadManipHotkeyCapture);
+            _loadManipHotkeyCapture = null;
+        }
+    }
+
+    private void CaptureLoadManipKeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key is Key.LeftCtrl or Key.RightCtrl
+                or Key.LeftShift or Key.RightShift
+                or Key.LeftAlt or Key.RightAlt
+                or Key.LWin or Key.RWin
+                or Key.None)
+            return;
+
+        var target = _loadManipCaptureTarget;
+        CancelLoadManipCapture();
+
+        if (key == Key.Escape)
+        {
+            RefreshLoadManipButtons();
+            e.Handled = true;
+            return;
+        }
+
+        var vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+
+        switch (target)
+        {
+            case 0: _loadManipFreezeVk = vk; break;
+            case 1: _loadManipSlowerVk = vk; break;
+            case 2: _loadManipNormalVk = vk; break;
+        }
+
+        SaveLoadManipHotkeys();
+        RefreshLoadManipButtons();
+        if (_coresEnabled) InstallLoadManipHook();
+        e.Handled = true;
+    }
+
+    private void HandleLoadManipHotkey(LoadManipMode mode)
+    {
+        var (proc, _) = _loadManip.FindGameProcess(_chapters);
+        if (proc == null && _loadManip.CurrentMode == LoadManipMode.Normal) return;
+        proc?.Dispose();
+
+        var processName = _loadManip.ApplyMode(mode, _chapters);
+        if (processName == null) return;
+        ShowLoadManipToast(mode, processName, _loadManip.DetectedChapter);
+    }
+
+    private void ShowLoadManipToast(LoadManipMode mode, string? processName, int chapter)
+    {
+        _loadManipToast?.Close();
+
+        const double W        = 340;
+        const double Duration = 5;
+
+        var modeLabel = mode switch
+        {
+            LoadManipMode.Slower => "SLOWER",
+            LoadManipMode.Freeze => "FREEZE",
+            _ => "NORMAL",
+        };
+        var modeColor = mode switch
+        {
+            LoadManipMode.Slower => Color.FromArgb(255, 230, 180, 40),
+            LoadManipMode.Freeze => Color.FromArgb(255, 220, 60,  60),
+            _ => Color.FromArgb(255, 0, 204, 170),
+        };
+
+        var modeText = new TextBlock
+        {
+            Text       = modeLabel,
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize   = 16,
+            FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(modeColor),
+        };
+
+        var textStack = new StackPanel { Margin = new Thickness(14, 10, 14, 10) };
+        textStack.Children.Add(modeText);
+        textStack.Children.Add(new TextBlock
+        {
+            Text       = $"Ch.{chapter}  —  {processName}",
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize   = 10,
+            Foreground = new SolidColorBrush(Color.FromArgb(120, 160, 190, 210)),
+            Margin     = new Thickness(0, 4, 0, 0),
+        });
+
+        var progressFg = new Border
+        {
+            Background          = new SolidColorBrush(modeColor),
+            Height              = 3,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Width               = W - 2,
+        };
+
+        var progressGrid = new Grid { Height = 3 };
+        progressGrid.Children.Add(new Border
+        {
+            Background = new SolidColorBrush(Color.FromArgb(40, modeColor.R, modeColor.G, modeColor.B)),
+        });
+        progressGrid.Children.Add(progressFg);
+
+        var innerGrid = new Grid();
+        innerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        innerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+        Grid.SetRow(textStack,    0);
+        Grid.SetRow(progressGrid, 1);
+        innerGrid.Children.Add(textStack);
+        innerGrid.Children.Add(progressGrid);
+
+        var outerBorder = new Border
+        {
+            Background      = new SolidColorBrush(Color.FromArgb(240, 9, 20, 30)),
+            BorderBrush     = new SolidColorBrush(Color.FromArgb(255, 21, 48, 72)),
+            BorderThickness = new Thickness(1),
+            CornerRadius    = new CornerRadius(6),
+            ClipToBounds    = true,
+            Child           = innerGrid,
+        };
+
+        var screen = SystemParameters.WorkArea;
+        var toast = new Window
+        {
+            WindowStyle        = WindowStyle.None,
+            AllowsTransparency = true,
+            Background         = Brushes.Transparent,
+            ResizeMode         = ResizeMode.NoResize,
+            ShowInTaskbar      = false,
+            Topmost            = true,
+            Width              = W,
+            SizeToContent      = SizeToContent.Height,
+            Left               = screen.Left + 20,
+            Top                = screen.Top + 20,
+            Opacity            = 0,
+            Content            = outerBorder,
+        };
+
+        toast.Loaded += (_, _) =>
+        {
+            toast.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)));
+
+            var fullW = progressGrid.ActualWidth;
+            progressFg.Width = fullW;
+            progressFg.BeginAnimation(FrameworkElement.WidthProperty,
+                new DoubleAnimation(fullW, 0, TimeSpan.FromSeconds(Duration)));
+
+            var fadeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Duration - 0.5) };
+            fadeTimer.Tick += (_, _) =>
+            {
+                fadeTimer.Stop();
+                toast.BeginAnimation(UIElement.OpacityProperty,
+                    new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(400)));
+            };
+            fadeTimer.Start();
+
+            var closeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Duration) };
+            closeTimer.Tick += (_, _) => { closeTimer.Stop(); toast.Close(); };
+            closeTimer.Start();
+        };
+
+        _loadManipToast = toast;
+        toast.Closed += (_, _) => { if (ReferenceEquals(_loadManipToast, toast)) _loadManipToast = null; };
+        toast.Show();
     }
 
     // ── F11 remap configuration ───────────────────────────────────────────────
@@ -3167,8 +3641,12 @@ public partial class MainWindow : Window
         catch { }
     }
 
-    private void SettingsButton_Click(object sender, RoutedEventArgs e) =>
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        SelectSettingsTab(0);
+        RefreshLoadManipButtons();
         SettingsOverlay.Visibility = Visibility.Visible;
+    }
 
     private void CloseSettingsBtn_Click(object sender, RoutedEventArgs e) =>
         SettingsOverlay.Visibility = Visibility.Collapsed;
@@ -3720,9 +4198,27 @@ public partial class MainWindow : Window
         UpdatesOverlay.Visibility = Visibility.Visible;
     }
 
+    private bool _updateAlertActive;
+
     private void StartSettingsUpdateAnimation()
     {
+        _updateAlertActive = true;
         SettingsUpdateBadge.Visibility  = Visibility.Visible;
+
+        // Highlight the Updates sidebar tab with red text + breathing red border
+        SettingsTabUpdatesText.Foreground = new SolidColorBrush(Color.FromRgb(204, 34, 0));
+        var alertBorderBrush = new SolidColorBrush(Color.FromRgb(204, 34, 0));
+        SettingsTabUpdatesAlertBorder.BorderBrush = alertBorderBrush;
+        var alertAnim = new ColorAnimation
+        {
+            From           = Color.FromRgb(204, 34, 0),
+            To             = Color.FromRgb(80, 10, 0),
+            Duration       = TimeSpan.FromMilliseconds(800),
+            AutoReverse    = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+        };
+        alertBorderBrush.BeginAnimation(SolidColorBrush.ColorProperty, alertAnim);
 
         // Highlight the in-settings updates button
         OpenUpdatesBtnIcon.Foreground   = new SolidColorBrush(Color.FromRgb(200, 60, 20));
@@ -4083,13 +4579,6 @@ public partial class MainWindow : Window
     }
 
     // ── Discord presence settings ─────────────────────────────────────────────
-
-    private void DiscordStatusBtn_Click(object sender, RoutedEventArgs e)
-    {
-        var isOpen = DiscordStatusPanel.Visibility == Visibility.Visible;
-        DiscordStatusPanel.Visibility = isOpen ? Visibility.Collapsed : Visibility.Visible;
-        if (!isOpen) RefreshDiscordToggles();
-    }
 
     private void RefreshDiscordToggles()
     {

@@ -12,7 +12,7 @@
     <DefineConstants Condition="'$(LgbtqMode)' == 'true'">$(DefineConstants);LGBTQ_MODE</DefineConstants>
     <AssemblyName>PlaytimeSpeedLauncher</AssemblyName>
     <RootNamespace>SpeedrunLauncher</RootNamespace>
-    <Version>2.0.2</Version>
+    <Version>2.0.3</Version>
     <Authors>An Average Developer</Authors>
     <Product>PlaytimeSpeedLauncher</Product>
     <Description>A Launcher for Speedruners of Poppy Playtime</Description>
@@ -25,6 +25,9 @@
     <PublishReadyToRun>true</PublishReadyToRun>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=.</PathMap>
+    <DebugType>none</DebugType>
   </PropertyGroup>
 
   <ItemGroup>

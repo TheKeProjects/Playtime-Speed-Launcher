@@ -262,6 +262,24 @@ changelog_btn     = NOVEDADES
 changelog_header  = [ HISTORIAL DE VERSIONES ]
 changelog_current = (versión actual)
 
+# Pestañas de configuración
+settings_tab_general    = ⚙️ General
+settings_tab_controls   = 🕹️ Controles
+settings_tab_steam      = 🔵 Steam
+settings_tab_controller = 🎮 Mando
+settings_tab_discord    = 💬 Discord
+settings_tab_updates    = 🔄 Actualizaciones
+settings_tab_livesplit  = ⏱️ LiveSplit
+settings_tab_cores     = 🧠 Cores
+
+# Cores (sección en configuración)
+cores_warning          = ⚠ Esta función no está permitida en runs oficiales.
+cores_enable_label     = Activar cores
+loadmanip_section       = CORES
+loadmanip_freeze_label  = Congelar cargas
+loadmanip_slower_label  = Cargas lentas
+loadmanip_normal_label  = Cargas normales
+
 # Reporte de errores
 bug_report_btn                   = REPORTAR ERROR
 bug_report_title                 = [ REPORTAR UN ERROR ]

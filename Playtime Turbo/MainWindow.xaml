@@ -368,7 +368,7 @@
               Grid.RowSpan="6"
               Visibility="Collapsed"
               Background="#BB000000">
-            <Border Width="420" Background="#09141E"
+            <Border Width="620" Height="520" Background="#09141E"
                     BorderBrush="#153048" BorderThickness="1"
                     CornerRadius="4"
                     VerticalAlignment="Center"
@@ -379,6 +379,8 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="52"/>
                     </Grid.RowDefinitions>
+
+                    <!-- Header -->
                     <Border Grid.Row="0" Background="#060F18"
                             BorderBrush="#0D2030" BorderThickness="0,0,0,1">
                         <TextBlock x:Name="SettingsHeaderText"
@@ -387,397 +389,617 @@
                                    FontSize="13" FontWeight="Bold" Foreground="#00CCAA"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
-                    <StackPanel Grid.Row="1" Margin="24,18">
 
-                        <!-- Updates row -->
-                        <Button x:Name="OpenUpdatesBtn"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                local:ButtonHelper.CornerRadius="4"
-                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
-                                Padding="12,10" Margin="0,0,0,16"
-                                Click="OpenUpdatesBtn_Click">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock x:Name="OpenUpdatesBtnIcon"
-                                               FontFamily="Segoe MDL2 Assets" Text="&#xE74A;"
-                                               FontSize="16" Foreground="#2A5A7A"
-                                               VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="OpenUpdatesBtnText"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
-                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                </StackPanel>
-                                <TextBlock x:Name="OpenUpdatesBtnBadge"
-                                           Grid.Column="1"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="10" FontWeight="Bold" Foreground="#CC4422"
-                                           VerticalAlignment="Center"
-                                           Visibility="Collapsed"/>
-                            </Grid>
-                        </Button>
+                    <!-- Sidebar + content -->
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="155"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
-
-                        <!-- LiveSplit row -->
-                        <Button x:Name="OpenLiveSplitBtn"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                local:ButtonHelper.CornerRadius="4"
-                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
-                                Padding="12,10" Margin="0,0,0,16"
-                                Click="OpenLiveSplitBtn_Click">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Image Width="18" Height="18"
-                                           Source="{StaticResource LiveSplitIcon}"
-                                           VerticalAlignment="Center"
-                                           RenderOptions.BitmapScalingMode="HighQuality"/>
-                                    <TextBlock x:Name="OpenLiveSplitBtnText"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
-                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                </StackPanel>
-                                <TextBlock x:Name="OpenLiveSplitBtnBadge"
-                                           Grid.Column="1"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="10" FontWeight="Bold" Foreground="#CC4422"
-                                           VerticalAlignment="Center"
-                                           Visibility="Collapsed"/>
-                            </Grid>
-                        </Button>
-
-                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
-
-                        <!-- Open with Steam row -->
-                        <Button x:Name="CopyForSteamBtn"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                local:ButtonHelper.CornerRadius="4"
-                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
-                                Padding="12,10" Margin="0,0,0,16"
-                                Click="CopyForSteamBtn_Click">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Image x:Name="SteamBtnIcon"
-                                       Width="18" Height="18"
-                                       VerticalAlignment="Center"
-                                       RenderOptions.BitmapScalingMode="HighQuality"/>
-                                <TextBlock x:Name="CopyForSteamBtnText"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
-                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
-
-                        <!-- Steam launch tutorial row -->
-                        <Button x:Name="SteamTutorialBtn"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                local:ButtonHelper.CornerRadius="4"
-                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
-                                Padding="12,10" Margin="0,0,0,16"
-                                Click="SteamTutorialBtn_Click">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7FC;"
-                                           FontSize="16" Foreground="#3A6A8A"
-                                           Width="18" TextAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock x:Name="SteamTutorialBtnText"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
-                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
-                            </StackPanel>
-                        </Button>
-
-                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
-
-                        <!-- Discord Status row -->
-                        <Button x:Name="DiscordStatusBtn"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                local:ButtonHelper.CornerRadius="4"
-                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
-                                Padding="12,10" Margin="0,0,0,8"
-                                Click="DiscordStatusBtn_Click">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BD;"
-                                           FontSize="16" Foreground="#2A5A7A"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock x:Name="DiscordStatusBtnText"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
-                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
-                            </StackPanel>
-                        </Button>
-
-                        <!-- Discord settings sub-panel (expandable) -->
-                        <Border x:Name="DiscordStatusPanel"
-                                Visibility="Collapsed"
-                                Background="#050B12"
-                                BorderBrush="#0A1D2E" BorderThickness="1"
-                                CornerRadius="3"
-                                Padding="14,12" Margin="0,0,0,8">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,10">
-                                    <TextBlock x:Name="DiscordShowActivityLabel"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="11" Foreground="#8AAABB"
-                                               VerticalAlignment="Center"/>
-                                    <Button x:Name="DiscordShowActivityBtn"
-                                            Height="26" MinWidth="60"
-                                            HorizontalAlignment="Right"
-                                            local:ButtonHelper.CornerRadius="3"
-                                            Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                            Padding="10,0" Click="DiscordShowActivityBtn_Click">
-                                        <TextBlock x:Name="DiscordShowActivityText"
+                        <!-- Sidebar -->
+                        <Border Grid.Column="0" Background="#060F18"
+                                BorderBrush="#0D2030" BorderThickness="0,0,1,0">
+                            <StackPanel Margin="0,14,0,0">
+                                <Button x:Name="SettingsTabGeneralBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabGeneral_Click">
+                                    <Border x:Name="SettingsTabGeneralBorder"
+                                            BorderBrush="#00CCAA" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <TextBlock x:Name="SettingsTabGeneralText"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="10" FontWeight="Bold"/>
-                                    </Button>
-                                </Grid>
-                                <Grid Margin="0,0,0,10">
-                                    <TextBlock x:Name="DiscordShowVersionLabel"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="11" Foreground="#8AAABB"
-                                               VerticalAlignment="Center"/>
-                                    <Button x:Name="DiscordShowVersionBtn"
-                                            Height="26" MinWidth="60"
-                                            HorizontalAlignment="Right"
-                                            local:ButtonHelper.CornerRadius="3"
-                                            Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                            Padding="10,0" Click="DiscordShowVersionBtn_Click">
-                                        <TextBlock x:Name="DiscordShowVersionText"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#00CCAA"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
+                                <Button x:Name="SettingsTabControlsBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabControls_Click">
+                                    <Border x:Name="SettingsTabControlsBorder"
+                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <TextBlock x:Name="SettingsTabControlsText"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="10" FontWeight="Bold"/>
-                                    </Button>
-                                </Grid>
-                                <Grid>
-                                    <TextBlock x:Name="DiscordShowLiveSplitLabel"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="11" Foreground="#8AAABB"
-                                               VerticalAlignment="Center"/>
-                                    <Button x:Name="DiscordShowLiveSplitBtn"
-                                            Height="26" MinWidth="60"
-                                            HorizontalAlignment="Right"
-                                            local:ButtonHelper.CornerRadius="3"
-                                            Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                            Padding="10,0" Click="DiscordShowLiveSplitBtn_Click">
-                                        <TextBlock x:Name="DiscordShowLiveSplitText"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
+                                <Button x:Name="SettingsTabSteamBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabSteam_Click">
+                                    <Border x:Name="SettingsTabSteamBorder"
+                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <TextBlock x:Name="SettingsTabSteamText"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="10" FontWeight="Bold"/>
-                                    </Button>
-                                </Grid>
-
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
+                                <Button x:Name="SettingsTabControllerBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabController_Click">
+                                    <Border x:Name="SettingsTabControllerBorder"
+                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <TextBlock x:Name="SettingsTabControllerText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
+                                <Button x:Name="SettingsTabDiscordBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabDiscord_Click">
+                                    <Border x:Name="SettingsTabDiscordBorder"
+                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <TextBlock x:Name="SettingsTabDiscordText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
+                                <Button x:Name="SettingsTabUpdatesBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabUpdates_Click">
+                                    <Border x:Name="SettingsTabUpdatesBorder"
+                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <Border x:Name="SettingsTabUpdatesAlertBorder"
+                                                BorderBrush="Transparent" BorderThickness="1"
+                                                CornerRadius="3" Padding="4,2"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Left">
+                                            <TextBlock x:Name="SettingsTabUpdatesText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
+                                    </Border>
+                                </Button>
+                                <Button x:Name="SettingsTabLiveSplitBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabLiveSplit_Click">
+                                    <Border x:Name="SettingsTabLiveSplitBorder"
+                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <TextBlock x:Name="SettingsTabLiveSplitText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
+                                <Button x:Name="SettingsTabCoresBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabCores_Click">
+                                    <Border x:Name="SettingsTabCoresBorder"
+                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <TextBlock x:Name="SettingsTabCoresText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
                             </StackPanel>
                         </Border>
 
-                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
+                        <!-- Tab contents (stacked, only one visible at a time) -->
+                        <Grid Grid.Column="1">
 
-                        <Grid Margin="0,0,0,8">
-                            <TextBlock x:Name="SoundEffectsLabel"
-                                       Text="Efectos de sonido"
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="12" Foreground="#8AAABB"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock x:Name="VolumeValueText"
-                                       Text="50%"
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="11" Foreground="#00CCAA"
-                                       HorizontalAlignment="Right"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                        <Slider x:Name="VolumeSlider"
-                                Minimum="0" Maximum="100" Value="50"
-                                SmallChange="1"
-                                ValueChanged="VolumeSlider_ValueChanged"
-                                Margin="0,0,0,12"/>
-                        <Grid>
-                            <TextBlock x:Name="LanguageLabel"
-                                       Text="Idioma"
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="12" Foreground="#8AAABB"
-                                       VerticalAlignment="Center"/>
+                            <!-- ═══ GENERAL TAB ═══ -->
+                            <ScrollViewer x:Name="SettingsGeneralScroll" VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="24,18">
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock x:Name="SoundEffectsLabel"
+                                                   Text="Efectos de sonido"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="VolumeValueText"
+                                                   Text="50%"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" Foreground="#00CCAA"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Slider x:Name="VolumeSlider"
+                                            Minimum="0" Maximum="100" Value="50"
+                                            SmallChange="1"
+                                            ValueChanged="VolumeSlider_ValueChanged"
+                                            Margin="0,0,0,16"/>
 
-                            <!-- Custom animated language selector -->
-                            <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
 
-                                <Button x:Name="LangSelectorBtn"
-                                        Height="30" MinWidth="130"
-                                        local:ButtonHelper.CornerRadius="4"
-                                        Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                        Padding="10,0,8,0"
-                                        PreviewMouseDown="LangSelectorBtn_PreviewMouseDown"
-                                        Click="LangSelectorBtn_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock x:Name="LangSelectedText"
+                                    <Grid>
+                                        <TextBlock x:Name="LanguageLabel"
+                                                   Text="Idioma"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <Button x:Name="LangSelectorBtn"
+                                                    Height="30" MinWidth="130"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,8,0"
+                                                    PreviewMouseDown="LangSelectorBtn_PreviewMouseDown"
+                                                    Click="LangSelectorBtn_Click">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock x:Name="LangSelectedText"
+                                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                                               FontSize="11" Foreground="#8AAABB"
+                                                               VerticalAlignment="Center"/>
+                                                    <Image x:Name="LangSelectedFlagImg"
+                                                           Width="20" Height="14" Margin="6,0,8,0"
+                                                           VerticalAlignment="Center"
+                                                           RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                                                    <TextBlock x:Name="LangChevron"
+                                                               FontFamily="Segoe MDL2 Assets" Text="&#xE70D;"
+                                                               FontSize="9" Foreground="#2A5A7A"
+                                                               VerticalAlignment="Center">
+                                                        <TextBlock.RenderTransform>
+                                                            <RotateTransform x:Name="LangChevronRotate" CenterX="5" CenterY="5"/>
+                                                        </TextBlock.RenderTransform>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Button>
+                                            <Popup x:Name="LangPopup"
+                                                   PlacementTarget="{Binding ElementName=LangSelectorBtn}"
+                                                   Placement="Bottom" StaysOpen="False"
+                                                   Opened="LangPopup_Opened" Closed="LangPopup_Closed">
+                                                <Border x:Name="LangDropdownBorder"
+                                                        Background="#09141E" BorderBrush="#153048" BorderThickness="1"
+                                                        CornerRadius="0,0,4,4" MinWidth="130"
+                                                        RenderTransformOrigin="0.5,0" Opacity="0">
+                                                    <Border.RenderTransform>
+                                                        <ScaleTransform x:Name="LangDropdownScale" ScaleY="0"/>
+                                                    </Border.RenderTransform>
+                                                    <StackPanel>
+                                                        <Button Tag="es" Click="LangOptionBtn_Click"
+                                                                Background="Transparent" BorderThickness="0"
+                                                                HorizontalContentAlignment="Stretch" Padding="10,8,10,8">
+                                                            <Grid MinWidth="110">
+                                                                <TextBlock Text="Español"
+                                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                                           FontSize="11" Foreground="#8AAABB"
+                                                                           HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                                                <Image x:Name="EsFlagImg" Width="20" Height="14"
+                                                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                                       RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                                                            </Grid>
+                                                        </Button>
+                                                        <Button Tag="en" Click="LangOptionBtn_Click"
+                                                                Background="Transparent" BorderThickness="0"
+                                                                HorizontalContentAlignment="Stretch" Padding="10,8,10,8">
+                                                            <Grid MinWidth="110">
+                                                                <TextBlock Text="English"
+                                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                                           FontSize="11" Foreground="#8AAABB"
+                                                                           HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                                                <Image x:Name="EnFlagImg" Width="20" Height="14"
+                                                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                                       RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                                                            </Grid>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Popup>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- ═══ CONTROLS TAB ═══ -->
+                            <ScrollViewer x:Name="SettingsControlsScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                                <StackPanel Margin="24,18">
+
+                                    <TextBlock x:Name="ControlsSectionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <TextBlock x:Name="CheckpointHotkeyLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="CheckpointHotkeyBtn"
+                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0,10,0" Click="CheckpointHotkeyBtn_Click">
+                                            <TextBlock x:Name="CheckpointHotkeyText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBlock x:Name="TutorialHotkeyLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="TutorialHotkeyBtn"
+                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0,10,0" Click="TutorialHotkeyBtn_Click">
+                                            <TextBlock x:Name="TutorialHotkeyText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+
+                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
+
+                                    <!-- F11 Remap -->
+                                    <TextBlock x:Name="F11RemapSectionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <TextBlock x:Name="F11RemapEnableLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="F11RemapEnableBtn"
+                                                Height="26" MinWidth="60" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="3"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0" Click="F11RemapEnableBtn_Click">
+                                            <TextBlock x:Name="F11RemapEnableText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold"/>
+                                        </Button>
+                                    </Grid>
+                                    <StackPanel x:Name="F11RemapBindingsPanel" Margin="0,8,0,0"/>
+                                    <Button x:Name="F11RemapAddKeyBtn"
+                                            Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                            Padding="10,0,10,0" Margin="0,8,0,0"
+                                            Click="F11RemapAddKeyBtn_Click">
+                                        <TextBlock x:Name="F11RemapAddKeyText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                    </Button>
+                                    <TextBlock x:Name="F11RemapHintText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" Foreground="#3A6A8A"
+                                               TextWrapping="Wrap" Margin="0,8,0,0"/>
+
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- ═══ STEAM TAB ═══ -->
+                            <ScrollViewer x:Name="SettingsSteamScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                                <StackPanel Margin="24,18">
+                                    <Button x:Name="CopyForSteamBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10"
+                                            Click="CopyForSteamBtn_Click">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Image x:Name="SteamBtnIcon"
+                                                   Width="18" Height="18"
+                                                   VerticalAlignment="Center"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                            <TextBlock x:Name="CopyForSteamBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- ═══ CONTROLLER TAB ═══ -->
+                            <ScrollViewer x:Name="SettingsControllerScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                                <StackPanel Margin="24,18">
+                                    <Button x:Name="SteamTutorialBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10"
+                                            Click="SteamTutorialBtn_Click">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7FC;"
+                                                       FontSize="16" Foreground="#3A6A8A"
+                                                       Width="18" TextAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="SteamTutorialBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- ═══ DISCORD TAB ═══ -->
+                            <ScrollViewer x:Name="SettingsDiscordScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                                <StackPanel Margin="24,18">
+                                    <Border x:Name="DiscordStatusPanel"
+                                            Background="#050B12"
+                                            BorderBrush="#0A1D2E" BorderThickness="1"
+                                            CornerRadius="3"
+                                            Padding="14,12">
+                                        <StackPanel>
+                                            <Grid Margin="0,0,0,10">
+                                                <TextBlock x:Name="DiscordShowActivityLabel"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="11" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                                <Button x:Name="DiscordShowActivityBtn"
+                                                        Height="26" MinWidth="60" HorizontalAlignment="Right"
+                                                        local:ButtonHelper.CornerRadius="3"
+                                                        Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                        Padding="10,0" Click="DiscordShowActivityBtn_Click">
+                                                    <TextBlock x:Name="DiscordShowActivityText"
+                                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                                               FontSize="10" FontWeight="Bold"/>
+                                                </Button>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,10">
+                                                <TextBlock x:Name="DiscordShowVersionLabel"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="11" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                                <Button x:Name="DiscordShowVersionBtn"
+                                                        Height="26" MinWidth="60" HorizontalAlignment="Right"
+                                                        local:ButtonHelper.CornerRadius="3"
+                                                        Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                        Padding="10,0" Click="DiscordShowVersionBtn_Click">
+                                                    <TextBlock x:Name="DiscordShowVersionText"
+                                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                                               FontSize="10" FontWeight="Bold"/>
+                                                </Button>
+                                            </Grid>
+                                            <Grid>
+                                                <TextBlock x:Name="DiscordShowLiveSplitLabel"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="11" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                                <Button x:Name="DiscordShowLiveSplitBtn"
+                                                        Height="26" MinWidth="60" HorizontalAlignment="Right"
+                                                        local:ButtonHelper.CornerRadius="3"
+                                                        Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                        Padding="10,0" Click="DiscordShowLiveSplitBtn_Click">
+                                                    <TextBlock x:Name="DiscordShowLiveSplitText"
+                                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                                               FontSize="10" FontWeight="Bold"/>
+                                                </Button>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- ═══ UPDATES TAB ═══ -->
+                            <ScrollViewer x:Name="SettingsUpdatesScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                                <StackPanel Margin="24,18">
+                                    <Button x:Name="OpenUpdatesBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10"
+                                            Click="OpenUpdatesBtn_Click">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock x:Name="OpenUpdatesBtnIcon"
+                                                           FontFamily="Segoe MDL2 Assets" Text="&#xE74A;"
+                                                           FontSize="16" Foreground="#2A5A7A"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="OpenUpdatesBtnText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="OpenUpdatesBtnBadge"
+                                                       Grid.Column="1"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold" Foreground="#CC4422"
+                                                       VerticalAlignment="Center"
+                                                       Visibility="Collapsed"/>
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- ═══ LIVESPLIT TAB ═══ -->
+                            <ScrollViewer x:Name="SettingsLiveSplitScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                                <StackPanel Margin="24,18">
+                                    <Button x:Name="OpenLiveSplitBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10"
+                                            Click="OpenLiveSplitBtn_Click">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Image Width="18" Height="18"
+                                                       Source="{StaticResource LiveSplitIcon}"
+                                                       VerticalAlignment="Center"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                <TextBlock x:Name="OpenLiveSplitBtnText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="OpenLiveSplitBtnBadge"
+                                                       Grid.Column="1"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold" Foreground="#CC4422"
+                                                       VerticalAlignment="Center"
+                                                       Visibility="Collapsed"/>
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- ═══ CORES TAB ═══ -->
+                            <ScrollViewer x:Name="SettingsCoresScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                                <StackPanel Margin="24,18">
+                                    <!-- Warning banner -->
+                                    <Border Background="#1A0A00" BorderBrush="#CC4422" BorderThickness="1"
+                                            CornerRadius="4" Padding="12,8" Margin="0,0,0,16">
+                                        <TextBlock x:Name="CoresWarningText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" Foreground="#CC4422"
+                                                   TextWrapping="Wrap"/>
+                                    </Border>
+
+                                    <!-- Enable toggle -->
+                                    <Grid Margin="0,0,0,16">
+                                        <TextBlock x:Name="CoresEnableLabel"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
                                                    FontSize="11" Foreground="#8AAABB"
                                                    VerticalAlignment="Center"/>
-                                        <Image x:Name="LangSelectedFlagImg"
-                                               Width="20" Height="14"
-                                               Margin="6,0,8,0"
-                                               VerticalAlignment="Center"
-                                               RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-                                        <TextBlock x:Name="LangChevron"
-                                                   FontFamily="Segoe MDL2 Assets" Text="&#xE70D;"
-                                                   FontSize="9" Foreground="#2A5A7A"
-                                                   VerticalAlignment="Center">
-                                            <TextBlock.RenderTransform>
-                                                <RotateTransform x:Name="LangChevronRotate" CenterX="5" CenterY="5"/>
-                                            </TextBlock.RenderTransform>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Button>
+                                        <Button x:Name="CoresEnableBtn"
+                                                Height="26" MinWidth="60" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="3"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0" Click="CoresEnableBtn_Click">
+                                            <TextBlock x:Name="CoresEnableText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold"/>
+                                        </Button>
+                                    </Grid>
 
-                                <Popup x:Name="LangPopup"
-                                       PlacementTarget="{Binding ElementName=LangSelectorBtn}"
-                                       Placement="Bottom"
-                                       StaysOpen="False"
-                                       Opened="LangPopup_Opened"
-                                       Closed="LangPopup_Closed">
-                                    <Border x:Name="LangDropdownBorder"
-                                            Background="#09141E"
-                                            BorderBrush="#153048" BorderThickness="1"
-                                            CornerRadius="0,0,4,4"
-                                            MinWidth="130"
-                                            RenderTransformOrigin="0.5,0"
-                                            Opacity="0">
-                                        <Border.RenderTransform>
-                                            <ScaleTransform x:Name="LangDropdownScale" ScaleY="0"/>
-                                        </Border.RenderTransform>
-                                        <StackPanel>
-                                            <Button Tag="es" Click="LangOptionBtn_Click"
-                                                    Background="Transparent" BorderThickness="0"
-                                                    HorizontalContentAlignment="Stretch"
-                                                    Padding="10,8,10,8">
-                                                <Grid MinWidth="110">
-                                                    <TextBlock Text="Español"
-                                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                                               FontSize="11" Foreground="#8AAABB"
-                                                               HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                                    <Image x:Name="EsFlagImg" Width="20" Height="14"
-                                                           HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                           RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-                                                </Grid>
-                                            </Button>
-                                            <Button Tag="en" Click="LangOptionBtn_Click"
-                                                    Background="Transparent" BorderThickness="0"
-                                                    HorizontalContentAlignment="Stretch"
-                                                    Padding="10,8,10,8">
-                                                <Grid MinWidth="110">
-                                                    <TextBlock Text="English"
-                                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                                               FontSize="11" Foreground="#8AAABB"
-                                                               HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                                    <Image x:Name="EnFlagImg" Width="20" Height="14"
-                                                           HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                           RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-                                                </Grid>
-                                            </Button>
-                                        </StackPanel>
-                                    </Border>
-                                </Popup>
+                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
 
-                            </StackPanel>
+                                    <!-- Hotkey bindings -->
+                                    <TextBlock x:Name="LoadManipSectionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <TextBlock x:Name="LoadManipFreezeLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="LoadManipFreezeBtn"
+                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0,10,0" Click="LoadManipFreezeBtn_Click">
+                                            <TextBlock x:Name="LoadManipFreezeText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBlock x:Name="LoadManipSlowerLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="LoadManipSlowerBtn"
+                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0,10,0" Click="LoadManipSlowerBtn_Click">
+                                            <TextBlock x:Name="LoadManipSlowerText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBlock x:Name="LoadManipNormalLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="LoadManipNormalBtn"
+                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0,10,0" Click="LoadManipNormalBtn_Click">
+                                            <TextBlock x:Name="LoadManipNormalText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+                            </ScrollViewer>
                         </Grid>
-                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
+                    </Grid>
 
-                        <TextBlock x:Name="ControlsSectionLabel"
-                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                   FontSize="9" FontWeight="Bold"
-                                   Foreground="#00CCAA"
-                                   Margin="0,0,0,10"/>
-
-                        <Grid>
-                            <TextBlock x:Name="CheckpointHotkeyLabel"
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="12" Foreground="#8AAABB"
-                                       VerticalAlignment="Center"/>
-                            <Button x:Name="CheckpointHotkeyBtn"
-                                    Height="30" MinWidth="130"
-                                    HorizontalAlignment="Right"
-                                    local:ButtonHelper.CornerRadius="4"
-                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                    Padding="10,0,10,0"
-                                    Click="CheckpointHotkeyBtn_Click">
-                                <TextBlock x:Name="CheckpointHotkeyText"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="10" Foreground="#8AAABB"
-                                           VerticalAlignment="Center"/>
-                            </Button>
-                        </Grid>
-                        <Grid Margin="0,8,0,0">
-                            <TextBlock x:Name="TutorialHotkeyLabel"
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="12" Foreground="#8AAABB"
-                                       VerticalAlignment="Center"/>
-                            <Button x:Name="TutorialHotkeyBtn"
-                                    Height="30" MinWidth="130"
-                                    HorizontalAlignment="Right"
-                                    local:ButtonHelper.CornerRadius="4"
-                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                    Padding="10,0,10,0"
-                                    Click="TutorialHotkeyBtn_Click">
-                                <TextBlock x:Name="TutorialHotkeyText"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="10" Foreground="#8AAABB"
-                                           VerticalAlignment="Center"/>
-                            </Button>
-                        </Grid>
-
-                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
-
-                        <TextBlock x:Name="F11RemapSectionLabel"
-                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                   FontSize="9" FontWeight="Bold"
-                                   Foreground="#00CCAA"
-                                   Margin="0,0,0,10"/>
-
-                        <Grid>
-                            <TextBlock x:Name="F11RemapEnableLabel"
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="12" Foreground="#8AAABB"
-                                       VerticalAlignment="Center"/>
-                            <Button x:Name="F11RemapEnableBtn"
-                                    Height="26" MinWidth="60"
-                                    HorizontalAlignment="Right"
-                                    local:ButtonHelper.CornerRadius="3"
-                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                    Padding="10,0" Click="F11RemapEnableBtn_Click">
-                                <TextBlock x:Name="F11RemapEnableText"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="10" FontWeight="Bold"/>
-                            </Button>
-                        </Grid>
-                        <StackPanel x:Name="F11RemapBindingsPanel" Margin="0,8,0,0"/>
-                        <Button x:Name="F11RemapAddKeyBtn"
-                                Height="30" MinWidth="130"
-                                HorizontalAlignment="Right"
-                                local:ButtonHelper.CornerRadius="4"
-                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                Padding="10,0,10,0"
-                                Margin="0,8,0,0"
-                                Click="F11RemapAddKeyBtn_Click">
-                            <TextBlock x:Name="F11RemapAddKeyText"
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="10" Foreground="#8AAABB"
-                                       VerticalAlignment="Center"/>
-                        </Button>
-                        <TextBlock x:Name="F11RemapHintText"
-                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                   FontSize="9" Foreground="#3A6A8A"
-                                   TextWrapping="Wrap"
-                                   Margin="0,8,0,0"/>
-                    </StackPanel>
+                    <!-- Footer -->
                     <Border Grid.Row="2" Background="#060F18"
                             BorderBrush="#0D2030" BorderThickness="0,1,0,0">
                         <Button x:Name="CloseSettingsBtn"

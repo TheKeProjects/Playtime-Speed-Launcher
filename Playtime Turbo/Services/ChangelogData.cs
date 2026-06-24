@@ -7,6 +7,11 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.0.3", "24/06/2026",
+        [
+            "Reorganized settings into separate tabs (Steam, Controller, Discord, etc.)",
+            "Added CPU core and priority management",
+        ]),
         new("2.0.2", "21/06/2026",
         [
             "Updated more skips (Thanks to @Edwin and @Technight)",

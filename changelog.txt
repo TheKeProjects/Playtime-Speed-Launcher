@@ -1,2 +1,3 @@
-2.0.2
-- Updated more skips (Thanks to @Edwin and @Technight)
+2.0.3 [CORES UPDATE]
+- Reorganized settings into separate tabs (Steam, Controller, Discord, etc.)
+- Added CPU core and priority management)

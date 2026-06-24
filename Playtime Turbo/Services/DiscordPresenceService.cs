@@ -127,6 +127,7 @@ public sealed class DiscordPresenceService : IDisposable
                 LargeImageKey  = AppVersion.LauncherImageKey,
                 LargeImageText = "Playtime Speed Launcher",
             },
+            Buttons = DownloadButtons,
         }, version: "");
     }
 
@@ -143,6 +144,7 @@ public sealed class DiscordPresenceService : IDisposable
                 SmallImageKey  = $"chapter_{chapter.Number}",
                 SmallImageText = chapter.SubTitle,
             },
+            Buttons = DownloadButtons,
         }, version: version);
     }
 
@@ -159,6 +161,7 @@ public sealed class DiscordPresenceService : IDisposable
                 SmallImageKey  = AppVersion.LauncherImageKey,
                 SmallImageText = "Installing via SteamCMD",
             },
+            Buttons = DownloadButtons,
         }, version: presetName);
     }
 
@@ -175,6 +178,7 @@ public sealed class DiscordPresenceService : IDisposable
                 SmallImageKey  = $"chapter_{chapter.Number}",
                 SmallImageText = chapter.SubTitle,
             },
+            Buttons = DownloadButtons,
         }, version: version);
     }
 
@@ -191,6 +195,7 @@ public sealed class DiscordPresenceService : IDisposable
                 SmallImageKey  = "checkpoint",
                 SmallImageText = videoTitle,
             },
+            Buttons = DownloadButtons,
         }, version: videoTitle);
     }
 
@@ -207,8 +212,14 @@ public sealed class DiscordPresenceService : IDisposable
                 SmallImageKey  = "checkpoint",
                 SmallImageText = chapter.SubTitle,
             },
+            Buttons = DownloadButtons,
         }, version: version);
     }
+
+    private static readonly Button[] DownloadButtons = new[]
+    {
+        new Button { Label = "Download Launcher", Url = "https://playtimesl.com/" }
+    };
 
     // ── Internals ──────────────────────────────────────────────────────────────
 
