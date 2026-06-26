@@ -1,3 +1,2 @@
-2.0.3 [CORES UPDATE]
-- Reorganized settings into separate tabs (Steam, Controller, Discord, etc.)
-- Added CPU core and priority management
+2.0.4 [UE4SS UPDATE]
+- Added UE4SS for all the chapters

@@ -7,6 +7,10 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.0.4", "26/06/2026",
+        [
+            "Added UE4SS for all the chapters",
+        ]),
         new("2.0.3", "24/06/2026",
         [
             "Reorganized settings into separate tabs (Steam, Controller, Discord, etc.)",

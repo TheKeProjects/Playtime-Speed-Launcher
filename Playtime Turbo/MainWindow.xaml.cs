@@ -1,4 +1,5 @@
 ﻿﻿﻿using System.Diagnostics;
+using System.IO.Compression;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -21,6 +22,7 @@ public partial class MainWindow : Window
 {
     private readonly List<ChapterInfo>                            _chapters          = ChapterInfo.GetAll();
     private readonly List<Border>                                 _cards             = [];
+    private readonly List<Button>                                 _ue4ssBtns         = [];
     private readonly InstallationsStore                           _store             = InstallationsStore.Load();
     private readonly Dictionary<string, CancellationTokenSource> _activePolls       = [];
     private readonly Dictionary<string, List<string>>            _downloadLogs      = [];
@@ -36,8 +38,20 @@ public partial class MainWindow : Window
         ["en"] = "English",
     };
 
-    private bool _popupWasOpen    = false;
-    private int  _saveCardChapter = 0;
+    private bool _popupWasOpen      = false;
+    private int  _saveCardChapter   = 0;
+    private int     _ue4ssTargetChapter = 0;
+    private string? _ue4ssWin64Dir;
+    private string? _ue4ssZipPath;
+
+    // ── UE4SS temp hotkey remap ───────────────────────────────────────────────
+    private bool    _ue4ssTempRemap    = false;
+    private string? _ue4ssTempRemapExe = null;
+    private uint    _savedHotkeyMod    = 0;
+    private uint    _savedHotkeyVk     = 0;
+    private uint    _savedTutMod       = 0;
+    private uint    _savedTutVk        = 0;
+    private Window? _ue4ssRemapToast   = null;
 
     // ── Global hotkey ─────────────────────────────────────────────────────────
     private HotkeyOverlay?          _hotkeyOverlay;
@@ -446,6 +460,8 @@ public partial class MainWindow : Window
     private const uint MOD_SHIFT   = 0x0004;
     private const uint MOD_WIN     = 0x0008;
     private const uint VK_RETURN   = 0x0D;
+    private const uint VK_F1       = 0x70;
+    private const uint VK_F2       = 0x71;
     private const uint VK_F9       = 0x78;
     private const int  HOTKEY_ID   = 9001;
     private const int  TUTORIAL_HOTKEY_ID = 9002;
@@ -496,6 +512,7 @@ public partial class MainWindow : Window
         _gameToast?.Close();
         _tutorialToast?.Close();
         _loadManipToast?.Close();
+        _ue4ssRemapToast?.Close();
         _liveSplitPollCts?.Cancel();
         _liveSplitClient.Dispose();
         _discordPresence.Dispose();
@@ -1593,6 +1610,15 @@ public partial class MainWindow : Window
 
         if (stateChanged) RefreshInfo();
 
+        // Restore UE4SS temp remap when the launched game exits
+        if (_ue4ssTempRemap && !string.IsNullOrEmpty(_ue4ssTempRemapExe) && _gameWatcherInitialized)
+        {
+            bool remapRunning;
+            try { remapRunning = Process.GetProcessesByName(IOPath.GetFileNameWithoutExtension(_ue4ssTempRemapExe)).Length > 0; }
+            catch { remapRunning = false; }
+            if (!remapRunning) RestoreUe4ssHotkeys();
+        }
+
         _gameWatcherInitialized = true;
     }
 
@@ -1867,6 +1893,7 @@ public partial class MainWindow : Window
             _cards.Add(card);
             CardsPanel.Children.Add(card);
         }
+        RefreshUe4ssBtnStates();
     }
 
     private Border MakeCard(ChapterInfo chapter, string bannerPath)
@@ -1971,6 +1998,30 @@ public partial class MainWindow : Window
             saveBtn.MouseDown += (s, ev) => ev.Handled = true;
             saveBtn.Click += SaveCardOpenBtn_Click;
             actionsPanel.Children.Add(saveBtn);
+
+            var ue4ssBtn = new Button
+            {
+                Background      = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
+                BorderBrush     = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
+                BorderThickness = new Thickness(1),
+                Padding         = new Thickness(10, 5, 10, 5),
+                Margin          = new Thickness(6, 0, 0, 0),
+                Tag             = chapter.Number,
+            };
+            ButtonHelper.SetCornerRadius(ue4ssBtn, new CornerRadius(3));
+            ue4ssBtn.Content = new TextBlock
+            {
+                Text              = "UE4SS",
+                FontFamily        = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize          = 9,
+                FontWeight        = FontWeights.Bold,
+                Foreground        = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            ue4ssBtn.MouseDown += (s, ev) => ev.Handled = true;
+            ue4ssBtn.Click     += Ue4ssCardBtn_Click;
+            actionsPanel.Children.Add(ue4ssBtn);
+            _ue4ssBtns.Add(ue4ssBtn);
 
             bottom.Children.Add(actionsPanel);
         }
@@ -2099,6 +2150,8 @@ public partial class MainWindow : Window
                              : Loc.Get("status_coming_soon");
         PlayButton.IsEnabled = canPlay && !isRunning;
         PlayButton.Opacity   = canPlay ? 1.0 : 0.35;
+
+        RefreshUe4ssBtnStates();
     }
 
     private string GetVersionLabel(ChapterInfo ch)
@@ -3639,6 +3692,9 @@ public partial class MainWindow : Window
             });
         }
         catch { }
+
+        if (IsUe4ssActiveForChapter(ch))
+            ApplyUe4ssTempRemap(exe);
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
@@ -5081,7 +5137,7 @@ public partial class MainWindow : Window
         (string Id, string Username) discordUser, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
-            "WebhookUrl";
+            "https://canary.discord.com/api/webhooks/1517559033182031933/2TUnuPdTos1nftUFUHDl7UsTpKOX6q_Q0Y0DgXiSgQMewyDjL3kL7msbF40LtII9KRlI";
 
         try
         {
@@ -5158,4 +5214,345 @@ public partial class MainWindow : Window
             ".bmp"            => "image/bmp",
             _                 => "application/octet-stream",
         };
+
+    // ── UE4SS ─────────────────────────────────────────────────────────────────
+
+    private void Ue4ssCardBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _ue4ssTargetChapter = (int)((Button)sender).Tag;
+
+        var chapter = _chapters.FirstOrDefault(c => c.Number == _ue4ssTargetChapter);
+        _ue4ssWin64Dir = null;
+        _ue4ssZipPath  = null;
+
+        if (chapter != null)
+        {
+            var exePath = GetActiveExePath(chapter);
+            if (!string.IsNullOrEmpty(exePath))
+                _ue4ssWin64Dir = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+
+            _ue4ssZipPath = chapter.Number >= 5
+                ? IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 5", "Ue4ss.zip")
+                : IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
+        }
+
+        bool installed = _ue4ssWin64Dir != null && IsUe4ssInstalled(_ue4ssWin64Dir);
+
+        if (installed)
+        {
+            Ue4ssPopupQuestion.Text   = "Do you want to remove UE4SS\nfrom this version?";
+            Ue4ssYesBtn.Visibility    = Visibility.Collapsed;
+            Ue4ssDeleteBtn.Visibility = Visibility.Visible;
+            Ue4ssDeleteBtn.IsEnabled  = true;
+            Ue4ssDeleteBtn.Opacity    = 1.0;
+        }
+        else
+        {
+            Ue4ssPopupQuestion.Text   = "Do you want to add UE4SS\nto this version?";
+            Ue4ssYesBtn.Visibility    = Visibility.Visible;
+            Ue4ssDeleteBtn.Visibility = Visibility.Collapsed;
+        }
+
+        Ue4ssOverlay.Opacity    = 0;
+        Ue4ssOverlay.Visibility = Visibility.Visible;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        Ue4ssOverlay.BeginAnimation(UIElement.OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)));
+        Ue4ssPopupScale.BeginAnimation(ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(0.85, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+        Ue4ssPopupScale.BeginAnimation(ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(0.85, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+    }
+
+    private void Ue4ssNoBtn_Click(object sender, RoutedEventArgs e)
+        => CloseUe4ssOverlay();
+
+    private async void Ue4ssYesBtn_Click(object sender, RoutedEventArgs e)
+    {
+        CloseUe4ssOverlay();
+
+        if (_ue4ssWin64Dir is null)
+        {
+            ShowUe4ssDialog("No game path found for this chapter.\nPlease set up the game installation first.");
+            return;
+        }
+
+        if (_ue4ssZipPath is null || !File.Exists(_ue4ssZipPath))
+        {
+            ShowUe4ssDialog("UE4SS zip not found. Try restarting the launcher.");
+            return;
+        }
+
+        try
+        {
+            await Task.Run(() => ZipFile.ExtractToDirectory(_ue4ssZipPath, _ue4ssWin64Dir, overwriteFiles: true));
+            RefreshUe4ssBtnStates();
+            ShowUe4ssDialog($"UE4SS installed successfully!\n\n{_ue4ssWin64Dir}", success: true);
+        }
+        catch (Exception ex)
+        {
+            ShowUe4ssDialog($"Error installing UE4SS:\n{ex.Message}");
+        }
+    }
+
+    private async void Ue4ssDeleteBtn_Click(object sender, RoutedEventArgs e)
+    {
+        CloseUe4ssOverlay();
+
+        if (_ue4ssWin64Dir is null || _ue4ssZipPath is null || !File.Exists(_ue4ssZipPath))
+            return;
+
+        try
+        {
+            var win64   = _ue4ssWin64Dir;
+            var zipPath = _ue4ssZipPath;
+            await Task.Run(() =>
+            {
+                using var zip = ZipFile.OpenRead(zipPath);
+                var dirsToDelete = new List<string>();
+
+                foreach (var entry in zip.Entries)
+                {
+                    var rel = entry.FullName.Replace('/', IOPath.DirectorySeparatorChar);
+                    if (string.IsNullOrEmpty(entry.Name))
+                    {
+                        dirsToDelete.Add(IOPath.Combine(win64, rel.TrimEnd(IOPath.DirectorySeparatorChar)));
+                    }
+                    else
+                    {
+                        var target = IOPath.Combine(win64, rel);
+                        if (File.Exists(target)) File.Delete(target);
+                    }
+                }
+
+                foreach (var dir in dirsToDelete.OrderBy(d => d.Length))
+                {
+                    if (Directory.Exists(dir))
+                        Directory.Delete(dir, recursive: true);
+                }
+            });
+            RefreshUe4ssBtnStates();
+            ShowUe4ssDialog("UE4SS removed successfully!", success: true);
+        }
+        catch (Exception ex)
+        {
+            ShowUe4ssDialog($"Error removing UE4SS:\n{ex.Message}");
+        }
+    }
+
+    private void CloseUe4ssOverlay()
+    {
+        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(180)) { EasingFunction = ease };
+        fade.Completed += (_, _) => Ue4ssOverlay.Visibility = Visibility.Collapsed;
+        Ue4ssOverlay.BeginAnimation(UIElement.OpacityProperty, fade);
+    }
+
+    private void ShowUe4ssDialog(string message, bool success = false)
+    {
+        WpfDialog.Show(this, "UE4SS", new TextBlock
+        {
+            Text         = message,
+            FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize     = 12,
+            Foreground   = new SolidColorBrush(success
+                ? Color.FromArgb(200, 0, 204, 170)
+                : Color.FromArgb(200, 160, 180, 200)),
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth     = 360,
+        }, closeText: "OK");
+    }
+
+    private static string? FindWin64Dir(string startDir)
+    {
+        if (IOPath.GetFileName(startDir).Equals("Win64", StringComparison.OrdinalIgnoreCase))
+            return startDir;
+        try
+        {
+            return Directory.EnumerateDirectories(startDir, "*", SearchOption.AllDirectories)
+                .FirstOrDefault(d => IOPath.GetFileName(d).Equals("Win64", StringComparison.OrdinalIgnoreCase));
+        }
+        catch { return null; }
+    }
+
+    private static bool IsUe4ssInstalled(string win64Dir) =>
+        File.Exists(IOPath.Combine(win64Dir, "dwmapi.dll")) ||
+        Directory.Exists(IOPath.Combine(win64Dir, "ue4ss"));
+
+    private bool IsUe4ssActiveForChapter(ChapterInfo ch)
+    {
+        var exePath = GetActiveExePath(ch);
+        if (string.IsNullOrEmpty(exePath)) return false;
+        var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+        return win64 != null && IsUe4ssInstalled(win64);
+    }
+
+    private void ApplyUe4ssTempRemap(string exe)
+    {
+        if (_ue4ssTempRemap) return;
+
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+
+        _savedHotkeyMod = _hotkeyModifiers;
+        _savedHotkeyVk  = _hotkeyVk;
+        _savedTutMod    = _tutorialHotkeyModifiers;
+        _savedTutVk     = _tutorialHotkeyVk;
+
+        UnregisterHotKey(hwnd, HOTKEY_ID);
+        UnregisterHotKey(hwnd, TUTORIAL_HOTKEY_ID);
+
+        _hotkeyModifiers         = 0;
+        _hotkeyVk                = VK_F2;
+        _tutorialHotkeyModifiers = 0;
+        _tutorialHotkeyVk        = VK_F1;
+
+        RegisterHotKey(hwnd, HOTKEY_ID,          _hotkeyModifiers,        _hotkeyVk);
+        RegisterHotKey(hwnd, TUTORIAL_HOTKEY_ID, _tutorialHotkeyModifiers, _tutorialHotkeyVk);
+
+        _ue4ssTempRemap    = true;
+        _ue4ssTempRemapExe = exe;
+
+        ShowUe4ssRemapToast();
+    }
+
+    private void RestoreUe4ssHotkeys()
+    {
+        if (!_ue4ssTempRemap) return;
+
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+
+        UnregisterHotKey(hwnd, HOTKEY_ID);
+        UnregisterHotKey(hwnd, TUTORIAL_HOTKEY_ID);
+
+        _hotkeyModifiers         = _savedHotkeyMod;
+        _hotkeyVk                = _savedHotkeyVk;
+        _tutorialHotkeyModifiers = _savedTutMod;
+        _tutorialHotkeyVk        = _savedTutVk;
+
+        RegisterHotKey(hwnd, HOTKEY_ID,          _hotkeyModifiers,        _hotkeyVk);
+        RegisterHotKey(hwnd, TUTORIAL_HOTKEY_ID, _tutorialHotkeyModifiers, _tutorialHotkeyVk);
+
+        _ue4ssTempRemap    = false;
+        _ue4ssTempRemapExe = null;
+        _ue4ssRemapToast?.Close();
+    }
+
+    private void ShowUe4ssRemapToast()
+    {
+        _ue4ssRemapToast?.Close();
+
+        const double W        = 340;
+        const double Duration = 8;
+
+        var progressFg = new Border
+        {
+            Background          = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170)),
+            Height              = 3,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Width               = W - 2,
+        };
+
+        var progressGrid = new Grid { Height = 3 };
+        progressGrid.Children.Add(new Border
+        {
+            Background = new SolidColorBrush(Color.FromArgb(40, 0, 204, 170)),
+        });
+        progressGrid.Children.Add(progressFg);
+
+        var textStack = new StackPanel { Margin = new Thickness(14, 12, 14, 10) };
+        textStack.Children.Add(new TextBlock
+        {
+            Text       = Loc.Get("ue4ss_remap_hint"),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize   = 10,
+            Foreground = new SolidColorBrush(Color.FromArgb(180, 160, 190, 210)),
+        });
+        textStack.Children.Add(new TextBlock
+        {
+            Text       = Loc.Get("ue4ss_remap_keys"),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize   = 12,
+            FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170)),
+            Margin     = new Thickness(0, 4, 0, 0),
+        });
+
+        var innerGrid = new Grid();
+        innerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        innerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+        Grid.SetRow(textStack,    0);
+        Grid.SetRow(progressGrid, 1);
+        innerGrid.Children.Add(textStack);
+        innerGrid.Children.Add(progressGrid);
+
+        var outerBorder = new Border
+        {
+            Background      = new SolidColorBrush(Color.FromArgb(240, 9, 20, 30)),
+            BorderBrush     = new SolidColorBrush(Color.FromArgb(255, 21, 48, 72)),
+            BorderThickness = new Thickness(1),
+            CornerRadius    = new CornerRadius(6),
+            ClipToBounds    = true,
+            Child           = innerGrid,
+        };
+
+        var screen = SystemParameters.WorkArea;
+        var toast = new Window
+        {
+            WindowStyle        = WindowStyle.None,
+            AllowsTransparency = true,
+            Background         = Brushes.Transparent,
+            ResizeMode         = ResizeMode.NoResize,
+            ShowInTaskbar      = false,
+            Topmost            = true,
+            Width              = W,
+            SizeToContent      = SizeToContent.Height,
+            Left               = screen.Left + 20,
+            Top                = screen.Top + 20,
+            Opacity            = 0,
+            Content            = outerBorder,
+        };
+
+        toast.Loaded += (_, _) =>
+        {
+            toast.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250)));
+
+            var fullW = progressGrid.ActualWidth;
+            progressFg.Width = fullW;
+            progressFg.BeginAnimation(FrameworkElement.WidthProperty,
+                new DoubleAnimation(fullW, 0, TimeSpan.FromSeconds(Duration)));
+
+            var fadeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Duration - 1) };
+            fadeTimer.Tick += (_, _) =>
+            {
+                fadeTimer.Stop();
+                toast.BeginAnimation(UIElement.OpacityProperty,
+                    new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(600)));
+            };
+            fadeTimer.Start();
+
+            var closeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Duration) };
+            closeTimer.Tick += (_, _) => { closeTimer.Stop(); toast.Close(); };
+            closeTimer.Start();
+        };
+
+        _ue4ssRemapToast = toast;
+        toast.Closed += (_, _) => { if (ReferenceEquals(_ue4ssRemapToast, toast)) _ue4ssRemapToast = null; };
+        toast.Show();
+    }
+
+    private void RefreshUe4ssBtnStates()
+    {
+        for (int i = 0; i < _chapters.Count && i < _ue4ssBtns.Count; i++)
+        {
+            var exePath = GetActiveExePath(_chapters[i]);
+            bool installed = false;
+            if (!string.IsNullOrEmpty(exePath))
+            {
+                var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+                if (win64 != null) installed = IsUe4ssInstalled(win64);
+            }
+            _ue4ssBtns[i].Opacity = installed ? 1.0 : 0.3;
+        }
+    }
 }

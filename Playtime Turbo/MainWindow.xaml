@@ -2006,5 +2006,93 @@
                        Margin="0,0,16,12"/>
         </Grid>
 
+        <!-- ── UE4SS OVERLAY ── -->
+        <Grid x:Name="Ue4ssOverlay"
+              Grid.RowSpan="6"
+              Visibility="Collapsed"
+              Background="#BB000000">
+            <Border Width="420" Background="#09141E"
+                    BorderBrush="#153048" BorderThickness="1"
+                    CornerRadius="4"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="Ue4ssPopupScale" ScaleX="1" ScaleY="1"/>
+                </Border.RenderTransform>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="48"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="52"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#060F18"
+                            BorderBrush="#0D2030" BorderThickness="0,0,0,1">
+                        <TextBlock Text="[ UE4SS ]"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="13" FontWeight="Bold" Foreground="#00CCAA"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Row="1" Margin="28,24,28,24"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <TextBlock x:Name="Ue4ssPopupQuestion"
+                                   Text="Do you want to add UE4SS&#10;to this version?"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="14" Foreground="#A0C8D8"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <Border Grid.Row="2" Background="#060F18"
+                            BorderBrush="#0D2030" BorderThickness="0,1,0,0">
+                        <Grid Margin="14,0">
+                            <Button x:Name="Ue4ssDeleteBtn"
+                                    Height="36" MinWidth="110"
+                                    local:ButtonHelper.CornerRadius="3"
+                                    Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
+                                    Padding="16,0"
+                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Click="Ue4ssDeleteBtn_Click">
+                                <TextBlock Text="DELETE"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="12" FontWeight="Bold"
+                                           Foreground="#CC3333"/>
+                            </Button>
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center">
+                                <Button x:Name="Ue4ssYesBtn"
+                                        Height="36" MinWidth="110"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#00503C" BorderBrush="#00B482" BorderThickness="1"
+                                        Padding="16,0" Margin="0,0,10,0"
+                                        Click="Ue4ssYesBtn_Click">
+                                    <TextBlock Text="YES"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="12" FontWeight="Bold"
+                                               Foreground="#00CCAA"/>
+                                </Button>
+                                <Button x:Name="Ue4ssNoBtn"
+                                        Height="36" MinWidth="110"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
+                                        Padding="16,0"
+                                        Click="Ue4ssNoBtn_Click">
+                                    <TextBlock Text="NO"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="12" FontWeight="Bold"
+                                               Foreground="#CC3333"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
     </Grid>
 </Window>

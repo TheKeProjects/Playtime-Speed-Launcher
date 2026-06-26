@@ -306,3 +306,7 @@ bug_report_err_empty   = Please fill in the title and description.
 bug_report_err_send    = Could not send the report. Check your connection.
 bug_report_discord_required_title = [ DISCORD REQUIRED ]
 bug_report_err_discord_required = Connect your Discord account first — anonymous reports are no longer accepted, and it gives me a quick way to ask you follow-up questions about the report.
+
+# UE4SS
+ue4ss_remap_hint = UE4SS active — temporary key remapping:
+ue4ss_remap_keys = F1 → Tutorials      F2 → Checkpoints
