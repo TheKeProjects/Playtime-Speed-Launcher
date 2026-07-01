@@ -43,6 +43,15 @@ public partial class MainWindow : Window
     private int     _ue4ssTargetChapter = 0;
     private string? _ue4ssWin64Dir;
     private string? _ue4ssZipPath;
+    private bool    _ue4ssTargetInstalledViaLoadManip;
+
+    private readonly Dictionary<int, Button> _loadManipBtns = [];
+    private int     _loadManipTargetChapter = 0;
+    private string? _loadManipWin64Dir;
+    private string? _loadManipPaksDir;
+    private string? _loadManipZipPath;
+    private string? _loadManipUe4ssZipPath;
+    private bool    _loadManipUe4ssInstalledThisSession;
 
     // ── UE4SS temp hotkey remap ───────────────────────────────────────────────
     private bool    _ue4ssTempRemap    = false;
@@ -117,6 +126,24 @@ public partial class MainWindow : Window
 
     private bool _coresEnabled;
 
+    // ── Controller overlay ────────────────────────────────────────────────────
+    private bool                    _overlayEnabled    = false;
+    private string                  _overlayController = "xbox-controller";
+    private string                  _overlayCorner      = "top-left";
+    private ControllerOverlayWindow? _controllerOverlay;
+
+    private static readonly string OverlayEnabledFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "overlay_enabled.cfg");
+
+    private static readonly string OverlayControllerFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "overlay_controller.cfg");
+
+    private static readonly string OverlayCornerFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "overlay_corner.cfg");
+
     private static readonly string LoadManipHotkeyFile =
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "loadmanip_hotkeys.cfg");
@@ -130,6 +157,7 @@ public partial class MainWindow : Window
     {
         ["Edwin"] = "460391445690449922",
         ["Technight"] = "257300997322440704",
+        ["AdrianPG77"] = "752207247769206795",
     };
 
     // ── Palette ───────────────────────────────────────────────────────────────
@@ -257,6 +285,18 @@ public partial class MainWindow : Window
         SettingsTabUpdatesText.Text      = Loc.Get("settings_tab_updates");
         SettingsTabLiveSplitText.Text    = Loc.Get("settings_tab_livesplit");
         SettingsTabCoresText.Text        = Loc.Get("settings_tab_cores");
+        SettingsTabOverlaysText.Text     = Loc.Get("settings_tab_overlays");
+        OverlaysSectionLabel.Text        = Loc.Get("overlays_section");
+        OverlayEnableLabel.Text          = Loc.Get("overlay_enable_label");
+        OverlayControllerLabel.Text      = Loc.Get("overlay_controller_label");
+        OverlayDualSenseBtnText.Text     = Loc.Get("overlay_dualsense");
+        OverlayXboxBtnText.Text          = Loc.Get("overlay_xbox");
+        OverlayKeyboardBtnText.Text      = Loc.Get("overlay_keyboard");
+        OverlayCornerLabel.Text             = Loc.Get("overlay_corner_label");
+        OverlayCornerTopLeftBtnText.Text     = Loc.Get("overlay_corner_topleft");
+        OverlayCornerTopRightBtnText.Text    = Loc.Get("overlay_corner_topright");
+        OverlayCornerBottomLeftBtnText.Text  = Loc.Get("overlay_corner_bottomleft");
+        OverlayCornerBottomRightBtnText.Text = Loc.Get("overlay_corner_bottomright");
         CoresWarningText.Text            = Loc.Get("cores_warning");
         CoresEnableLabel.Text            = Loc.Get("cores_enable_label");
         ToolTipService.SetToolTip(SettingsButton, Loc.Get("settings_tooltip"));
@@ -493,6 +533,7 @@ public partial class MainWindow : Window
         LoadLoadManipHotkeys();
         LoadCoresEnabled();
         if (_coresEnabled) InstallLoadManipHook();
+        LoadOverlaySettings();
         _f11Remap.Load();
         _f11Remap.Refresh();
         RefreshF11RemapUI();
@@ -501,6 +542,11 @@ public partial class MainWindow : Window
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         base.OnClosing(e);
+        if (_controllerOverlay != null)
+        {
+            _controllerOverlay.Closed -= OverlayWindow_Closed;
+            _controllerOverlay.Close();
+        }
         _loadManip.RestoreIfActive();
         var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
         UnregisterHotKey(hwnd, HOTKEY_ID);
@@ -865,6 +911,7 @@ public partial class MainWindow : Window
     private void SettingsTabUpdates_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(5);
     private void SettingsTabLiveSplit_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(6);
     private void SettingsTabCores_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(7);
+    private void SettingsTabOverlays_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(8);
 
     private void SelectSettingsTab(int index)
     {
@@ -878,9 +925,11 @@ public partial class MainWindow : Window
         SettingsUpdatesScroll.Visibility      = index == 5 ? Visibility.Visible : Visibility.Collapsed;
         SettingsLiveSplitScroll.Visibility    = index == 6 ? Visibility.Visible : Visibility.Collapsed;
         SettingsCoresScroll.Visibility        = index == 7 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsOverlaysScroll.Visibility     = index == 8 ? Visibility.Visible : Visibility.Collapsed;
 
         if (index == 4) RefreshDiscordToggles();
         if (index == 7) RefreshCoresToggle();
+        if (index == 8) RefreshOverlaysTab();
 
         var tabs = new[]
         {
@@ -892,6 +941,7 @@ public partial class MainWindow : Window
             (SettingsTabUpdatesBorder,      SettingsTabUpdatesText),
             (SettingsTabLiveSplitBorder,    SettingsTabLiveSplitText),
             (SettingsTabCoresBorder,        SettingsTabCoresText),
+            (SettingsTabOverlaysBorder,     SettingsTabOverlaysText),
         };
 
         var tealBrush  = new SolidColorBrush(Teal);
@@ -1080,6 +1130,189 @@ public partial class MainWindow : Window
             InstallLoadManipHook();
         else
             UninstallLoadManipHook();
+    }
+
+    // ── Controller overlay ────────────────────────────────────────────────────
+
+    private void LoadOverlaySettings()
+    {
+        try
+        {
+            if (File.Exists(OverlayEnabledFile))
+                _overlayEnabled = File.ReadAllText(OverlayEnabledFile).Trim() == "1";
+            if (File.Exists(OverlayControllerFile))
+                _overlayController = File.ReadAllText(OverlayControllerFile).Trim();
+            if (File.Exists(OverlayCornerFile))
+                _overlayCorner = File.ReadAllText(OverlayCornerFile).Trim();
+        }
+        catch { }
+
+        if (_overlayEnabled)
+            Dispatcher.InvokeAsync(ApplyOverlayWindow, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void SaveOverlayEnabled()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(OverlayEnabledFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(OverlayEnabledFile, _overlayEnabled ? "1" : "0");
+        }
+        catch { }
+    }
+
+    private void SaveOverlayController()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(OverlayControllerFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(OverlayControllerFile, _overlayController);
+        }
+        catch { }
+    }
+
+    private void SaveOverlayCorner()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(OverlayCornerFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(OverlayCornerFile, _overlayCorner);
+        }
+        catch { }
+    }
+
+    private void RefreshOverlaysTab()
+    {
+        SetToggle(OverlayEnableText, _overlayEnabled);
+        RefreshOverlayControllerButtons();
+        RefreshOverlayCornerButtons();
+    }
+
+    private void RefreshOverlayControllerButtons()
+    {
+        var selectedBrush  = new SolidColorBrush(Teal);
+        var selectedBg     = new SolidColorBrush(Color.FromArgb(255, 0, 40, 30));
+        var selectedBorder = new SolidColorBrush(Teal);
+        var dimBrush       = new SolidColorBrush(Color.FromArgb(255, 58, 106, 138));
+        var dimBg          = new SolidColorBrush(Color.FromArgb(255, 6, 15, 24));
+        var dimBorder      = new SolidColorBrush(Color.FromArgb(255, 13, 37, 53));
+
+        void Style(Button btn, TextBlock text, bool selected)
+        {
+            btn.Background  = selected ? selectedBg : dimBg;
+            btn.BorderBrush = selected ? selectedBorder : dimBorder;
+            text.Foreground = selected ? selectedBrush : dimBrush;
+        }
+
+        Style(OverlayDualSenseBtn, OverlayDualSenseBtnText, _overlayController == "dualsense");
+        Style(OverlayXboxBtn,      OverlayXboxBtnText,      _overlayController == "xbox-controller");
+        Style(OverlayKeyboardBtn,  OverlayKeyboardBtnText,  _overlayController == "keyboard");
+    }
+
+    private void RefreshOverlayCornerButtons()
+    {
+        var selectedBrush  = new SolidColorBrush(Teal);
+        var selectedBg     = new SolidColorBrush(Color.FromArgb(255, 0, 40, 30));
+        var selectedBorder = new SolidColorBrush(Teal);
+        var dimBrush       = new SolidColorBrush(Color.FromArgb(255, 58, 106, 138));
+        var dimBg          = new SolidColorBrush(Color.FromArgb(255, 6, 15, 24));
+        var dimBorder      = new SolidColorBrush(Color.FromArgb(255, 13, 37, 53));
+
+        void Style(Button btn, TextBlock text, bool selected)
+        {
+            btn.Background  = selected ? selectedBg : dimBg;
+            btn.BorderBrush = selected ? selectedBorder : dimBorder;
+            text.Foreground = selected ? selectedBrush : dimBrush;
+        }
+
+        Style(OverlayCornerTopLeftBtn,     OverlayCornerTopLeftBtnText,     _overlayCorner == "top-left");
+        Style(OverlayCornerTopRightBtn,    OverlayCornerTopRightBtnText,    _overlayCorner == "top-right");
+        Style(OverlayCornerBottomLeftBtn,  OverlayCornerBottomLeftBtnText,  _overlayCorner == "bottom-left");
+        Style(OverlayCornerBottomRightBtn, OverlayCornerBottomRightBtnText, _overlayCorner == "bottom-right");
+    }
+
+    private void SetOverlayCorner(string corner)
+    {
+        _overlayCorner = corner;
+        SaveOverlayCorner();
+        RefreshOverlayCornerButtons();
+        if (_overlayEnabled) ApplyOverlayWindow(); // reposition
+    }
+
+    private void OverlayCornerTopLeftBtn_Click(object sender, RoutedEventArgs e)     => SetOverlayCorner("top-left");
+    private void OverlayCornerTopRightBtn_Click(object sender, RoutedEventArgs e)    => SetOverlayCorner("top-right");
+    private void OverlayCornerBottomLeftBtn_Click(object sender, RoutedEventArgs e)  => SetOverlayCorner("bottom-left");
+    private void OverlayCornerBottomRightBtn_Click(object sender, RoutedEventArgs e) => SetOverlayCorner("bottom-right");
+
+    private void OverlayEnableBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _overlayEnabled = !_overlayEnabled;
+        SaveOverlayEnabled();
+        SetToggle(OverlayEnableText, _overlayEnabled);
+        ApplyOverlayWindow();
+    }
+
+    private void OverlayDualSenseBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _overlayController = "dualsense";
+        SaveOverlayController();
+        RefreshOverlayControllerButtons();
+        if (_overlayEnabled) ApplyOverlayWindow(); // reload with new skin
+    }
+
+    private void OverlayXboxBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _overlayController = "xbox-controller";
+        SaveOverlayController();
+        RefreshOverlayControllerButtons();
+        if (_overlayEnabled) ApplyOverlayWindow(); // reload with new skin
+    }
+
+    private void OverlayKeyboardBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _overlayController = "keyboard";
+        SaveOverlayController();
+        RefreshOverlayControllerButtons();
+        if (_overlayEnabled) ApplyOverlayWindow(); // reload with new skin
+    }
+
+    private void ApplyOverlayWindow()
+    {
+        // Close existing window
+        if (_controllerOverlay != null)
+        {
+            _controllerOverlay.Closed -= OverlayWindow_Closed;
+            _controllerOverlay.Close();
+            _controllerOverlay = null;
+        }
+
+        if (!_overlayEnabled) return;
+
+        _controllerOverlay = new ControllerOverlayWindow(_overlayController);
+        _controllerOverlay.Closed += OverlayWindow_Closed;
+
+        // Position in the configured screen corner
+        var screen = SystemParameters.WorkArea;
+        const int margin = 20;
+        _controllerOverlay.Left = _overlayCorner is "top-right" or "bottom-right"
+            ? screen.Right - _controllerOverlay.Width - margin
+            : screen.Left  + margin;
+        _controllerOverlay.Top = _overlayCorner is "bottom-left" or "bottom-right"
+            ? screen.Bottom - _controllerOverlay.Height - margin
+            : screen.Top    + margin;
+
+        _controllerOverlay.Show();
+    }
+
+    private void OverlayWindow_Closed(object? sender, EventArgs e)
+    {
+        _controllerOverlay = null;
+        _overlayEnabled    = false;
+        SaveOverlayEnabled();
+        SetToggle(OverlayEnableText, false);
     }
 
     private static string FormatKeyName(uint vk)
@@ -1894,6 +2127,7 @@ public partial class MainWindow : Window
             CardsPanel.Children.Add(card);
         }
         RefreshUe4ssBtnStates();
+        RefreshLoadManipBtnStates();
     }
 
     private Border MakeCard(ChapterInfo chapter, string bannerPath)
@@ -2022,6 +2256,33 @@ public partial class MainWindow : Window
             ue4ssBtn.Click     += Ue4ssCardBtn_Click;
             actionsPanel.Children.Add(ue4ssBtn);
             _ue4ssBtns.Add(ue4ssBtn);
+
+            if (chapter.Number == 1 || chapter.Number == 4)
+            {
+                var loadManipBtn = new Button
+                {
+                    Background      = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
+                    BorderBrush     = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
+                    BorderThickness = new Thickness(1),
+                    Padding         = new Thickness(10, 5, 10, 5),
+                    Margin          = new Thickness(6, 0, 0, 0),
+                    Tag             = chapter.Number,
+                };
+                ButtonHelper.SetCornerRadius(loadManipBtn, new CornerRadius(3));
+                loadManipBtn.Content = new TextBlock
+                {
+                    Text              = "MANIP",
+                    FontFamily        = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize          = 9,
+                    FontWeight        = FontWeights.Bold,
+                    Foreground        = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                loadManipBtn.MouseDown += (s, ev) => ev.Handled = true;
+                loadManipBtn.Click     += LoadManipCardBtn_Click;
+                actionsPanel.Children.Add(loadManipBtn);
+                _loadManipBtns[chapter.Number] = loadManipBtn;
+            }
 
             bottom.Children.Add(actionsPanel);
         }
@@ -2152,6 +2413,7 @@ public partial class MainWindow : Window
         PlayButton.Opacity   = canPlay ? 1.0 : 0.35;
 
         RefreshUe4ssBtnStates();
+        RefreshLoadManipBtnStates();
     }
 
     private string GetVersionLabel(ChapterInfo ch)
@@ -5137,7 +5399,7 @@ public partial class MainWindow : Window
         (string Id, string Username) discordUser, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
-            "https://canary.discord.com/api/webhooks/1517559033182031933/2TUnuPdTos1nftUFUHDl7UsTpKOX6q_Q0Y0DgXiSgQMewyDjL3kL7msbF40LtII9KRlI";
+            "WebhookUrl";
 
         try
         {
@@ -5236,9 +5498,22 @@ public partial class MainWindow : Window
                 : IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
         }
 
-        bool installed = _ue4ssWin64Dir != null && IsUe4ssInstalled(_ue4ssWin64Dir);
+        // UE4SS installed by the Load Manip system is a different build (see
+        // LoadManipFilesService.IsUe4ssFromLoadManip) — don't report it here as the
+        // standalone UE4SS install, since removing/replacing it must go through Load Manip.
+        bool installedViaLoadManip = _ue4ssWin64Dir != null && LoadManipFilesService.IsUe4ssFromLoadManip(_ue4ssWin64Dir);
+        bool installed = _ue4ssWin64Dir != null && IsUe4ssInstalled(_ue4ssWin64Dir) && !installedViaLoadManip;
+        _ue4ssTargetInstalledViaLoadManip = installedViaLoadManip;
 
-        if (installed)
+        if (installedViaLoadManip)
+        {
+            Ue4ssPopupQuestion.Text   = "Load Manip and its UE4SS files must be\nremoved before installing the original UE4SS.";
+            Ue4ssYesBtn.Visibility    = Visibility.Collapsed;
+            Ue4ssDeleteBtn.Visibility = Visibility.Visible;
+            Ue4ssDeleteBtn.IsEnabled  = true;
+            Ue4ssDeleteBtn.Opacity    = 1.0;
+        }
+        else if (installed)
         {
             Ue4ssPopupQuestion.Text   = "Do you want to remove UE4SS\nfrom this version?";
             Ue4ssYesBtn.Visibility    = Visibility.Collapsed;
@@ -5299,38 +5574,53 @@ public partial class MainWindow : Window
     {
         CloseUe4ssOverlay();
 
-        if (_ue4ssWin64Dir is null || _ue4ssZipPath is null || !File.Exists(_ue4ssZipPath))
+        if (_ue4ssWin64Dir is null)
+            return;
+
+        if (_ue4ssTargetInstalledViaLoadManip)
+        {
+            var win64        = _ue4ssWin64Dir;
+            var paksDir      = LoadManipFilesService.GetPaksDir(win64);
+            var loadManipZip = LoadManipFilesService.GetZipPath(_ue4ssTargetChapter);
+            var ue4ssZipPath = LoadManipFilesService.GetUe4ssZipPath(_ue4ssTargetChapter);
+
+            if (_ue4ssZipPath is null || !File.Exists(_ue4ssZipPath))
+            {
+                ShowUe4ssDialog("UE4SS zip not found. Try restarting the launcher.");
+                return;
+            }
+            var originalUe4ssZip = _ue4ssZipPath;
+
+            try
+            {
+                await Task.Run(() =>
+                {
+                    if (paksDir != null && loadManipZip != null && File.Exists(loadManipZip))
+                        LoadManipFilesService.Uninstall(paksDir, loadManipZip);
+                    if (ue4ssZipPath != null && File.Exists(ue4ssZipPath))
+                        LoadManipFilesService.UninstallUe4ss(win64, ue4ssZipPath);
+
+                    ZipFile.ExtractToDirectory(originalUe4ssZip, win64, overwriteFiles: true);
+                });
+                RefreshUe4ssBtnStates();
+                RefreshLoadManipBtnStates();
+                ShowUe4ssDialog($"UE4SS installed successfully!\n\n{win64}", success: true);
+            }
+            catch (Exception ex)
+            {
+                ShowUe4ssDialog($"Error installing UE4SS:\n{ex.Message}");
+            }
+            return;
+        }
+
+        if (_ue4ssZipPath is null || !File.Exists(_ue4ssZipPath))
             return;
 
         try
         {
             var win64   = _ue4ssWin64Dir;
             var zipPath = _ue4ssZipPath;
-            await Task.Run(() =>
-            {
-                using var zip = ZipFile.OpenRead(zipPath);
-                var dirsToDelete = new List<string>();
-
-                foreach (var entry in zip.Entries)
-                {
-                    var rel = entry.FullName.Replace('/', IOPath.DirectorySeparatorChar);
-                    if (string.IsNullOrEmpty(entry.Name))
-                    {
-                        dirsToDelete.Add(IOPath.Combine(win64, rel.TrimEnd(IOPath.DirectorySeparatorChar)));
-                    }
-                    else
-                    {
-                        var target = IOPath.Combine(win64, rel);
-                        if (File.Exists(target)) File.Delete(target);
-                    }
-                }
-
-                foreach (var dir in dirsToDelete.OrderBy(d => d.Length))
-                {
-                    if (Directory.Exists(dir))
-                        Directory.Delete(dir, recursive: true);
-                }
-            });
+            await Task.Run(() => LoadManipFilesService.UninstallUe4ss(win64, zipPath));
             RefreshUe4ssBtnStates();
             ShowUe4ssDialog("UE4SS removed successfully!", success: true);
         }
@@ -5550,9 +5840,303 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(exePath))
             {
                 var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
-                if (win64 != null) installed = IsUe4ssInstalled(win64);
+                if (win64 != null)
+                    installed = IsUe4ssInstalled(win64) && !LoadManipFilesService.IsUe4ssFromLoadManip(win64);
             }
             _ue4ssBtns[i].Opacity = installed ? 1.0 : 0.3;
+        }
+    }
+
+    // ── Load Manip files ─────────────────────────────────────────────────────
+
+    private void LoadManipCardBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _loadManipTargetChapter = (int)((Button)sender).Tag;
+        _loadManipUe4ssInstalledThisSession = false;
+
+        if (!ComputeLoadManipTargets())
+        {
+            ShowLoadManipDialog("No game path found for this chapter.\nPlease set up the game installation first.");
+            return;
+        }
+
+        UpdateLoadManipPopupState();
+        OpenLoadManipOverlay();
+    }
+
+    /// <summary>Resolves the win64/paks/zip paths for the currently targeted chapter.
+    /// Returns false (and leaves the targets null) when no game path is found.</summary>
+    private bool ComputeLoadManipTargets()
+    {
+        var chapter = _chapters.FirstOrDefault(c => c.Number == _loadManipTargetChapter);
+        _loadManipWin64Dir     = null;
+        _loadManipPaksDir      = null;
+        _loadManipZipPath      = null;
+        _loadManipUe4ssZipPath = null;
+
+        if (chapter != null)
+        {
+            var exePath = GetActiveExePath(chapter);
+            if (!string.IsNullOrEmpty(exePath))
+                _loadManipWin64Dir = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+
+            _loadManipZipPath      = LoadManipFilesService.GetZipPath(chapter.Number);
+            _loadManipUe4ssZipPath = LoadManipFilesService.GetUe4ssZipPath(chapter.Number);
+            if (_loadManipWin64Dir != null)
+                _loadManipPaksDir = LoadManipFilesService.GetPaksDir(_loadManipWin64Dir);
+        }
+
+        return _loadManipWin64Dir != null;
+    }
+
+    /// <summary>Refreshes the popup's text/buttons for the current target without
+    /// touching its visibility/animation, so callers can swap state in place.</summary>
+    private void UpdateLoadManipPopupState()
+    {
+        bool needsUe4ss = _loadManipTargetChapter == 1
+            && _loadManipWin64Dir != null && !IsUe4ssInstalled(_loadManipWin64Dir);
+        bool installed  = !needsUe4ss
+            && _loadManipPaksDir != null && _loadManipZipPath != null && File.Exists(_loadManipZipPath)
+            && LoadManipFilesService.IsInstalled(_loadManipPaksDir, _loadManipZipPath);
+
+        LoadManipYesBtn.Visibility           = Visibility.Collapsed;
+        LoadManipDeleteBtn.Visibility        = Visibility.Collapsed;
+        LoadManipInstallUe4ssBtn.Visibility  = Visibility.Collapsed;
+        LoadManipWarningText.Visibility      = Visibility.Collapsed;
+
+        if (needsUe4ss)
+        {
+            LoadManipPopupQuestion.Text = "UE4SS is required before adding\nLoad Manip files for Chapter 1.";
+            LoadManipInstallUe4ssBtn.Visibility = Visibility.Visible;
+            LoadManipWarningText.Visibility = Visibility.Visible;
+        }
+        else if (installed)
+        {
+            LoadManipPopupQuestion.Text = "Do you want to remove Load Manip files\nfrom this version?";
+            LoadManipDeleteBtn.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            LoadManipPopupQuestion.Text = "Do you want to add Load Manip files\nto this version?";
+            LoadManipYesBtn.Visibility = Visibility.Visible;
+            if (_loadManipTargetChapter == 1)
+                LoadManipWarningText.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void OpenLoadManipOverlay()
+    {
+        LoadManipOverlay.Opacity    = 0;
+        LoadManipOverlay.Visibility = Visibility.Visible;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        LoadManipOverlay.BeginAnimation(UIElement.OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)));
+        LoadManipPopupScale.BeginAnimation(ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(0.85, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+        LoadManipPopupScale.BeginAnimation(ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(0.85, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+    }
+
+    private void LoadManipNoBtn_Click(object sender, RoutedEventArgs e)
+        => CloseLoadManipOverlay();
+
+    private async void LoadManipYesBtn_Click(object sender, RoutedEventArgs e)
+    {
+        CloseLoadManipOverlay();
+
+        if (_loadManipPaksDir is null || _loadManipWin64Dir is null)
+        {
+            ShowLoadManipDialog("No game path found for this chapter.\nPlease set up the game installation first.");
+            return;
+        }
+
+        if (_loadManipZipPath is null || !File.Exists(_loadManipZipPath))
+        {
+            ShowLoadManipDialog("Load Manip zip not found. Try restarting the launcher.");
+            return;
+        }
+
+        var win64Dir     = _loadManipWin64Dir;
+        var paksDir      = _loadManipPaksDir;
+        var zipPath      = _loadManipZipPath;
+        var ue4ssZipPath = _loadManipUe4ssZipPath;
+
+        if (_loadManipTargetChapter == 1)
+        {
+            if (ue4ssZipPath is null || !File.Exists(ue4ssZipPath))
+            {
+                ShowLoadManipDialog("Load Manip UE4SS zip not found. Try restarting the launcher.");
+                return;
+            }
+
+            // If UE4SS was already present before this flow installed it (e.g. via the
+            // standalone UE4SS card), its files must be replaced with the Load Manip build.
+            if (!_loadManipUe4ssInstalledThisSession && IsUe4ssInstalled(win64Dir))
+            {
+                var confirmContent = new TextBlock
+                {
+                    Text         = "This requires deleting the current UE4SS files.\nDo you want to delete them?",
+                    FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize     = 12,
+                    Foreground   = new SolidColorBrush(Color.FromArgb(200, 160, 180, 200)),
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth     = 360,
+                };
+                var confirmResult = WpfDialog.Show(this, "LOAD MANIP", confirmContent,
+                    primaryText: "YES", closeText: "CANCEL");
+                if (confirmResult != WpfDialogResult.Primary) return;
+
+                try
+                {
+                    var genericUe4ssZip = IOPath.Combine(
+                        ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
+                    if (File.Exists(genericUe4ssZip))
+                        await Task.Run(() => LoadManipFilesService.UninstallUe4ss(win64Dir, genericUe4ssZip));
+                }
+                catch (Exception ex)
+                {
+                    ShowLoadManipDialog($"Error deleting existing UE4SS files:\n{ex.Message}");
+                    return;
+                }
+            }
+        }
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                LoadManipFilesService.Install(paksDir, zipPath);
+                if (_loadManipTargetChapter == 1 && ue4ssZipPath != null)
+                    LoadManipFilesService.InstallUe4ss(win64Dir, ue4ssZipPath);
+            });
+            RefreshLoadManipBtnStates();
+            RefreshUe4ssBtnStates();
+            ShowLoadManipDialog($"Load Manip files installed successfully!\n\n{paksDir}", success: true);
+        }
+        catch (Exception ex)
+        {
+            ShowLoadManipDialog($"Error installing Load Manip files:\n{ex.Message}");
+        }
+    }
+
+    private async void LoadManipDeleteBtn_Click(object sender, RoutedEventArgs e)
+    {
+        CloseLoadManipOverlay();
+
+        if (_loadManipPaksDir is null || _loadManipZipPath is null || !File.Exists(_loadManipZipPath))
+            return;
+
+        try
+        {
+            var paksDir      = _loadManipPaksDir;
+            var zipPath      = _loadManipZipPath;
+            var win64Dir     = _loadManipWin64Dir;
+            var ue4ssZipPath = _loadManipUe4ssZipPath;
+            await Task.Run(() =>
+            {
+                LoadManipFilesService.Uninstall(paksDir, zipPath);
+
+                // Also remove the UE4SS build Load Manip installed, so the standalone
+                // UE4SS card correctly reports "not installed" afterward.
+                if (win64Dir != null && ue4ssZipPath != null && File.Exists(ue4ssZipPath)
+                    && LoadManipFilesService.IsUe4ssFromLoadManip(win64Dir))
+                {
+                    LoadManipFilesService.UninstallUe4ss(win64Dir, ue4ssZipPath);
+                }
+            });
+            RefreshLoadManipBtnStates();
+            RefreshUe4ssBtnStates();
+            ShowLoadManipDialog("Load Manip files removed successfully!", success: true);
+        }
+        catch (Exception ex)
+        {
+            ShowLoadManipDialog($"Error removing Load Manip files:\n{ex.Message}");
+        }
+    }
+
+    private async void LoadManipInstallUe4ssBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_loadManipWin64Dir is null)
+        {
+            CloseLoadManipOverlay();
+            ShowLoadManipDialog("No game path found for this chapter.\nPlease set up the game installation first.");
+            return;
+        }
+
+        // Load Manip's UE4SS dependency only applies to Chapter 1, which always
+        // uses the shared Chapter 1-4 UE4SS build.
+        var ue4ssZipPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
+        if (!File.Exists(ue4ssZipPath))
+        {
+            CloseLoadManipOverlay();
+            ShowLoadManipDialog("UE4SS zip not found. Try restarting the launcher.");
+            return;
+        }
+
+        LoadManipInstallUe4ssBtn.IsEnabled = false;
+        try
+        {
+            var win64 = _loadManipWin64Dir;
+            await Task.Run(() => ZipFile.ExtractToDirectory(ue4ssZipPath, win64, overwriteFiles: true));
+            _loadManipUe4ssInstalledThisSession = true;
+            RefreshUe4ssBtnStates();
+            // Swap straight to the "add Load Manip files" state in the same popup
+            // instead of closing it, since UE4SS is now installed.
+            UpdateLoadManipPopupState();
+        }
+        catch (Exception ex)
+        {
+            CloseLoadManipOverlay();
+            ShowLoadManipDialog($"Error installing UE4SS:\n{ex.Message}");
+        }
+        finally
+        {
+            LoadManipInstallUe4ssBtn.IsEnabled = true;
+        }
+    }
+
+    private void CloseLoadManipOverlay()
+    {
+        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(180)) { EasingFunction = ease };
+        fade.Completed += (_, _) => LoadManipOverlay.Visibility = Visibility.Collapsed;
+        LoadManipOverlay.BeginAnimation(UIElement.OpacityProperty, fade);
+    }
+
+    private void ShowLoadManipDialog(string message, bool success = false)
+    {
+        WpfDialog.Show(this, "LOAD MANIP", new TextBlock
+        {
+            Text         = message,
+            FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize     = 12,
+            Foreground   = new SolidColorBrush(success
+                ? Color.FromArgb(200, 0, 204, 170)
+                : Color.FromArgb(200, 160, 180, 200)),
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth     = 360,
+        }, closeText: "OK");
+    }
+
+    private void RefreshLoadManipBtnStates()
+    {
+        foreach (var (chapterNumber, btn) in _loadManipBtns)
+        {
+            var chapter = _chapters.FirstOrDefault(c => c.Number == chapterNumber);
+            var exePath = chapter != null ? GetActiveExePath(chapter) : null;
+            bool installed = false;
+            if (!string.IsNullOrEmpty(exePath))
+            {
+                var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+                var zipPath = LoadManipFilesService.GetZipPath(chapterNumber);
+                if (win64 != null && zipPath != null)
+                {
+                    var paksDir = LoadManipFilesService.GetPaksDir(win64);
+                    if (paksDir != null)
+                        installed = LoadManipFilesService.IsInstalled(paksDir, zipPath);
+                }
+            }
+            btn.Opacity = installed ? 1.0 : 0.3;
         }
     }
 }

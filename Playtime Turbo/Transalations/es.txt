@@ -271,6 +271,20 @@ settings_tab_discord    = 💬 Discord
 settings_tab_updates    = 🔄 Actualizaciones
 settings_tab_livesplit  = ⏱️ LiveSplit
 settings_tab_cores     = 🧠 Cores
+settings_tab_overlays  = 🖥️ Overlays
+
+# Overlays (sección en configuración)
+overlays_section          = OVERLAY DE MANDO
+overlay_enable_label      = Activar overlay
+overlay_controller_label  = TIPO DE MANDO
+overlay_dualsense         = DualSense
+overlay_xbox              = Xbox Controller
+overlay_keyboard          = Teclado + Ratón
+overlay_corner_label      = ESQUINA DE PANTALLA
+overlay_corner_topleft    = Superior Izquierda
+overlay_corner_topright   = Superior Derecha
+overlay_corner_bottomleft  = Inferior Izquierda
+overlay_corner_bottomright = Inferior Derecha
 
 # Cores (sección en configuración)
 cores_warning          = ⚠ Esta función no está permitida en runs oficiales.

@@ -1,2 +1,4 @@
-2.0.4 [UE4SS UPDATE]
-- Added UE4SS for all the chapters
+2.0.5 [LOADS UPDATE]
+- Added controller overlay
+- Added keyboard and mouse overlay
+- Added Load Manip Tool for chapter 1 and 4 (Thanks to @AdrianPG77)

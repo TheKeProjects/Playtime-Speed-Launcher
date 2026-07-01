@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="SpeedrunLauncher.ControllerOverlayWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:SpeedrunLauncher"
+    Title="Controller Overlay"
+    WindowStyle="None"
+    AllowsTransparency="True"
+    Background="Transparent"
+    Topmost="True"
+    ResizeMode="NoResize"
+    ShowInTaskbar="False"
+    Width="360" Height="219">
+
+    <Grid>
+        <!-- Controller canvas, scales with window -->
+        <Viewbox Stretch="Uniform">
+            <Canvas x:Name="OverlayCanvas"/>
+        </Viewbox>
+    </Grid>
+</Window>

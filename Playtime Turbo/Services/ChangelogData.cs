@@ -7,6 +7,12 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.0.5", "01/07/2026",
+        [
+            "Added controller overlay",
+            "Added keyboard and mouse overlay",
+            "Added Load Manip Tool for chapter 1 and 4 (Thanks to @AdrianPG77)",
+        ]),
         new("2.0.4", "26/06/2026",
         [
             "Added UE4SS for all the chapters",
