@@ -1,4 +1,6 @@
-2.0.5 [LOADS UPDATE]
-- Added controller overlay
-- Added keyboard and mouse overlay
-- Added Load Manip Tool for chapter 1 and 4 (Thanks to @AdrianPG77)
+2.0.6 [ICONS UPDATE]
+- Fixed some visual bugs with the controllers overlay
+- Updated app icon (Thanks to @ᴢᴀᴇᴇ)
+- Added a system to send new skips to the developers
+- Added new skips to Chapter 1
+- Added a setting to select the icon app (Taskbar and Discord)

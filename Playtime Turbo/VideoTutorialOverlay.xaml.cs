@@ -690,6 +690,9 @@ public partial class VideoTutorialOverlay : Window
         BuildVideoList();
     }
 
+    private void ReportSkip_Click(object sender, RoutedEventArgs e) =>
+        new ReportSkipWindow { Owner = this }.ShowDialog();
+
     private void Close_Click(object sender, RoutedEventArgs e)             => Close();
     private void Backdrop_MouseDown(object sender, MouseButtonEventArgs e) => Close();
 

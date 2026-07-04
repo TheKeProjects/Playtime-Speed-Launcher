@@ -203,17 +203,29 @@
                                        FontSize="13" FontWeight="Bold" Foreground="#00CCAA"
                                        VerticalAlignment="Center"/>
                         </StackPanel>
-                        <Button Click="Close_Click"
-                                Width="28" Height="28"
-                                HorizontalAlignment="Right"
-                                local:ButtonHelper.CornerRadius="4"
-                                Background="#0A1825" BorderBrush="#0D2535"
-                                BorderThickness="1" Cursor="Hand">
-                            <TextBlock Text="✕" FontSize="12" FontWeight="Bold"
-                                       Foreground="#3A6A8A"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
-                        </Button>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Click="ReportSkip_Click"
+                                    Width="28" Height="28" Margin="0,0,8,0"
+                                    local:ButtonHelper.CornerRadius="4"
+                                    Background="#0A1825" BorderBrush="#0D2535"
+                                    BorderThickness="1" Cursor="Hand"
+                                    ToolTip="Report a skip that's missing from this list">
+                                <TextBlock Text="+" FontSize="14" FontWeight="Bold"
+                                           Foreground="#00CCAA"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Button>
+                            <Button Click="Close_Click"
+                                    Width="28" Height="28"
+                                    local:ButtonHelper.CornerRadius="4"
+                                    Background="#0A1825" BorderBrush="#0D2535"
+                                    BorderThickness="1" Cursor="Hand">
+                                <TextBlock Text="✕" FontSize="12" FontWeight="Bold"
+                                           Foreground="#3A6A8A"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Button>
+                        </StackPanel>
                     </Grid>
                 </Border>
 

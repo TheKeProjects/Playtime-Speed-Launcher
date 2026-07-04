@@ -7,6 +7,14 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.0.6", "04/07/2026",
+        [
+            "Fixed some visual bugs with the controllers overlay",
+            "Updated app icon (Thanks to @ᴢᴀᴇᴇ)",
+            "Added a system to send new skips to the developers",
+            "Added new skips to Chapter 1",
+            "Added a setting to select the icon app (Taskbar and Discord)",
+        ]),
         new("2.0.5", "01/07/2026",
         [
             "Added controller overlay",

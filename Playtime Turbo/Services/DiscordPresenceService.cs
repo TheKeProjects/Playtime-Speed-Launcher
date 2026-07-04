@@ -75,6 +75,23 @@ public sealed class DiscordPresenceService : IDisposable
         Send(_currentPresence);
     }
 
+    /// <summary>
+    /// Re-applies AppVersion.LauncherImageKey to whichever image slot (large/small)
+    /// currently holds a launcher icon, then resends. Call this after the user
+    /// changes their icon theme setting so Discord updates without waiting for
+    /// the next state transition.
+    /// </summary>
+    public void RefreshIconTheme()
+    {
+        if (_currentPresence?.Assets is not { } assets) return;
+        var key = AppVersion.LauncherImageKey;
+        if (assets.LargeImageKey is not null && assets.LargeImageKey.StartsWith("launcher"))
+            assets.LargeImageKey = key;
+        if (assets.SmallImageKey is not null && assets.SmallImageKey.StartsWith("launcher"))
+            assets.SmallImageKey = key;
+        if (_showActivity) Send(_currentPresence);
+    }
+
     // ── Discord rate limit: ~5 updates per 20 s ────────────────────────────────
     private DateTime _lastLiveSplitSend = DateTime.MinValue;
     private static readonly TimeSpan MinLiveSplitInterval = TimeSpan.FromSeconds(4);
@@ -218,7 +235,8 @@ public sealed class DiscordPresenceService : IDisposable
 
     private static readonly Button[] DownloadButtons = new[]
     {
-        new Button { Label = "Download Launcher", Url = "https://playtimesl.com/" }
+        new Button { Label = "Download Launcher", Url = "https://playtimesl.com/" },
+        new Button { Label = "Join Discord",      Url = "https://discord.gg/Z44M2yeRys" },
     };
 
     // ── Internals ──────────────────────────────────────────────────────────────

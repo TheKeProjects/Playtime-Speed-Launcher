@@ -7,12 +7,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <LgbtqMode>false</LgbtqMode>
-    <ApplicationIcon Condition="'$(LgbtqMode)' == 'true'">iconHD LGBTQ+.ico</ApplicationIcon>
+    <SummerMode>true</SummerMode>
+    <HalloweenMode>false</HalloweenMode>
+    <ApplicationIcon Condition="'$(LgbtqMode)' == 'true'">icon LGBTQ+.ico</ApplicationIcon>
     <ApplicationIcon Condition="'$(LgbtqMode)' != 'true'">icon.ico</ApplicationIcon>
+    <ApplicationIcon Condition="'$(SummerMode)' == 'true'">icon Summer.ico</ApplicationIcon>
+    <ApplicationIcon Condition="'$(HalloweenMode)' == 'true'">icon Halloween.ico</ApplicationIcon>
     <DefineConstants Condition="'$(LgbtqMode)' == 'true'">$(DefineConstants);LGBTQ_MODE</DefineConstants>
+    <DefineConstants Condition="'$(SummerMode)' == 'true'">$(DefineConstants);SUMMER_MODE</DefineConstants>
+    <DefineConstants Condition="'$(HalloweenMode)' == 'true'">$(DefineConstants);HALLOWEEN_MODE</DefineConstants>
     <AssemblyName>PlaytimeSpeedLauncher</AssemblyName>
     <RootNamespace>SpeedrunLauncher</RootNamespace>
-    <Version>2.0.5</Version>
+    <Version>2.0.6</Version>
     <Authors>An Average Developer</Authors>
     <Product>PlaytimeSpeedLauncher</Product>
     <Description>A Launcher for Speedruners of Poppy Playtime</Description>
@@ -40,8 +46,17 @@
     <Content Include="icon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <EmbeddedResource Include="iconHD LGBTQ+.ico">
+    <EmbeddedResource Include="icon.ico">
+      <LogicalName>default_icon</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icon LGBTQ+.ico">
       <LogicalName>lgbtq_icon</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icon Summer.ico">
+      <LogicalName>summer_icon</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icon Halloween.ico">
+      <LogicalName>halloween_icon</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="Assets\**">
       <LogicalName>assets___%(RecursiveDir)%(Filename)%(Extension)</LogicalName>

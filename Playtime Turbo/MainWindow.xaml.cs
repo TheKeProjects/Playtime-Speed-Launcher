@@ -158,6 +158,7 @@ public partial class MainWindow : Window
         ["Edwin"] = "460391445690449922",
         ["Technight"] = "257300997322440704",
         ["AdrianPG77"] = "752207247769206795",
+        ["ᴢᴀᴇᴇ"] = "807763566849163264",
     };
 
     // ── Palette ───────────────────────────────────────────────────────────────
@@ -171,7 +172,7 @@ public partial class MainWindow : Window
     {
         Loc.LoadSaved();
         InitializeComponent();
-        ApplyLgbtqIcon();
+        ApplyIconTheme();
         var trophyPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "GoldTrophy.png");
         if (System.IO.File.Exists(trophyPath))
             TrophyImage.Source = new BitmapImage(new Uri(trophyPath));
@@ -297,6 +298,14 @@ public partial class MainWindow : Window
         OverlayCornerTopRightBtnText.Text    = Loc.Get("overlay_corner_topright");
         OverlayCornerBottomLeftBtnText.Text  = Loc.Get("overlay_corner_bottomleft");
         OverlayCornerBottomRightBtnText.Text = Loc.Get("overlay_corner_bottomright");
+        SettingsTabIconThemeText.Text    = Loc.Get("settings_tab_icontheme");
+        IconThemeSectionLabel.Text       = Loc.Get("icontheme_section");
+        IconThemeHintText.Text           = Loc.Get("icontheme_hint");
+        IconThemeDefaultBtnText.Text     = Loc.Get("icontheme_default");
+        IconThemeClassicBtnText.Text     = Loc.Get("icontheme_classic");
+        IconThemeLgbtqBtnText.Text       = Loc.Get("icontheme_lgbtq");
+        IconThemeSummerBtnText.Text      = Loc.Get("icontheme_summer");
+        IconThemeHalloweenBtnText.Text   = Loc.Get("icontheme_halloween");
         CoresWarningText.Text            = Loc.Get("cores_warning");
         CoresEnableLabel.Text            = Loc.Get("cores_enable_label");
         ToolTipService.SetToolTip(SettingsButton, Loc.Get("settings_tooltip"));
@@ -912,6 +921,7 @@ public partial class MainWindow : Window
     private void SettingsTabLiveSplit_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(6);
     private void SettingsTabCores_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(7);
     private void SettingsTabOverlays_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(8);
+    private void SettingsTabIconTheme_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(9);
 
     private void SelectSettingsTab(int index)
     {
@@ -926,10 +936,12 @@ public partial class MainWindow : Window
         SettingsLiveSplitScroll.Visibility    = index == 6 ? Visibility.Visible : Visibility.Collapsed;
         SettingsCoresScroll.Visibility        = index == 7 ? Visibility.Visible : Visibility.Collapsed;
         SettingsOverlaysScroll.Visibility     = index == 8 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsIconThemeScroll.Visibility    = index == 9 ? Visibility.Visible : Visibility.Collapsed;
 
         if (index == 4) RefreshDiscordToggles();
         if (index == 7) RefreshCoresToggle();
         if (index == 8) RefreshOverlaysTab();
+        if (index == 9) RefreshIconThemeButtons();
 
         var tabs = new[]
         {
@@ -942,6 +954,7 @@ public partial class MainWindow : Window
             (SettingsTabLiveSplitBorder,    SettingsTabLiveSplitText),
             (SettingsTabCoresBorder,        SettingsTabCoresText),
             (SettingsTabOverlaysBorder,     SettingsTabOverlaysText),
+            (SettingsTabIconThemeBorder,    SettingsTabIconThemeText),
         };
 
         var tealBrush  = new SolidColorBrush(Teal);
@@ -4949,11 +4962,12 @@ public partial class MainWindow : Window
             ShowLiveSplitTcpNotice();
     }
 
-    private void ApplyLgbtqIcon()
+    private void ApplyIconTheme()
     {
-        if (!AppVersion.LGBTQ_MODE) return;
+        var resourceName = IconThemeSettings.Current.EmbeddedIconResourceName;
+        if (resourceName == null) return; // "default" theme: keep the executable's built-in icon.ico
         using var stream = System.Reflection.Assembly.GetExecutingAssembly()
-            .GetManifestResourceStream("lgbtq_icon");
+            .GetManifestResourceStream(resourceName);
         if (stream == null) return;
         var bitmap = new BitmapImage();
         bitmap.BeginInit();
@@ -4962,6 +4976,45 @@ public partial class MainWindow : Window
         bitmap.EndInit();
         bitmap.Freeze();
         Icon = bitmap;
+    }
+
+    private void SetIconTheme(string theme)
+    {
+        IconThemeSettings.Current.Theme = theme;
+        IconThemeSettings.Current.Save();
+        ApplyIconTheme();
+        _discordPresence.RefreshIconTheme();
+        RefreshIconThemeButtons();
+    }
+
+    private void IconThemeDefaultBtn_Click(object sender, RoutedEventArgs e)   => SetIconTheme("default");
+    private void IconThemeClassicBtn_Click(object sender, RoutedEventArgs e)   => SetIconTheme("classic");
+    private void IconThemeLgbtqBtn_Click(object sender, RoutedEventArgs e)     => SetIconTheme("lgbtq");
+    private void IconThemeSummerBtn_Click(object sender, RoutedEventArgs e)    => SetIconTheme("summer");
+    private void IconThemeHalloweenBtn_Click(object sender, RoutedEventArgs e) => SetIconTheme("halloween");
+
+    private void RefreshIconThemeButtons()
+    {
+        var selectedBrush  = new SolidColorBrush(Teal);
+        var selectedBg     = new SolidColorBrush(Color.FromArgb(255, 0, 40, 30));
+        var selectedBorder = new SolidColorBrush(Teal);
+        var dimBrush       = new SolidColorBrush(Color.FromArgb(255, 58, 106, 138));
+        var dimBg          = new SolidColorBrush(Color.FromArgb(255, 6, 15, 24));
+        var dimBorder      = new SolidColorBrush(Color.FromArgb(255, 13, 37, 53));
+
+        void Style(Button btn, TextBlock text, bool selected)
+        {
+            btn.Background  = selected ? selectedBg : dimBg;
+            btn.BorderBrush = selected ? selectedBorder : dimBorder;
+            text.Foreground = selected ? selectedBrush : dimBrush;
+        }
+
+        var theme = IconThemeSettings.Current.Theme;
+        Style(IconThemeDefaultBtn,   IconThemeDefaultBtnText,   theme == "default");
+        Style(IconThemeClassicBtn,   IconThemeClassicBtnText,   theme == "classic");
+        Style(IconThemeLgbtqBtn,     IconThemeLgbtqBtnText,     theme == "lgbtq");
+        Style(IconThemeSummerBtn,    IconThemeSummerBtnText,    theme == "summer");
+        Style(IconThemeHalloweenBtn, IconThemeHalloweenBtnText, theme == "halloween");
     }
 
     private void ShowLiveSplitTcpNotice()

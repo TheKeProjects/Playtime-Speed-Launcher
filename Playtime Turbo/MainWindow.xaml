@@ -560,6 +560,23 @@
                                                    VerticalAlignment="Center"/>
                                     </Border>
                                 </Button>
+                                <Button x:Name="SettingsTabIconThemeBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabIconTheme_Click">
+                                    <Border x:Name="SettingsTabIconThemeBorder"
+                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <TextBlock x:Name="SettingsTabIconThemeText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
                             </StackPanel>
                         </Border>
 
@@ -1083,6 +1100,83 @@
                                                        FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
                                         </Button>
                                     </Grid>
+
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- ═══ ICON & APP THEME TAB ═══ -->
+                            <ScrollViewer x:Name="SettingsIconThemeScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                                <StackPanel Margin="24,18">
+
+                                    <TextBlock x:Name="IconThemeSectionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+
+                                    <TextBlock x:Name="IconThemeHintText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="10" Foreground="#8AAABB"
+                                               TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                                    <Button x:Name="IconThemeDefaultBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10" Margin="0,0,0,8"
+                                            Click="IconThemeDefaultBtn_Click">
+                                        <TextBlock x:Name="IconThemeDefaultBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Button>
+
+                                    <Button x:Name="IconThemeClassicBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10" Margin="0,0,0,8"
+                                            Click="IconThemeClassicBtn_Click">
+                                        <TextBlock x:Name="IconThemeClassicBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Button>
+
+                                    <Button x:Name="IconThemeLgbtqBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10" Margin="0,0,0,8"
+                                            Click="IconThemeLgbtqBtn_Click">
+                                        <TextBlock x:Name="IconThemeLgbtqBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Button>
+
+                                    <Button x:Name="IconThemeSummerBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10" Margin="0,0,0,8"
+                                            Click="IconThemeSummerBtn_Click">
+                                        <TextBlock x:Name="IconThemeSummerBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Button>
+
+                                    <Button x:Name="IconThemeHalloweenBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10"
+                                            Click="IconThemeHalloweenBtn_Click">
+                                        <TextBlock x:Name="IconThemeHalloweenBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Button>
 
                                 </StackPanel>
                             </ScrollViewer>

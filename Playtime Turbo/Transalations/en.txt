@@ -272,6 +272,7 @@ settings_tab_updates    = 🔄 Updates
 settings_tab_livesplit  = ⏱️ LiveSplit
 settings_tab_cores     = 🧠 Cores
 settings_tab_overlays  = 🖥️ Overlays
+settings_tab_icontheme = 🎨 Icon & Theme
 
 # Overlays (section in settings)
 overlays_section          = CONTROLLER OVERLAY
@@ -285,6 +286,15 @@ overlay_corner_topleft    = Top Left
 overlay_corner_topright   = Top Right
 overlay_corner_bottomleft  = Bottom Left
 overlay_corner_bottomright = Bottom Right
+
+# Icon & app theme (section in settings)
+icontheme_section    = ICON & APP THEME
+icontheme_hint       = Choose the launcher's icon and Discord Rich Presence look. "Default" uses whatever theme is currently active in the build. This affects the running window/taskbar icon and Discord Rich Presence — it does not change the .exe file icon shown in File Explorer or on desktop shortcuts.
+icontheme_default    = Default
+icontheme_classic    = Classic
+icontheme_lgbtq      = LGBTQ+
+icontheme_summer     = Summer
+icontheme_halloween  = Halloween
 
 # Cores (section in settings)
 cores_warning          = ⚠ This feature is not allowed in official runs.
