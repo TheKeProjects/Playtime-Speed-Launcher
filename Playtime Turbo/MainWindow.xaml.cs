@@ -2950,8 +2950,12 @@ public partial class MainWindow : Window
         if (_fpsOverlay == null)
         {
             _fpsOverlay = new FpsOverlayWindow();
-            ApplyFpsOverlayAppearance();
+            // Show() first: PlaceInCorner (inside ApplyFpsOverlayAppearance) needs the
+            // window's actual Width/Height, which SizeToContent only resolves once the
+            // window has been shown and laid out — calling it beforehand reads NaN and
+            // places the overlay at the wrong spot until the corner is re-applied later.
             _fpsOverlay.Show();
+            ApplyFpsOverlayAppearance();
         }
     }
 
@@ -6823,7 +6827,7 @@ public partial class MainWindow : Window
         var exePath = GetActiveExePath(ch);
         if (string.IsNullOrEmpty(exePath)) return false;
         var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
-        return win64 != null && IsUe4ssInstalled(win64);
+        return win64 != null && IsUe4ssInstalled(win64) && !LoadManipFilesService.IsUe4ssFromLoadManip(win64);
     }
 
     private void ApplyUe4ssTempRemap(string exe)

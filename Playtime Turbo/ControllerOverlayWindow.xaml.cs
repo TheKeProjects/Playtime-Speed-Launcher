@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -650,10 +651,37 @@ public partial class ControllerOverlayWindow : Window
 
     // ── UI ────────────────────────────────────────────────────────────────────
 
+    // Makes the overlay click-through: without this the overlay is a real, hit-testable
+    // window sitting on top of the game, so the OS reports it (not the game) as the window
+    // under the cursor on hover — which some games read as a focus/foreground loss and
+    // respond to by pausing. Same fix as FpsOverlayWindow.
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var ex   = NativeMethods.GetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE);
+        NativeMethods.SetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE,
+            ex | NativeMethods.WS_EX_TRANSPARENT | NativeMethods.WS_EX_LAYERED);
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _poll.Stop();
         UninstallMouseWheelHook();
         base.OnClosed(e);
+    }
+
+    private static class NativeMethods
+    {
+        public const int GWL_EXSTYLE       = -20;
+        public const int WS_EX_LAYERED     = 0x80000;
+        public const int WS_EX_TRANSPARENT = 0x20;
+
+        [DllImport("user32.dll")]
+        public static extern int GetWindowLong(nint hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        public static extern int SetWindowLong(nint hWnd, int nIndex, int dwNewLong);
     }
 }

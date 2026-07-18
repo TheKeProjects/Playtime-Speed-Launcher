@@ -1,5 +1,3 @@
-2.0.7 [TRAILER UPDATE UPDATE!!]
-- Added more icons (Thanks to @ᴢᴀᴇᴇ)
-- Added an FPS Overlay
-- Fixed some skips
-- Added a key remapping system for Load Manip
+2.0.8
+- Fixed position of the FPS overlay
+- Fixed a bug that causes the game stop if you click the keyboard overlay
