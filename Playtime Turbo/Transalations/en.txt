@@ -227,6 +227,19 @@ f11_remap_mouse4       = Mouse 4
 f11_remap_mouse5       = Mouse 5
 f11_remap_hint         = While enabled, the F11 key is blocked and the button above presses F11 instead, for as long as the launcher stays open.
 
+chapter1_section       = CHAPTER 1
+chapter1_enable_label  = Enable Freeze/Normal Loads
+chapter1_freeze_label  = Freeze loads
+chapter1_normal_label  = Normal loads
+chapter1_hint          = These hotkeys only take effect while a Chapter 1 game is running.
+
+chapter4_section       = CHAPTER 4
+chapter4_enable_label  = Enable Freeze/Slow/Normal Loads
+chapter4_freeze_label  = Freeze loads
+chapter4_slow_label    = Slow loads
+chapter4_normal_label  = Normal loads
+chapter4_hint          = These hotkeys only take effect while a Chapter 4 game is running.
+
 # Game launch toast
 game_toast_hint     = Open checkpoint loader with:
 tutorial_toast_hint = Open the tutorials menu with:
@@ -287,6 +300,16 @@ overlay_corner_topright   = Top Right
 overlay_corner_bottomleft  = Bottom Left
 overlay_corner_bottomright = Bottom Right
 
+fps_overlay_section          = FPS OVERLAY
+fps_overlay_enable_label     = Enable FPS overlay
+fps_overlay_size_label       = SIZE
+fps_overlay_size_small       = Small
+fps_overlay_size_medium      = Medium
+fps_overlay_size_large       = Large
+fps_overlay_font_label       = FONT
+fps_overlay_font_poppy       = Poppy Playtime
+fps_overlay_font_monospace   = Monospace
+
 # Icon & app theme (section in settings)
 icontheme_section    = ICON & APP THEME
 icontheme_hint       = Choose the launcher's icon and Discord Rich Presence look. "Default" uses whatever theme is currently active in the build. This affects the running window/taskbar icon and Discord Rich Presence — it does not change the .exe file icon shown in File Explorer or on desktop shortcuts.
@@ -295,6 +318,7 @@ icontheme_classic    = Classic
 icontheme_lgbtq      = LGBTQ+
 icontheme_summer     = Summer
 icontheme_halloween  = Halloween
+icontheme_christmas  = Christmas
 
 # Cores (section in settings)
 cores_warning          = ⚠ This feature is not allowed in official runs.

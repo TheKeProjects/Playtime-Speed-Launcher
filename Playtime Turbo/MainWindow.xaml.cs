@@ -13,6 +13,7 @@ using Microsoft.Win32;
 using PixelFormat = System.Windows.Media.PixelFormats;
 using SpeedrunLauncher.Models;
 using SpeedrunLauncher.Services;
+using SpeedrunLauncher.Services.Fps;
 using IOPath = System.IO.Path;
 using Loc = SpeedrunLauncher.Services.LocalizationService;
 
@@ -83,7 +84,8 @@ public partial class MainWindow : Window
     private MouseButtonEventHandler? _f11RemapMouseCapture;
 
     // ── Game watcher ──────────────────────────────────────────────────────────
-    private readonly bool[] _gameWasRunning        = new bool[3];
+    private readonly bool[] _gameWasRunning;
+    private readonly int[]  _runningChapterPid; // cached PID per chapter, refreshed every 2s by GameWatcherTick
     private bool             _gameWatcherInitialized;
     private Window?          _gameToast;
     private Window?          _tutorialToast;
@@ -126,6 +128,17 @@ public partial class MainWindow : Window
 
     private bool _coresEnabled;
 
+    // ── Chapter 1 Freeze/Normal loads (Controls tab) ─────────────────────────
+    private HotkeyBinding _chapter1Freeze = new(HotkeyInputType.Keyboard, 0x49, 0); // I
+    private HotkeyBinding _chapter1Normal = new(HotkeyInputType.Keyboard, 0x4F, 0); // O
+    private bool _chapter1RemapEnabled;
+
+    // ── Chapter 4 Freeze/Slow/Normal loads (Controls tab) ────────────────────
+    private HotkeyBinding _chapter4Freeze = new(HotkeyInputType.Keyboard, 0x49, 0); // I
+    private HotkeyBinding _chapter4Slow   = new(HotkeyInputType.Keyboard, 0x4F, 0); // O
+    private HotkeyBinding _chapter4Normal = new(HotkeyInputType.Keyboard, 0x50, 0); // P
+    private bool _chapter4RemapEnabled;
+
     // ── Controller overlay ────────────────────────────────────────────────────
     private bool                    _overlayEnabled    = false;
     private string                  _overlayController = "xbox-controller";
@@ -144,6 +157,31 @@ public partial class MainWindow : Window
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "overlay_corner.cfg");
 
+    // ── FPS counter (scoped to the currently-running chapter's game process) ────
+    private readonly GameFpsService _fpsService = new();
+    private FpsOverlayWindow?       _fpsOverlay;
+
+    private bool   _fpsOverlayEnabled = true;
+    private string _fpsOverlayCorner  = "top-right";
+    private string _fpsOverlaySize    = "medium";
+    private string _fpsOverlayFont    = "poppy-playtime";
+
+    private static readonly string FpsOverlayEnabledFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "fps_overlay_enabled.cfg");
+
+    private static readonly string FpsOverlayCornerFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "fps_overlay_corner.cfg");
+
+    private static readonly string FpsOverlaySizeFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "fps_overlay_size.cfg");
+
+    private static readonly string FpsOverlayFontFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "fps_overlay_font.cfg");
+
     private static readonly string LoadManipHotkeyFile =
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "loadmanip_hotkeys.cfg");
@@ -152,13 +190,29 @@ public partial class MainWindow : Window
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "cores_enabled.cfg");
 
+    private static readonly string Chapter1RemapHotkeyFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "chapter1_loadmanip_hotkeys.cfg");
+
+    private static readonly string Chapter1RemapEnabledFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "chapter1_loadmanip_enabled.cfg");
+
+    private static readonly string Chapter4RemapHotkeyFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "chapter4_remap_hotkeys.cfg");
+
+    private static readonly string Chapter4RemapEnabledFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "chapter4_remap_enabled.cfg");
+
     // ── Changelog Discord users ──────────────────────────────────────────────
     private static readonly Dictionary<string, string> ChangelogDiscordUsers = new()
     {
         ["Edwin"] = "460391445690449922",
         ["Technight"] = "257300997322440704",
         ["AdrianPG77"] = "752207247769206795",
-        ["ᴢᴀᴇᴇ"] = "807763566849163264",
+        ["ᴢᴀᴇᴇ2"] = "807763566849163264",
     };
 
     // ── Palette ───────────────────────────────────────────────────────────────
@@ -170,6 +224,8 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        _gameWasRunning    = new bool[_chapters.Count];
+        _runningChapterPid = new int[_chapters.Count];
         Loc.LoadSaved();
         InitializeComponent();
         ApplyIconTheme();
@@ -187,6 +243,8 @@ public partial class MainWindow : Window
         _ = DetectLiveSplitAsync();
         PlayIntro();
         StartGameWatcher();
+        _fpsService.FpsUpdated += fps =>
+            Dispatcher.BeginInvoke(() => _fpsOverlay?.SetFps(fps));
         StartLiveSplitPoller();
         Services.VideoTutorialService.Initialize();
         LoadSteamUser();
@@ -298,6 +356,21 @@ public partial class MainWindow : Window
         OverlayCornerTopRightBtnText.Text    = Loc.Get("overlay_corner_topright");
         OverlayCornerBottomLeftBtnText.Text  = Loc.Get("overlay_corner_bottomleft");
         OverlayCornerBottomRightBtnText.Text = Loc.Get("overlay_corner_bottomright");
+        FpsOverlaySectionLabel.Text             = Loc.Get("fps_overlay_section");
+        FpsOverlayEnableLabel.Text               = Loc.Get("fps_overlay_enable_label");
+        FpsOverlayCornerLabel.Text               = Loc.Get("overlay_corner_label");
+        FpsOverlayCornerTopLeftBtnText.Text      = Loc.Get("overlay_corner_topleft");
+        FpsOverlayCornerTopRightBtnText.Text     = Loc.Get("overlay_corner_topright");
+        FpsOverlayCornerBottomLeftBtnText.Text   = Loc.Get("overlay_corner_bottomleft");
+        FpsOverlayCornerBottomRightBtnText.Text  = Loc.Get("overlay_corner_bottomright");
+        FpsOverlaySizeLabel.Text                 = Loc.Get("fps_overlay_size_label");
+        FpsOverlaySizeSmallBtnText.Text          = Loc.Get("fps_overlay_size_small");
+        FpsOverlaySizeMediumBtnText.Text         = Loc.Get("fps_overlay_size_medium");
+        FpsOverlaySizeLargeBtnText.Text          = Loc.Get("fps_overlay_size_large");
+        FpsOverlayFontLabel.Text                 = Loc.Get("fps_overlay_font_label");
+        FpsOverlayFontPoppyBtnText.Text          = Loc.Get("fps_overlay_font_poppy");
+        FpsOverlayFontPoppyBtnText.FontFamily    = FpsOverlayWindow.PoppyPlaytimeFont;
+        FpsOverlayFontMonospaceBtnText.Text      = Loc.Get("fps_overlay_font_monospace");
         SettingsTabIconThemeText.Text    = Loc.Get("settings_tab_icontheme");
         IconThemeSectionLabel.Text       = Loc.Get("icontheme_section");
         IconThemeHintText.Text           = Loc.Get("icontheme_hint");
@@ -306,8 +379,22 @@ public partial class MainWindow : Window
         IconThemeLgbtqBtnText.Text       = Loc.Get("icontheme_lgbtq");
         IconThemeSummerBtnText.Text      = Loc.Get("icontheme_summer");
         IconThemeHalloweenBtnText.Text   = Loc.Get("icontheme_halloween");
+        IconThemeChristmasBtnText.Text   = Loc.Get("icontheme_christmas");
         CoresWarningText.Text            = Loc.Get("cores_warning");
         CoresEnableLabel.Text            = Loc.Get("cores_enable_label");
+        Chapter1SectionLabel.Text        = Loc.Get("chapter1_section");
+        Chapter1EnableLabel.Text         = Loc.Get("chapter1_enable_label");
+        Chapter1FreezeLabel.Text         = Loc.Get("chapter1_freeze_label");
+        Chapter1NormalLabel.Text         = Loc.Get("chapter1_normal_label");
+        Chapter1HintText.Text            = Loc.Get("chapter1_hint");
+        RefreshChapter1UI();
+        Chapter4SectionLabel.Text        = Loc.Get("chapter4_section");
+        Chapter4EnableLabel.Text         = Loc.Get("chapter4_enable_label");
+        Chapter4FreezeLabel.Text         = Loc.Get("chapter4_freeze_label");
+        Chapter4SlowLabel.Text           = Loc.Get("chapter4_slow_label");
+        Chapter4NormalLabel.Text         = Loc.Get("chapter4_normal_label");
+        Chapter4HintText.Text            = Loc.Get("chapter4_hint");
+        RefreshChapter4UI();
         ToolTipService.SetToolTip(SettingsButton, Loc.Get("settings_tooltip"));
 
         OpenUpdatesBtnText.Text        = Loc.Get("updates_header");
@@ -542,6 +629,12 @@ public partial class MainWindow : Window
         LoadLoadManipHotkeys();
         LoadCoresEnabled();
         if (_coresEnabled) InstallLoadManipHook();
+        LoadChapter1RemapHotkeys();
+        LoadChapter1RemapEnabled();
+        if (_chapter1RemapEnabled) InstallChapter1RemapHook();
+        LoadChapter4RemapHotkeys();
+        LoadChapter4RemapEnabled();
+        if (_chapter4RemapEnabled) InstallChapter4RemapHook();
         LoadOverlaySettings();
         _f11Remap.Load();
         _f11Remap.Refresh();
@@ -561,6 +654,8 @@ public partial class MainWindow : Window
         UnregisterHotKey(hwnd, HOTKEY_ID);
         UnregisterHotKey(hwnd, TUTORIAL_HOTKEY_ID);
         UninstallLoadManipHook();
+        UninstallChapter1RemapHook();
+        UninstallChapter4RemapHook();
         _hotkeyOverlay?.Close();
         _tutorialOverlay?.Close();
         _beginnerTutorialOverlay?.Close();
@@ -572,6 +667,8 @@ public partial class MainWindow : Window
         _liveSplitClient.Dispose();
         _discordPresence.Dispose();
         _f11Remap.Dispose();
+        _fpsOverlay?.Close();
+        _fpsService.Dispose();
     }
 
     private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
@@ -938,6 +1035,7 @@ public partial class MainWindow : Window
         SettingsOverlaysScroll.Visibility     = index == 8 ? Visibility.Visible : Visibility.Collapsed;
         SettingsIconThemeScroll.Visibility    = index == 9 ? Visibility.Visible : Visibility.Collapsed;
 
+        if (index == 1) { RefreshChapter1UI(); RefreshChapter4UI(); }
         if (index == 4) RefreshDiscordToggles();
         if (index == 7) RefreshCoresToggle();
         if (index == 8) RefreshOverlaysTab();
@@ -983,6 +1081,142 @@ public partial class MainWindow : Window
     private LowLevelKeyboardProc? _loadManipKeyboardProc;
     private delegate nint LowLevelKeyboardProc(int nCode, nint wParam, nint lParam);
 
+    // ── Chapter 1 Freeze/Normal loads hotkeys ────────────────────────────────
+    // Pure input remap, like F11 Remap: a configured trigger (key or mouse button) sends a
+    // synthetic "I" (Freeze) or "O" (Normal) keypress to the game. No process affinity/priority
+    // is touched here — this never calls into LoadManipService / the Cores feature.
+
+    private bool                     _capturingChapter1Hotkey;
+    private int                      _chapter1CaptureTarget; // 0=freeze, 1=normal
+    private KeyEventHandler?         _chapter1HotkeyCapture;
+    private MouseButtonEventHandler? _chapter1MouseHotkeyCapture;
+
+    private const uint Chapter1FreezeTargetVk = 0x49; // I — fixed in-game hotkey, not remappable
+    private const uint Chapter1NormalTargetVk = 0x4F; // O — fixed in-game hotkey, not remappable
+
+    // Low-level keyboard/mouse hooks for chapter 1 loads (only fire while a chapter 1 game is foreground)
+    private nint _chapter1KeyboardHook;
+    private nint _chapter1MouseHook;
+    private LowLevelKeyboardProc? _chapter1KeyboardProc;
+    private LowLevelKeyboardProc? _chapter1MouseProc;
+    private readonly HashSet<uint> _chapter1HeldTriggers = [];
+
+    // ── Chapter 4 Freeze/Slow/Normal loads hotkeys ───────────────────────────
+    // Same pure input remap as Chapter 1, with a third slot (Slow Loads).
+
+    private bool                     _capturingChapter4Hotkey;
+    private int                      _chapter4CaptureTarget; // 0=freeze, 1=slow, 2=normal
+    private KeyEventHandler?         _chapter4HotkeyCapture;
+    private MouseButtonEventHandler? _chapter4MouseHotkeyCapture;
+
+    private const uint Chapter4FreezeTargetVk = 0x49; // I — fixed in-game hotkey, not remappable
+    private const uint Chapter4SlowTargetVk   = 0x4F; // O — fixed in-game hotkey, not remappable
+    private const uint Chapter4NormalTargetVk = 0x50; // P — fixed in-game hotkey, not remappable
+
+    // Low-level keyboard/mouse hooks for chapter 4 loads (only fire while a chapter 4 game is foreground)
+    private nint _chapter4KeyboardHook;
+    private nint _chapter4MouseHook;
+    private LowLevelKeyboardProc? _chapter4KeyboardProc;
+    private LowLevelKeyboardProc? _chapter4MouseProc;
+    private readonly HashSet<uint> _chapter4HeldTriggers = [];
+
+    private const int  WM_XBUTTONDOWN  = 0x020B;
+    private const int  WM_MBUTTONDOWN  = 0x0207;
+    private const uint LLKHF_INJECTED  = 0x10;
+    private const uint INPUT_KEYBOARD  = 1;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct MSLLHOOKSTRUCT
+    {
+        public int  ptX;
+        public int  ptY;
+        public uint mouseData;
+        public uint flags;
+        public uint time;
+        public nint dwExtraInfo;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct KBDLLHOOKSTRUCT
+    {
+        public uint vkCode;
+        public uint scanCode;
+        public uint flags;
+        public uint time;
+        public nint dwExtraInfo;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct RemapInput
+    {
+        public uint type;
+        public RemapInputUnion u;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit)]
+    private struct RemapInputUnion
+    {
+        [System.Runtime.InteropServices.FieldOffset(0)] public RemapKeybdInput ki;
+        // Unused, but must stay: the real Win32 INPUT union is sized by its largest member
+        // (MOUSEINPUT, 32 bytes on x64) — dropping it shrinks Marshal.SizeOf<RemapInput>() below
+        // what SendInput expects, so every call fails with ERROR_INVALID_PARAMETER.
+        [System.Runtime.InteropServices.FieldOffset(0)] public RemapMouseInput mi;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct RemapKeybdInput
+    {
+        public ushort wVk;
+        public ushort wScan;
+        public uint   dwFlags;
+        public uint   time;
+        public nint   dwExtraInfo;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct RemapMouseInput
+    {
+        public int  dx;
+        public int  dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public nint dwExtraInfo;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern uint SendInput(uint nInputs, RemapInput[] pInputs, int cbSize);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+    private const uint MAPVK_VK_TO_VSC = 0;
+
+    private static void SendRemapKeyEvent(uint vk, ushort scan, bool keyUp)
+    {
+        var inputs = new RemapInput[1];
+        inputs[0].type       = INPUT_KEYBOARD;
+        inputs[0].u.ki.wVk   = (ushort)vk;
+        inputs[0].u.ki.wScan = scan;
+        inputs[0].u.ki.dwFlags = keyUp ? KEYEVENTF_KEYUP : 0;
+        SendInput(1, inputs, System.Runtime.InteropServices.Marshal.SizeOf<RemapInput>());
+    }
+
+    private static void SendRemapKey(uint vk)
+    {
+        // Include the hardware scan code, not just the virtual-key — some games/mods that
+        // poll raw key state ignore synthetic input that lacks one.
+        var scan = (ushort)MapVirtualKey(vk, MAPVK_VK_TO_VSC);
+
+        SendRemapKeyEvent(vk, scan, keyUp: false);
+
+        // Hold the key down for a human-like duration before releasing. A same-tick down+up
+        // (as this used to send) can fall entirely between two polls of a mod that checks key
+        // state once per game frame instead of hooking WM_KEYDOWN, so it never gets observed.
+        System.Threading.Tasks.Task.Delay(60).ContinueWith(_ => SendRemapKeyEvent(vk, scan, keyUp: true));
+    }
+
     [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
     private static extern nint SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId);
 
@@ -1023,25 +1257,14 @@ public partial class MainWindow : Window
 
     private bool IsGameForeground()
     {
+        // Uses the PID cached by GameWatcherTick (refreshed every 2s) instead of enumerating
+        // processes here — this is called on every keystroke/click while a remap hook is active,
+        // and Process.GetProcessesByName on that hot path was causing severe input lag.
         var fg = GetForegroundWindow();
         if (fg == 0) return false;
         GetWindowThreadProcessId(fg, out var pid);
         for (int i = 0; i < _chapters.Count; i++)
-        {
-            var path = _chapters[i].GameExePath;
-            if (string.IsNullOrEmpty(path)) continue;
-            var name = IOPath.GetFileNameWithoutExtension(path);
-            try
-            {
-                foreach (var p in System.Diagnostics.Process.GetProcessesByName(name))
-                {
-                    var match = p.Id == (int)pid;
-                    p.Dispose();
-                    if (match) return true;
-                }
-            }
-            catch { }
-        }
+            if (_gameWasRunning[i] && _runningChapterPid[i] == (int)pid) return true;
         return false;
     }
 
@@ -1059,6 +1282,227 @@ public partial class MainWindow : Window
             }
         }
         return CallNextHookEx(_loadManipKeyboardHook, nCode, wParam, lParam);
+    }
+
+    private void InstallChapter1RemapHook()
+    {
+        UninstallChapter1RemapHook();
+        using var curProcess = System.Diagnostics.Process.GetCurrentProcess();
+        using var curModule  = curProcess.MainModule!;
+        var hMod = GetModuleHandle(curModule.ModuleName);
+        _chapter1KeyboardProc = Chapter1KeyboardHookProc;
+        _chapter1KeyboardHook = SetWindowsHookEx(13, _chapter1KeyboardProc, hMod, 0);
+
+        // Only pay for a global mouse hook (which adds latency to every mouse move system-wide)
+        // when a binding actually needs it.
+        if (_chapter1Freeze.Type == HotkeyInputType.Mouse || _chapter1Normal.Type == HotkeyInputType.Mouse)
+        {
+            _chapter1MouseProc = Chapter1MouseHookProc;
+            _chapter1MouseHook = SetWindowsHookEx(14, _chapter1MouseProc, hMod, 0);
+        }
+    }
+
+    private void UninstallChapter1RemapHook()
+    {
+        if (_chapter1KeyboardHook != 0)
+        {
+            UnhookWindowsHookEx(_chapter1KeyboardHook);
+            _chapter1KeyboardHook = 0;
+        }
+        if (_chapter1MouseHook != 0)
+        {
+            UnhookWindowsHookEx(_chapter1MouseHook);
+            _chapter1MouseHook = 0;
+        }
+        _chapter1KeyboardProc = null;
+        _chapter1MouseProc    = null;
+        _chapter1HeldTriggers.Clear();
+    }
+
+    private bool Chapter1RemapActive() =>
+        _chapter1RemapEnabled && GetRunningChapter()?.Number == 1 && IsGameForeground();
+
+    private nint Chapter1KeyboardHookProc(int nCode, nint wParam, nint lParam)
+    {
+        if (nCode >= 0)
+        {
+            var data     = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+            var msg      = (int)wParam;
+            var isDown   = msg is 0x0100 or 0x0104; // WM_KEYDOWN, WM_SYSKEYDOWN
+            var isUp     = msg is 0x0101 or 0x0105; // WM_KEYUP, WM_SYSKEYUP
+            var injected = (data.flags & LLKHF_INJECTED) != 0;
+
+            var isTargetKey = data.vkCode == Chapter1FreezeTargetVk || data.vkCode == Chapter1NormalTargetVk;
+
+            if (!injected && Chapter1RemapActive())
+            {
+                HandleChapter1Trigger(data.vkCode, isDown, isUp);
+
+                // Swallow the real in-game Freeze/Normal keys so they aren't double-processed —
+                // our own synthetic presses (reported as injected) still get through above.
+                if (isTargetKey) return 1;
+            }
+        }
+        return CallNextHookEx(_chapter1KeyboardHook, nCode, wParam, lParam);
+    }
+
+    private void HandleChapter1Trigger(uint vkCode, bool isDown, bool isUp)
+    {
+        bool isFreeze = _chapter1Freeze.Type == HotkeyInputType.Keyboard && _chapter1Freeze.KeyVk == vkCode;
+        bool isNormal = _chapter1Normal.Type == HotkeyInputType.Keyboard && _chapter1Normal.KeyVk == vkCode;
+        if (!isFreeze && !isNormal) return;
+
+        if (isDown && _chapter1HeldTriggers.Add(vkCode))
+        {
+            // Defer off the hook's call stack: injecting a keyboard event synchronously from
+            // within the keyboard hook that's currently handling a real event of the same key
+            // (the default I→I / O→O binding) can get silently dropped by Windows.
+            var targetVk = isFreeze ? Chapter1FreezeTargetVk : Chapter1NormalTargetVk;
+            Dispatcher.BeginInvoke(() => SendRemapKey(targetVk));
+        }
+        else if (isUp)
+            _chapter1HeldTriggers.Remove(vkCode);
+    }
+
+    private nint Chapter1MouseHookProc(int nCode, nint wParam, nint lParam)
+    {
+        if (nCode >= 0 && ((int)wParam == WM_XBUTTONDOWN || (int)wParam == WM_MBUTTONDOWN) && Chapter1RemapActive())
+        {
+            var data    = System.Runtime.InteropServices.Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+            var xButton = (int)(data.mouseData >> 16);
+            var pressed = (int)wParam switch
+            {
+                WM_MBUTTONDOWN => HotkeyMouseButtons.Middle,
+                WM_XBUTTONDOWN => xButton == 1 ? HotkeyMouseButtons.XButton1
+                                : xButton == 2 ? HotkeyMouseButtons.XButton2 : 0,
+                _ => 0,
+            };
+
+            if (pressed != 0)
+            {
+                bool isFreeze = _chapter1Freeze.Type == HotkeyInputType.Mouse && _chapter1Freeze.MouseButton == pressed;
+                bool isNormal = _chapter1Normal.Type == HotkeyInputType.Mouse && _chapter1Normal.MouseButton == pressed;
+                if (isFreeze || isNormal)
+                {
+                    var targetVk = isFreeze ? Chapter1FreezeTargetVk : Chapter1NormalTargetVk;
+                    Dispatcher.BeginInvoke(() => SendRemapKey(targetVk));
+                }
+            }
+        }
+        return CallNextHookEx(_chapter1MouseHook, nCode, wParam, lParam);
+    }
+
+    private void InstallChapter4RemapHook()
+    {
+        UninstallChapter4RemapHook();
+        using var curProcess = System.Diagnostics.Process.GetCurrentProcess();
+        using var curModule  = curProcess.MainModule!;
+        var hMod = GetModuleHandle(curModule.ModuleName);
+        _chapter4KeyboardProc = Chapter4KeyboardHookProc;
+        _chapter4KeyboardHook = SetWindowsHookEx(13, _chapter4KeyboardProc, hMod, 0);
+
+        // Only pay for a global mouse hook (which adds latency to every mouse move system-wide)
+        // when a binding actually needs it.
+        if (_chapter4Freeze.Type == HotkeyInputType.Mouse || _chapter4Slow.Type == HotkeyInputType.Mouse
+            || _chapter4Normal.Type == HotkeyInputType.Mouse)
+        {
+            _chapter4MouseProc = Chapter4MouseHookProc;
+            _chapter4MouseHook = SetWindowsHookEx(14, _chapter4MouseProc, hMod, 0);
+        }
+    }
+
+    private void UninstallChapter4RemapHook()
+    {
+        if (_chapter4KeyboardHook != 0)
+        {
+            UnhookWindowsHookEx(_chapter4KeyboardHook);
+            _chapter4KeyboardHook = 0;
+        }
+        if (_chapter4MouseHook != 0)
+        {
+            UnhookWindowsHookEx(_chapter4MouseHook);
+            _chapter4MouseHook = 0;
+        }
+        _chapter4KeyboardProc = null;
+        _chapter4MouseProc    = null;
+        _chapter4HeldTriggers.Clear();
+    }
+
+    private bool Chapter4RemapActive() =>
+        _chapter4RemapEnabled && GetRunningChapter()?.Number == 4 && IsGameForeground();
+
+    private nint Chapter4KeyboardHookProc(int nCode, nint wParam, nint lParam)
+    {
+        if (nCode >= 0)
+        {
+            var data     = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+            var msg      = (int)wParam;
+            var isDown   = msg is 0x0100 or 0x0104; // WM_KEYDOWN, WM_SYSKEYDOWN
+            var isUp     = msg is 0x0101 or 0x0105; // WM_KEYUP, WM_SYSKEYUP
+            var injected = (data.flags & LLKHF_INJECTED) != 0;
+
+            var isTargetKey = data.vkCode == Chapter4FreezeTargetVk
+                || data.vkCode == Chapter4SlowTargetVk
+                || data.vkCode == Chapter4NormalTargetVk;
+
+            if (!injected && Chapter4RemapActive())
+            {
+                HandleChapter4Trigger(data.vkCode, isDown, isUp);
+
+                // Swallow the real in-game Freeze/Slow/Normal keys so they aren't double-processed —
+                // our own synthetic presses (reported as injected) still get through above.
+                if (isTargetKey) return 1;
+            }
+        }
+        return CallNextHookEx(_chapter4KeyboardHook, nCode, wParam, lParam);
+    }
+
+    private void HandleChapter4Trigger(uint vkCode, bool isDown, bool isUp)
+    {
+        bool isFreeze = _chapter4Freeze.Type == HotkeyInputType.Keyboard && _chapter4Freeze.KeyVk == vkCode;
+        bool isSlow   = _chapter4Slow.Type   == HotkeyInputType.Keyboard && _chapter4Slow.KeyVk   == vkCode;
+        bool isNormal = _chapter4Normal.Type == HotkeyInputType.Keyboard && _chapter4Normal.KeyVk == vkCode;
+        if (!isFreeze && !isSlow && !isNormal) return;
+
+        if (isDown && _chapter4HeldTriggers.Add(vkCode))
+        {
+            // Defer off the hook's call stack: injecting a keyboard event synchronously from
+            // within the keyboard hook that's currently handling a real event of the same key
+            // (the default I→I / O→O / P→P binding) can get silently dropped by Windows.
+            var targetVk = isFreeze ? Chapter4FreezeTargetVk : isSlow ? Chapter4SlowTargetVk : Chapter4NormalTargetVk;
+            Dispatcher.BeginInvoke(() => SendRemapKey(targetVk));
+        }
+        else if (isUp)
+            _chapter4HeldTriggers.Remove(vkCode);
+    }
+
+    private nint Chapter4MouseHookProc(int nCode, nint wParam, nint lParam)
+    {
+        if (nCode >= 0 && ((int)wParam == WM_XBUTTONDOWN || (int)wParam == WM_MBUTTONDOWN) && Chapter4RemapActive())
+        {
+            var data    = System.Runtime.InteropServices.Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+            var xButton = (int)(data.mouseData >> 16);
+            var pressed = (int)wParam switch
+            {
+                WM_MBUTTONDOWN => HotkeyMouseButtons.Middle,
+                WM_XBUTTONDOWN => xButton == 1 ? HotkeyMouseButtons.XButton1
+                                : xButton == 2 ? HotkeyMouseButtons.XButton2 : 0,
+                _ => 0,
+            };
+
+            if (pressed != 0)
+            {
+                bool isFreeze = _chapter4Freeze.Type == HotkeyInputType.Mouse && _chapter4Freeze.MouseButton == pressed;
+                bool isSlow   = _chapter4Slow.Type   == HotkeyInputType.Mouse && _chapter4Slow.MouseButton   == pressed;
+                bool isNormal = _chapter4Normal.Type == HotkeyInputType.Mouse && _chapter4Normal.MouseButton == pressed;
+                if (isFreeze || isSlow || isNormal)
+                {
+                    var targetVk = isFreeze ? Chapter4FreezeTargetVk : isSlow ? Chapter4SlowTargetVk : Chapter4NormalTargetVk;
+                    Dispatcher.BeginInvoke(() => SendRemapKey(targetVk));
+                }
+            }
+        }
+        return CallNextHookEx(_chapter4MouseHook, nCode, wParam, lParam);
     }
 
     private void LoadLoadManipHotkeys()
@@ -1145,6 +1589,413 @@ public partial class MainWindow : Window
             UninstallLoadManipHook();
     }
 
+    // ── Chapter 1 Freeze/Normal loads (Controls tab) ─────────────────────────
+
+    private void LoadChapter1RemapHotkeys()
+    {
+        try
+        {
+            if (!File.Exists(Chapter1RemapHotkeyFile)) return;
+            var lines = File.ReadAllLines(Chapter1RemapHotkeyFile);
+            if (lines.Length >= 2)
+            {
+                if (TryParseHotkeyBinding(lines[0], out var freeze)) _chapter1Freeze = freeze;
+                if (TryParseHotkeyBinding(lines[1], out var normal)) _chapter1Normal = normal;
+            }
+        }
+        catch { }
+    }
+
+    private static bool TryParseHotkeyBinding(string line, out HotkeyBinding binding)
+    {
+        binding = default;
+        var p = line.Trim();
+        if (p.Length < 2) return false;
+
+        if (p[0] == 'K' && uint.TryParse(p[1..], out var vk))
+        {
+            binding = new HotkeyBinding(HotkeyInputType.Keyboard, vk, 0);
+            return true;
+        }
+        if (p[0] == 'M' && int.TryParse(p[1..], out var mb))
+        {
+            binding = new HotkeyBinding(HotkeyInputType.Mouse, 0, mb);
+            return true;
+        }
+        return false;
+    }
+
+    private static string HotkeyBindingToToken(HotkeyBinding b) => b.Type switch
+    {
+        HotkeyInputType.Mouse => $"M{b.MouseButton}",
+        _                     => $"K{b.KeyVk}",
+    };
+
+    private void SaveChapter1RemapHotkeys()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(Chapter1RemapHotkeyFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Chapter1RemapHotkeyFile,
+                $"{HotkeyBindingToToken(_chapter1Freeze)}\n{HotkeyBindingToToken(_chapter1Normal)}");
+        }
+        catch { }
+    }
+
+    private void LoadChapter1RemapEnabled()
+    {
+        try
+        {
+            if (File.Exists(Chapter1RemapEnabledFile))
+                _chapter1RemapEnabled = File.ReadAllText(Chapter1RemapEnabledFile).Trim() == "1";
+        }
+        catch { }
+    }
+
+    private void SaveChapter1RemapEnabled()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(Chapter1RemapEnabledFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Chapter1RemapEnabledFile, _chapter1RemapEnabled ? "1" : "0");
+        }
+        catch { }
+    }
+
+    private string HotkeyBindingToString(HotkeyBinding binding) => binding.Type switch
+    {
+        HotkeyInputType.Keyboard => KeyToString(KeyInterop.KeyFromVirtualKey((int)binding.KeyVk)),
+        HotkeyInputType.Mouse => binding.MouseButton switch
+        {
+            HotkeyMouseButtons.Middle   => Loc.Get("f11_remap_mouse3"),
+            HotkeyMouseButtons.XButton1 => Loc.Get("f11_remap_mouse4"),
+            HotkeyMouseButtons.XButton2 => Loc.Get("f11_remap_mouse5"),
+            _ => Loc.Get("f11_remap_none"),
+        },
+        _ => Loc.Get("f11_remap_none"),
+    };
+
+    private void RefreshChapter1Buttons()
+    {
+        Chapter1FreezeText.Text = HotkeyBindingToString(_chapter1Freeze);
+        Chapter1NormalText.Text = HotkeyBindingToString(_chapter1Normal);
+
+        var normalBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        var normalFg    = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+        Chapter1FreezeBtn.BorderBrush  = normalBrush;
+        Chapter1FreezeText.Foreground  = normalFg;
+        Chapter1NormalBtn.BorderBrush  = normalBrush;
+        Chapter1NormalText.Foreground  = normalFg;
+    }
+
+    private void RefreshChapter1UI()
+    {
+        SetToggle(Chapter1EnableText, _chapter1RemapEnabled);
+        RefreshChapter1Buttons();
+    }
+
+    private void Chapter1EnableBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _chapter1RemapEnabled = !_chapter1RemapEnabled;
+        SaveChapter1RemapEnabled();
+        RefreshChapter1UI();
+
+        if (_chapter1RemapEnabled)
+            InstallChapter1RemapHook();
+        else
+            UninstallChapter1RemapHook();
+    }
+
+    private void Chapter1FreezeBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter1Capture(0, Chapter1FreezeBtn, Chapter1FreezeText);
+    private void Chapter1NormalBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter1Capture(1, Chapter1NormalBtn, Chapter1NormalText);
+
+    private void StartChapter1Capture(int target, Button btn, TextBlock text)
+    {
+        if (_capturingChapter1Hotkey)
+        {
+            var wasThis = _chapter1CaptureTarget == target;
+            CancelChapter1Capture();
+            RefreshChapter1Buttons();
+            if (wasThis) return;
+        }
+
+        _capturingChapter1Hotkey = true;
+        _chapter1CaptureTarget   = target;
+        text.Text       = Loc.Get("f11_remap_press_input");
+        text.Foreground = new SolidColorBrush(Teal);
+        btn.BorderBrush = new SolidColorBrush(Teal);
+
+        _chapter1HotkeyCapture = CaptureChapter1KeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _chapter1HotkeyCapture, true);
+
+        _chapter1MouseHotkeyCapture = CaptureChapter1MouseDown;
+        AddHandler(UIElement.PreviewMouseDownEvent, _chapter1MouseHotkeyCapture, true);
+    }
+
+    private void CancelChapter1Capture()
+    {
+        _capturingChapter1Hotkey = false;
+        if (_chapter1HotkeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewKeyDownEvent, _chapter1HotkeyCapture);
+            _chapter1HotkeyCapture = null;
+        }
+        if (_chapter1MouseHotkeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewMouseDownEvent, _chapter1MouseHotkeyCapture);
+            _chapter1MouseHotkeyCapture = null;
+        }
+    }
+
+    private void ApplyChapter1Binding(int target, HotkeyBinding binding)
+    {
+        switch (target)
+        {
+            case 0: _chapter1Freeze = binding; break;
+            case 1: _chapter1Normal = binding; break;
+        }
+
+        SaveChapter1RemapHotkeys();
+        RefreshChapter1Buttons();
+        if (_chapter1RemapEnabled) InstallChapter1RemapHook();
+    }
+
+    private void CaptureChapter1KeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key is Key.LeftCtrl or Key.RightCtrl
+                or Key.LeftShift or Key.RightShift
+                or Key.LeftAlt or Key.RightAlt
+                or Key.LWin or Key.RWin
+                or Key.None)
+            return;
+
+        var target = _chapter1CaptureTarget;
+        CancelChapter1Capture();
+
+        if (key == Key.Escape)
+        {
+            RefreshChapter1Buttons();
+            e.Handled = true;
+            return;
+        }
+
+        var vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+        ApplyChapter1Binding(target, new HotkeyBinding(HotkeyInputType.Keyboard, vk, 0));
+        e.Handled = true;
+    }
+
+    private void CaptureChapter1MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        int? mouseButton = e.ChangedButton switch
+        {
+            MouseButton.Middle   => HotkeyMouseButtons.Middle,
+            MouseButton.XButton1 => HotkeyMouseButtons.XButton1,
+            MouseButton.XButton2 => HotkeyMouseButtons.XButton2,
+            _ => null,
+        };
+
+        if (mouseButton is null) return;
+
+        var target = _chapter1CaptureTarget;
+        CancelChapter1Capture();
+
+        ApplyChapter1Binding(target, new HotkeyBinding(HotkeyInputType.Mouse, 0, mouseButton.Value));
+        e.Handled = true;
+    }
+
+    private void LoadChapter4RemapHotkeys()
+    {
+        try
+        {
+            if (!File.Exists(Chapter4RemapHotkeyFile)) return;
+            var lines = File.ReadAllLines(Chapter4RemapHotkeyFile);
+            if (lines.Length >= 3)
+            {
+                if (TryParseHotkeyBinding(lines[0], out var freeze)) _chapter4Freeze = freeze;
+                if (TryParseHotkeyBinding(lines[1], out var slow))   _chapter4Slow   = slow;
+                if (TryParseHotkeyBinding(lines[2], out var normal)) _chapter4Normal = normal;
+            }
+        }
+        catch { }
+    }
+
+    private void SaveChapter4RemapHotkeys()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(Chapter4RemapHotkeyFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Chapter4RemapHotkeyFile,
+                $"{HotkeyBindingToToken(_chapter4Freeze)}\n{HotkeyBindingToToken(_chapter4Slow)}\n{HotkeyBindingToToken(_chapter4Normal)}");
+        }
+        catch { }
+    }
+
+    private void LoadChapter4RemapEnabled()
+    {
+        try
+        {
+            if (File.Exists(Chapter4RemapEnabledFile))
+                _chapter4RemapEnabled = File.ReadAllText(Chapter4RemapEnabledFile).Trim() == "1";
+        }
+        catch { }
+    }
+
+    private void SaveChapter4RemapEnabled()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(Chapter4RemapEnabledFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Chapter4RemapEnabledFile, _chapter4RemapEnabled ? "1" : "0");
+        }
+        catch { }
+    }
+
+    private void RefreshChapter4Buttons()
+    {
+        Chapter4FreezeText.Text = HotkeyBindingToString(_chapter4Freeze);
+        Chapter4SlowText.Text   = HotkeyBindingToString(_chapter4Slow);
+        Chapter4NormalText.Text = HotkeyBindingToString(_chapter4Normal);
+
+        var normalBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        var normalFg    = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+        Chapter4FreezeBtn.BorderBrush  = normalBrush;
+        Chapter4FreezeText.Foreground  = normalFg;
+        Chapter4SlowBtn.BorderBrush    = normalBrush;
+        Chapter4SlowText.Foreground    = normalFg;
+        Chapter4NormalBtn.BorderBrush  = normalBrush;
+        Chapter4NormalText.Foreground  = normalFg;
+    }
+
+    private void RefreshChapter4UI()
+    {
+        SetToggle(Chapter4EnableText, _chapter4RemapEnabled);
+        RefreshChapter4Buttons();
+    }
+
+    private void Chapter4EnableBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _chapter4RemapEnabled = !_chapter4RemapEnabled;
+        SaveChapter4RemapEnabled();
+        RefreshChapter4UI();
+
+        if (_chapter4RemapEnabled)
+            InstallChapter4RemapHook();
+        else
+            UninstallChapter4RemapHook();
+    }
+
+    private void Chapter4FreezeBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter4Capture(0, Chapter4FreezeBtn, Chapter4FreezeText);
+    private void Chapter4SlowBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter4Capture(1, Chapter4SlowBtn, Chapter4SlowText);
+    private void Chapter4NormalBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter4Capture(2, Chapter4NormalBtn, Chapter4NormalText);
+
+    private void StartChapter4Capture(int target, Button btn, TextBlock text)
+    {
+        if (_capturingChapter4Hotkey)
+        {
+            var wasThis = _chapter4CaptureTarget == target;
+            CancelChapter4Capture();
+            RefreshChapter4Buttons();
+            if (wasThis) return;
+        }
+
+        _capturingChapter4Hotkey = true;
+        _chapter4CaptureTarget   = target;
+        text.Text       = Loc.Get("f11_remap_press_input");
+        text.Foreground = new SolidColorBrush(Teal);
+        btn.BorderBrush = new SolidColorBrush(Teal);
+
+        _chapter4HotkeyCapture = CaptureChapter4KeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _chapter4HotkeyCapture, true);
+
+        _chapter4MouseHotkeyCapture = CaptureChapter4MouseDown;
+        AddHandler(UIElement.PreviewMouseDownEvent, _chapter4MouseHotkeyCapture, true);
+    }
+
+    private void CancelChapter4Capture()
+    {
+        _capturingChapter4Hotkey = false;
+        if (_chapter4HotkeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewKeyDownEvent, _chapter4HotkeyCapture);
+            _chapter4HotkeyCapture = null;
+        }
+        if (_chapter4MouseHotkeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewMouseDownEvent, _chapter4MouseHotkeyCapture);
+            _chapter4MouseHotkeyCapture = null;
+        }
+    }
+
+    private void ApplyChapter4Binding(int target, HotkeyBinding binding)
+    {
+        switch (target)
+        {
+            case 0: _chapter4Freeze = binding; break;
+            case 1: _chapter4Slow   = binding; break;
+            case 2: _chapter4Normal = binding; break;
+        }
+
+        SaveChapter4RemapHotkeys();
+        RefreshChapter4Buttons();
+        if (_chapter4RemapEnabled) InstallChapter4RemapHook();
+    }
+
+    private void CaptureChapter4KeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key is Key.LeftCtrl or Key.RightCtrl
+                or Key.LeftShift or Key.RightShift
+                or Key.LeftAlt or Key.RightAlt
+                or Key.LWin or Key.RWin
+                or Key.None)
+            return;
+
+        var target = _chapter4CaptureTarget;
+        CancelChapter4Capture();
+
+        if (key == Key.Escape)
+        {
+            RefreshChapter4Buttons();
+            e.Handled = true;
+            return;
+        }
+
+        var vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+        ApplyChapter4Binding(target, new HotkeyBinding(HotkeyInputType.Keyboard, vk, 0));
+        e.Handled = true;
+    }
+
+    private void CaptureChapter4MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        int? mouseButton = e.ChangedButton switch
+        {
+            MouseButton.Middle   => HotkeyMouseButtons.Middle,
+            MouseButton.XButton1 => HotkeyMouseButtons.XButton1,
+            MouseButton.XButton2 => HotkeyMouseButtons.XButton2,
+            _ => null,
+        };
+
+        if (mouseButton is null) return;
+
+        var target = _chapter4CaptureTarget;
+        CancelChapter4Capture();
+
+        ApplyChapter4Binding(target, new HotkeyBinding(HotkeyInputType.Mouse, 0, mouseButton.Value));
+        e.Handled = true;
+    }
+
     // ── Controller overlay ────────────────────────────────────────────────────
 
     private void LoadOverlaySettings()
@@ -1162,7 +2013,215 @@ public partial class MainWindow : Window
 
         if (_overlayEnabled)
             Dispatcher.InvokeAsync(ApplyOverlayWindow, System.Windows.Threading.DispatcherPriority.Loaded);
+
+        try
+        {
+            if (File.Exists(FpsOverlayEnabledFile))
+                _fpsOverlayEnabled = File.ReadAllText(FpsOverlayEnabledFile).Trim() == "1";
+            if (File.Exists(FpsOverlayCornerFile))
+                _fpsOverlayCorner = File.ReadAllText(FpsOverlayCornerFile).Trim();
+            if (File.Exists(FpsOverlaySizeFile))
+                _fpsOverlaySize = File.ReadAllText(FpsOverlaySizeFile).Trim();
+            if (File.Exists(FpsOverlayFontFile))
+                _fpsOverlayFont = File.ReadAllText(FpsOverlayFontFile).Trim();
+        }
+        catch { }
     }
+
+    private void SaveFpsOverlayEnabled()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(FpsOverlayEnabledFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(FpsOverlayEnabledFile, _fpsOverlayEnabled ? "1" : "0");
+        }
+        catch { }
+    }
+
+    private void SaveFpsOverlayCorner()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(FpsOverlayCornerFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(FpsOverlayCornerFile, _fpsOverlayCorner);
+        }
+        catch { }
+    }
+
+    private void SaveFpsOverlaySize()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(FpsOverlaySizeFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(FpsOverlaySizeFile, _fpsOverlaySize);
+        }
+        catch { }
+    }
+
+    private void SaveFpsOverlayFont()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(FpsOverlayFontFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(FpsOverlayFontFile, _fpsOverlayFont);
+        }
+        catch { }
+    }
+
+    private static double FpsOverlayFontSizeFor(string size) => size switch
+    {
+        "small" => 14,
+        "large" => 26,
+        _       => 18, // medium / default / unrecognized
+    };
+
+    private static FontFamily FpsOverlayFontFamilyFor(string font) =>
+        font == "monospace" ? FpsOverlayWindow.MonospaceFont : FpsOverlayWindow.PoppyPlaytimeFont;
+
+    // Re-applies the current corner/size/font settings to the FPS overlay if it's showing
+    // right now (game already running) — same "reposition/restyle live" pattern ApplyOverlayWindow
+    // uses for the controller overlay.
+    private void ApplyFpsOverlayAppearance()
+    {
+        if (_fpsOverlay == null) return;
+        _fpsOverlay.SetFont(FpsOverlayFontFamilyFor(_fpsOverlayFont));
+        _fpsOverlay.SetSize(FpsOverlayFontSizeFor(_fpsOverlaySize));
+        _fpsOverlay.PlaceInCorner(SystemParameters.WorkArea, _fpsOverlayCorner);
+    }
+
+    private void RefreshFpsOverlayTab()
+    {
+        SetToggle(FpsOverlayEnableText, _fpsOverlayEnabled);
+        RefreshFpsOverlayCornerButtons();
+        RefreshFpsOverlaySizeButtons();
+        RefreshFpsOverlayFontButtons();
+    }
+
+    private void RefreshFpsOverlayCornerButtons()
+    {
+        var selectedBrush  = new SolidColorBrush(Teal);
+        var selectedBg     = new SolidColorBrush(Color.FromArgb(255, 0, 40, 30));
+        var selectedBorder = new SolidColorBrush(Teal);
+        var dimBrush       = new SolidColorBrush(Color.FromArgb(255, 58, 106, 138));
+        var dimBg          = new SolidColorBrush(Color.FromArgb(255, 6, 15, 24));
+        var dimBorder      = new SolidColorBrush(Color.FromArgb(255, 13, 37, 53));
+
+        void Style(Button btn, TextBlock text, bool selected)
+        {
+            btn.Background  = selected ? selectedBg : dimBg;
+            btn.BorderBrush = selected ? selectedBorder : dimBorder;
+            text.Foreground = selected ? selectedBrush : dimBrush;
+        }
+
+        Style(FpsOverlayCornerTopLeftBtn,     FpsOverlayCornerTopLeftBtnText,     _fpsOverlayCorner == "top-left");
+        Style(FpsOverlayCornerTopRightBtn,    FpsOverlayCornerTopRightBtnText,    _fpsOverlayCorner == "top-right");
+        Style(FpsOverlayCornerBottomLeftBtn,  FpsOverlayCornerBottomLeftBtnText,  _fpsOverlayCorner == "bottom-left");
+        Style(FpsOverlayCornerBottomRightBtn, FpsOverlayCornerBottomRightBtnText, _fpsOverlayCorner == "bottom-right");
+    }
+
+    private void RefreshFpsOverlaySizeButtons()
+    {
+        var selectedBrush  = new SolidColorBrush(Teal);
+        var selectedBg     = new SolidColorBrush(Color.FromArgb(255, 0, 40, 30));
+        var selectedBorder = new SolidColorBrush(Teal);
+        var dimBrush       = new SolidColorBrush(Color.FromArgb(255, 58, 106, 138));
+        var dimBg          = new SolidColorBrush(Color.FromArgb(255, 6, 15, 24));
+        var dimBorder      = new SolidColorBrush(Color.FromArgb(255, 13, 37, 53));
+
+        void Style(Button btn, TextBlock text, bool selected)
+        {
+            btn.Background  = selected ? selectedBg : dimBg;
+            btn.BorderBrush = selected ? selectedBorder : dimBorder;
+            text.Foreground = selected ? selectedBrush : dimBrush;
+        }
+
+        Style(FpsOverlaySizeSmallBtn,  FpsOverlaySizeSmallBtnText,  _fpsOverlaySize == "small");
+        Style(FpsOverlaySizeMediumBtn, FpsOverlaySizeMediumBtnText, _fpsOverlaySize == "medium");
+        Style(FpsOverlaySizeLargeBtn,  FpsOverlaySizeLargeBtnText,  _fpsOverlaySize == "large");
+    }
+
+    private void RefreshFpsOverlayFontButtons()
+    {
+        var selectedBrush  = new SolidColorBrush(Teal);
+        var selectedBg     = new SolidColorBrush(Color.FromArgb(255, 0, 40, 30));
+        var selectedBorder = new SolidColorBrush(Teal);
+        var dimBrush       = new SolidColorBrush(Color.FromArgb(255, 58, 106, 138));
+        var dimBg          = new SolidColorBrush(Color.FromArgb(255, 6, 15, 24));
+        var dimBorder      = new SolidColorBrush(Color.FromArgb(255, 13, 37, 53));
+
+        void Style(Button btn, TextBlock text, bool selected)
+        {
+            btn.Background  = selected ? selectedBg : dimBg;
+            btn.BorderBrush = selected ? selectedBorder : dimBorder;
+            text.Foreground = selected ? selectedBrush : dimBrush;
+        }
+
+        Style(FpsOverlayFontPoppyBtn,     FpsOverlayFontPoppyBtnText,     _fpsOverlayFont == "poppy-playtime");
+        Style(FpsOverlayFontMonospaceBtn, FpsOverlayFontMonospaceBtnText, _fpsOverlayFont == "monospace");
+    }
+
+    private void FpsOverlayEnableBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _fpsOverlayEnabled = !_fpsOverlayEnabled;
+        SaveFpsOverlayEnabled();
+        SetToggle(FpsOverlayEnableText, _fpsOverlayEnabled);
+
+        if (_fpsOverlayEnabled)
+        {
+            // A tracked game may already be running — start immediately instead of waiting for
+            // the next launch transition GameWatcherTick would otherwise catch.
+            for (int i = 0; i < _runningChapterPid.Length; i++)
+            {
+                if (_runningChapterPid[i] == 0) continue;
+                StartFpsTracking(_runningChapterPid[i]);
+                break;
+            }
+        }
+        else
+        {
+            StopFpsTracking();
+        }
+    }
+
+    private void SetFpsOverlayCorner(string corner)
+    {
+        _fpsOverlayCorner = corner;
+        SaveFpsOverlayCorner();
+        RefreshFpsOverlayCornerButtons();
+        ApplyFpsOverlayAppearance();
+    }
+
+    private void FpsOverlayCornerTopLeftBtn_Click(object sender, RoutedEventArgs e)     => SetFpsOverlayCorner("top-left");
+    private void FpsOverlayCornerTopRightBtn_Click(object sender, RoutedEventArgs e)    => SetFpsOverlayCorner("top-right");
+    private void FpsOverlayCornerBottomLeftBtn_Click(object sender, RoutedEventArgs e)  => SetFpsOverlayCorner("bottom-left");
+    private void FpsOverlayCornerBottomRightBtn_Click(object sender, RoutedEventArgs e) => SetFpsOverlayCorner("bottom-right");
+
+    private void SetFpsOverlaySize(string size)
+    {
+        _fpsOverlaySize = size;
+        SaveFpsOverlaySize();
+        RefreshFpsOverlaySizeButtons();
+        ApplyFpsOverlayAppearance();
+    }
+
+    private void FpsOverlaySizeSmallBtn_Click(object sender, RoutedEventArgs e)  => SetFpsOverlaySize("small");
+    private void FpsOverlaySizeMediumBtn_Click(object sender, RoutedEventArgs e) => SetFpsOverlaySize("medium");
+    private void FpsOverlaySizeLargeBtn_Click(object sender, RoutedEventArgs e)  => SetFpsOverlaySize("large");
+
+    private void SetFpsOverlayFont(string font)
+    {
+        _fpsOverlayFont = font;
+        SaveFpsOverlayFont();
+        RefreshFpsOverlayFontButtons();
+        ApplyFpsOverlayAppearance();
+    }
+
+    private void FpsOverlayFontPoppyBtn_Click(object sender, RoutedEventArgs e)     => SetFpsOverlayFont("poppy-playtime");
+    private void FpsOverlayFontMonospaceBtn_Click(object sender, RoutedEventArgs e) => SetFpsOverlayFont("monospace");
 
     private void SaveOverlayEnabled()
     {
@@ -1202,6 +2261,7 @@ public partial class MainWindow : Window
         SetToggle(OverlayEnableText, _overlayEnabled);
         RefreshOverlayControllerButtons();
         RefreshOverlayCornerButtons();
+        RefreshFpsOverlayTab();
     }
 
     private void RefreshOverlayControllerButtons()
@@ -1830,20 +2890,29 @@ public partial class MainWindow : Window
         bool anyRunning    = false;
         bool stateChanged  = false;
 
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < _chapters.Count; i++)
         {
             var path = _chapters[i].GameExePath;
-            if (string.IsNullOrEmpty(path)) { _gameWasRunning[i] = false; continue; }
+            if (string.IsNullOrEmpty(path)) { _gameWasRunning[i] = false; _runningChapterPid[i] = 0; continue; }
 
             bool running;
-            try { running = Process.GetProcessesByName(IOPath.GetFileNameWithoutExtension(path)).Length > 0; }
-            catch { running = false; }
+            try
+            {
+                var procs = Process.GetProcessesByName(IOPath.GetFileNameWithoutExtension(path));
+                running = procs.Length > 0;
+                _runningChapterPid[i] = running ? procs[0].Id : 0;
+                foreach (var p in procs) p.Dispose();
+            }
+            catch { running = false; _runningChapterPid[i] = 0; }
 
             if (_gameWatcherInitialized && running && !_gameWasRunning[i])
             {
                 if (_gameToast    == null || !_gameToast.IsVisible)    ShowGameToast();
                 if (_tutorialToast == null || !_tutorialToast.IsVisible) ShowTutorialToast();
             }
+
+            if (running && !_gameWasRunning[i]) StartFpsTracking(_runningChapterPid[i]);
+            else if (!running && _gameWasRunning[i]) StopFpsTracking();
 
             if (running != _gameWasRunning[i]) stateChanged = true;
             _gameWasRunning[i] = running;
@@ -1866,6 +2935,31 @@ public partial class MainWindow : Window
         }
 
         _gameWatcherInitialized = true;
+    }
+
+    // Starts (or restarts, if a different chapter's game launched) FPS tracking for the
+    // process that was just detected running, and shows the overlay HUD. Requires a one-time
+    // UAC prompt per launcher session/game (see GameFpsService) — if the user declines it, the
+    // overlay simply never appears, which ElevationDeclined would let us report if needed.
+    private void StartFpsTracking(int gamePid)
+    {
+        if (gamePid == 0 || !_fpsOverlayEnabled) return;
+
+        _fpsService.Start(gamePid);
+
+        if (_fpsOverlay == null)
+        {
+            _fpsOverlay = new FpsOverlayWindow();
+            ApplyFpsOverlayAppearance();
+            _fpsOverlay.Show();
+        }
+    }
+
+    private void StopFpsTracking()
+    {
+        _fpsService.Stop();
+        _fpsOverlay?.Close();
+        _fpsOverlay = null;
     }
 
     private void ShowGameToast()
@@ -2453,7 +3547,7 @@ public partial class MainWindow : Window
 
     private ChapterInfo? GetRunningChapter()
     {
-        for (int i = 0; i < Math.Min(3, _chapters.Count); i++)
+        for (int i = 0; i < _chapters.Count; i++)
             if (_gameWasRunning[i]) return _chapters[i];
         return null;
     }
@@ -4992,6 +6086,7 @@ public partial class MainWindow : Window
     private void IconThemeLgbtqBtn_Click(object sender, RoutedEventArgs e)     => SetIconTheme("lgbtq");
     private void IconThemeSummerBtn_Click(object sender, RoutedEventArgs e)    => SetIconTheme("summer");
     private void IconThemeHalloweenBtn_Click(object sender, RoutedEventArgs e) => SetIconTheme("halloween");
+    private void IconThemeChristmasBtn_Click(object sender, RoutedEventArgs e) => SetIconTheme("christmas");
 
     private void RefreshIconThemeButtons()
     {
@@ -5015,6 +6110,7 @@ public partial class MainWindow : Window
         Style(IconThemeLgbtqBtn,     IconThemeLgbtqBtnText,     theme == "lgbtq");
         Style(IconThemeSummerBtn,    IconThemeSummerBtnText,    theme == "summer");
         Style(IconThemeHalloweenBtn, IconThemeHalloweenBtnText, theme == "halloween");
+        Style(IconThemeChristmasBtn, IconThemeChristmasBtnText, theme == "christmas");
     }
 
     private void ShowLiveSplitTcpNotice()

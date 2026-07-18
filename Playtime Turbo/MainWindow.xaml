@@ -766,6 +766,140 @@
                                                FontSize="9" Foreground="#3A6A8A"
                                                TextWrapping="Wrap" Margin="0,8,0,0"/>
 
+                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
+
+                                    <!-- Chapter 1 -->
+                                    <TextBlock x:Name="Chapter1SectionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <TextBlock x:Name="Chapter1EnableLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="Chapter1EnableBtn"
+                                                Height="26" MinWidth="60" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="3"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0" Click="Chapter1EnableBtn_Click">
+                                            <TextBlock x:Name="Chapter1EnableText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold"/>
+                                        </Button>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBlock x:Name="Chapter1FreezeLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="Chapter1FreezeBtn"
+                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0,10,0" Click="Chapter1FreezeBtn_Click">
+                                            <TextBlock x:Name="Chapter1FreezeText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBlock x:Name="Chapter1NormalLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="Chapter1NormalBtn"
+                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0,10,0" Click="Chapter1NormalBtn_Click">
+                                            <TextBlock x:Name="Chapter1NormalText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock x:Name="Chapter1HintText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" Foreground="#3A6A8A"
+                                               TextWrapping="Wrap" Margin="0,8,0,0"/>
+
+                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
+
+                                    <!-- Chapter 4 -->
+                                    <TextBlock x:Name="Chapter4SectionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <TextBlock x:Name="Chapter4EnableLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="Chapter4EnableBtn"
+                                                Height="26" MinWidth="60" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="3"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0" Click="Chapter4EnableBtn_Click">
+                                            <TextBlock x:Name="Chapter4EnableText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold"/>
+                                        </Button>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBlock x:Name="Chapter4FreezeLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="Chapter4FreezeBtn"
+                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0,10,0" Click="Chapter4FreezeBtn_Click">
+                                            <TextBlock x:Name="Chapter4FreezeText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBlock x:Name="Chapter4SlowLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="Chapter4SlowBtn"
+                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0,10,0" Click="Chapter4SlowBtn_Click">
+                                            <TextBlock x:Name="Chapter4SlowText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBlock x:Name="Chapter4NormalLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="Chapter4NormalBtn"
+                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0,10,0" Click="Chapter4NormalBtn_Click">
+                                            <TextBlock x:Name="Chapter4NormalText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock x:Name="Chapter4HintText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" Foreground="#3A6A8A"
+                                               TextWrapping="Wrap" Margin="0,8,0,0"/>
+
                                 </StackPanel>
                             </ScrollViewer>
 
@@ -1101,6 +1235,188 @@
                                         </Button>
                                     </Grid>
 
+                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16"/>
+
+                                    <!-- ═══ FPS OVERLAY ═══ -->
+                                    <TextBlock x:Name="FpsOverlaySectionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+
+                                    <!-- Enable toggle -->
+                                    <Grid Margin="0,0,0,16">
+                                        <TextBlock x:Name="FpsOverlayEnableLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="FpsOverlayEnableBtn"
+                                                Height="26" MinWidth="60" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="3"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0" Click="FpsOverlayEnableBtn_Click">
+                                            <TextBlock x:Name="FpsOverlayEnableText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold"/>
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- Screen corner selector -->
+                                    <TextBlock x:Name="FpsOverlayCornerLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+
+                                    <Grid Margin="0,0,0,16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="8"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <Button x:Name="FpsOverlayCornerTopLeftBtn"
+                                                Grid.Row="0" Grid.Column="0"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10"
+                                                Click="FpsOverlayCornerTopLeftBtn_Click">
+                                            <TextBlock x:Name="FpsOverlayCornerTopLeftBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                        </Button>
+
+                                        <Button x:Name="FpsOverlayCornerTopRightBtn"
+                                                Grid.Row="0" Grid.Column="2"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10"
+                                                Click="FpsOverlayCornerTopRightBtn_Click">
+                                            <TextBlock x:Name="FpsOverlayCornerTopRightBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                        </Button>
+
+                                        <Button x:Name="FpsOverlayCornerBottomLeftBtn"
+                                                Grid.Row="2" Grid.Column="0"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10"
+                                                Click="FpsOverlayCornerBottomLeftBtn_Click">
+                                            <TextBlock x:Name="FpsOverlayCornerBottomLeftBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                        </Button>
+
+                                        <Button x:Name="FpsOverlayCornerBottomRightBtn"
+                                                Grid.Row="2" Grid.Column="2"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10"
+                                                Click="FpsOverlayCornerBottomRightBtn_Click">
+                                            <TextBlock x:Name="FpsOverlayCornerBottomRightBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- Size selector -->
+                                    <TextBlock x:Name="FpsOverlaySizeLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+
+                                    <Grid Margin="0,0,0,16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Button x:Name="FpsOverlaySizeSmallBtn"
+                                                Grid.Column="0"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10"
+                                                Click="FpsOverlaySizeSmallBtn_Click">
+                                            <TextBlock x:Name="FpsOverlaySizeSmallBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                        </Button>
+
+                                        <Button x:Name="FpsOverlaySizeMediumBtn"
+                                                Grid.Column="2"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10"
+                                                Click="FpsOverlaySizeMediumBtn_Click">
+                                            <TextBlock x:Name="FpsOverlaySizeMediumBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                        </Button>
+
+                                        <Button x:Name="FpsOverlaySizeLargeBtn"
+                                                Grid.Column="4"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10"
+                                                Click="FpsOverlaySizeLargeBtn_Click">
+                                            <TextBlock x:Name="FpsOverlaySizeLargeBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- Font selector -->
+                                    <TextBlock x:Name="FpsOverlayFontLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Button x:Name="FpsOverlayFontPoppyBtn"
+                                                Grid.Column="0"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10"
+                                                Click="FpsOverlayFontPoppyBtn_Click">
+                                            <TextBlock x:Name="FpsOverlayFontPoppyBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="13" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                        </Button>
+
+                                        <Button x:Name="FpsOverlayFontMonospaceBtn"
+                                                Grid.Column="2"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10"
+                                                Click="FpsOverlayFontMonospaceBtn_Click">
+                                            <TextBlock x:Name="FpsOverlayFontMonospaceBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                        </Button>
+                                    </Grid>
+
                                 </StackPanel>
                             </ScrollViewer>
 
@@ -1170,9 +1486,21 @@
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                             local:ButtonHelper.CornerRadius="4"
                                             Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
-                                            Padding="12,10"
+                                            Padding="12,10" Margin="0,0,0,8"
                                             Click="IconThemeHalloweenBtn_Click">
                                         <TextBlock x:Name="IconThemeHalloweenBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Button>
+
+                                    <Button x:Name="IconThemeChristmasBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10"
+                                            Click="IconThemeChristmasBtn_Click">
+                                        <TextBlock x:Name="IconThemeChristmasBtnText"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
                                                    FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
                                                    VerticalAlignment="Center"/>

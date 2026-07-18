@@ -1,6 +1,5 @@
-2.0.6 [ICONS UPDATE]
-- Fixed some visual bugs with the controllers overlay
-- Updated app icon (Thanks to @ᴢᴀᴇᴇ)
-- Added a system to send new skips to the developers
-- Added new skips to Chapter 1
-- Added a setting to select the icon app (Taskbar and Discord)
+2.0.7 [TRAILER UPDATE UPDATE!!]
+- Added more icons (Thanks to @ᴢᴀᴇᴇ)
+- Added an FPS Overlay
+- Fixed some skips
+- Added a key remapping system for Load Manip

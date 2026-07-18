@@ -2,7 +2,7 @@ namespace SpeedrunLauncher.Services;
 
 public static class AppVersion
 {
-    public const string CURRENT_VERSION = "2.0.6";
+    public const string CURRENT_VERSION = "2.0.7";
 
     // TODO: Update these when the GitHub repository is created
     public const string GITHUB_OWNER  = "TheKeProjects";
@@ -33,11 +33,18 @@ public static class AppVersion
     public const bool HALLOWEEN_MODE = false;
 #endif
 
+    // Controlled by <ChristmasMode> in the .csproj
+#if CHRISTMAS_MODE
+    public const bool CHRISTMAS_MODE = true;
+#else
+    public const bool CHRISTMAS_MODE = false;
+#endif
+
     public static string GetDisplayVersion()  => $"v{CURRENT_VERSION}";
     public static string GetGitHubRepoUrl()   => $"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}";
 
     /// <summary>The icon theme baked into the .csproj at build time (used when the user's icon theme setting is "default").</summary>
-    public static string BuildDefaultTheme => SUMMER_MODE ? "summer" : HALLOWEEN_MODE ? "halloween" : LGBTQ_MODE ? "lgbtq" : "default";
+    public static string BuildDefaultTheme => SUMMER_MODE ? "summer" : HALLOWEEN_MODE ? "halloween" : CHRISTMAS_MODE ? "christmas" : LGBTQ_MODE ? "lgbtq" : "default";
 
     public static string LauncherImageKey => IconThemeSettings.Current.DiscordImageKey;
 }

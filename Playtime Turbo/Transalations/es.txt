@@ -227,6 +227,19 @@ f11_remap_mouse4       = Ratón 4
 f11_remap_mouse5       = Ratón 5
 f11_remap_hint         = Mientras esté activo, la tecla F11 queda bloqueada y el botón de arriba la simula en su lugar, mientras el launcher esté abierto.
 
+chapter1_section       = CAPÍTULO 1
+chapter1_enable_label  = Activar Congelar/Normalizar cargas
+chapter1_freeze_label  = Congelar cargas
+chapter1_normal_label  = Cargas normales
+chapter1_hint          = Estas teclas solo hacen efecto mientras haya un juego del Capítulo 1 en ejecución.
+
+chapter4_section       = CAPÍTULO 4
+chapter4_enable_label  = Activar Congelar/Ralentizar/Normalizar cargas
+chapter4_freeze_label  = Congelar cargas
+chapter4_slow_label    = Ralentizar cargas
+chapter4_normal_label  = Cargas normales
+chapter4_hint          = Estas teclas solo hacen efecto mientras haya un juego del Capítulo 4 en ejecución.
+
 # Toast de inicio de juego
 game_toast_hint     = Abre el checkpoint loader con:
 tutorial_toast_hint = Abre el menú de tutoriales con:
@@ -287,6 +300,16 @@ overlay_corner_topright   = Superior Derecha
 overlay_corner_bottomleft  = Inferior Izquierda
 overlay_corner_bottomright = Inferior Derecha
 
+fps_overlay_section          = OVERLAY DE FPS
+fps_overlay_enable_label     = Activar overlay de FPS
+fps_overlay_size_label       = TAMAÑO
+fps_overlay_size_small       = Pequeño
+fps_overlay_size_medium      = Mediano
+fps_overlay_size_large       = Grande
+fps_overlay_font_label       = FUENTE
+fps_overlay_font_poppy       = Poppy Playtime
+fps_overlay_font_monospace   = Monoespaciada
+
 # Icono y tema de la app (sección en configuración)
 icontheme_section    = ICONO Y TEMA DE LA APP
 icontheme_hint       = Elige el icono del launcher y el aspecto de Discord Rich Presence. "Por defecto" usa el tema que esté activo en la build actual. Esto afecta al icono de la ventana/barra de tareas y a Discord Rich Presence — no cambia el icono del archivo .exe que se ve en el Explorador de archivos ni en los accesos directos del escritorio.
@@ -295,6 +318,7 @@ icontheme_classic    = Clásico
 icontheme_lgbtq      = LGBTQ+
 icontheme_summer     = Verano
 icontheme_halloween  = Halloween
+icontheme_christmas  = Navidad
 
 # Cores (sección en configuración)
 cores_warning          = ⚠ Esta función no está permitida en runs oficiales.

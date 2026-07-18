@@ -9,7 +9,7 @@ namespace SpeedrunLauncher.Services;
 /// </summary>
 public class IconThemeSettings
 {
-    public string Theme { get; set; } = "default"; // "default" | "classic" | "lgbtq" | "summer" | "halloween"
+    public string Theme { get; set; } = "default"; // "default" | "classic" | "lgbtq" | "summer" | "halloween" | "christmas"
 
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -47,6 +47,7 @@ public class IconThemeSettings
         "lgbtq"     => "launcher_lgbtq",
         "summer"    => "launcher_summer",
         "halloween" => "launcher_halloween",
+        "christmas" => "launcher_christmas",
         _           => "launcher", // "classic" and unrecognized values use the plain icon
     };
 
@@ -57,6 +58,7 @@ public class IconThemeSettings
         "lgbtq"     => "lgbtq_icon",
         "summer"    => "summer_icon",
         "halloween" => "halloween_icon",
+        "christmas" => "christmas_icon",
         _           => null,
     };
 }
