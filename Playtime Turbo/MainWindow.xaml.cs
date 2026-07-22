@@ -67,6 +67,7 @@ public partial class MainWindow : Window
     private HotkeyOverlay?          _hotkeyOverlay;
     private VideoTutorialOverlay?   _tutorialOverlay;
     private BeginnerTutorialOverlay? _beginnerTutorialOverlay;
+    private LeaderboardOverlay?      _leaderboardOverlay;
     private uint             _hotkeyModifiers = MOD_CONTROL | MOD_SHIFT;
     private uint             _hotkeyVk        = VK_RETURN;
     private bool             _capturingHotkey;
@@ -231,7 +232,10 @@ public partial class MainWindow : Window
         ApplyIconTheme();
         var trophyPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "GoldTrophy.png");
         if (System.IO.File.Exists(trophyPath))
+        {
             TrophyImage.Source = new BitmapImage(new Uri(trophyPath));
+            LeaderboardTrophyImage.Source = new BitmapImage(new Uri(trophyPath));
+        }
         var steamIconPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "Steam.jpg");
         if (System.IO.File.Exists(steamIconPath))
             SteamBtnIcon.Source = new BitmapImage(new Uri(steamIconPath));
@@ -322,6 +326,11 @@ public partial class MainWindow : Window
         AddInstallBtnText.Text    = Loc.Get("add_install");
         CloseVersionsBtnText.Text = Loc.Get("back");
         LanguageLabel.Text         = Loc.Get("language_label");
+        WindowModeSectionLabel.Text  = Loc.Get("window_mode_section");
+        WindowModeActualBtnText.Text = Loc.Get("window_mode_actual");
+        WindowModeWindowedBtnText.Text = Loc.Get("window_mode_windowed");
+        WindowModeHintText.Text      = Loc.Get("window_mode_hint");
+        RefreshWindowModeButtons();
         ControlsSectionLabel.Text  = Loc.Get("controls_section");
         CheckpointHotkeyLabel.Text = Loc.Get("checkpoint_hotkey_label");
         TutorialHotkeyLabel.Text   = Loc.Get("tutorial_hotkey_label");
@@ -581,6 +590,48 @@ public partial class MainWindow : Window
         Title = "Poppy Playtime — Speedrun Launcher";
         WindowState = WindowState.Maximized;
         WindowStyle = WindowStyle.None;
+        ApplyWindowMode();
+    }
+
+    private void ApplyWindowMode()
+    {
+        bool windowed = WindowModeSettings.Current.Mode == "windowed";
+        MinimizeBtn.Visibility = windowed ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void MinimizeBtn_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    private void WindowModeActualBtn_Click(object sender, RoutedEventArgs e)   => SetWindowMode("actual");
+    private void WindowModeWindowedBtn_Click(object sender, RoutedEventArgs e) => SetWindowMode("windowed");
+
+    private void SetWindowMode(string mode)
+    {
+        var settings = WindowModeSettings.Current;
+        settings.Mode = mode;
+        settings.Save();
+        RefreshWindowModeButtons();
+        ApplyWindowMode();
+    }
+
+    private void RefreshWindowModeButtons()
+    {
+        var selectedBrush  = new SolidColorBrush(Teal);
+        var selectedBg     = new SolidColorBrush(Color.FromArgb(255, 0, 40, 30));
+        var selectedBorder = new SolidColorBrush(Teal);
+        var dimBrush       = new SolidColorBrush(Color.FromArgb(255, 58, 106, 138));
+        var dimBg          = new SolidColorBrush(Color.FromArgb(255, 6, 15, 24));
+        var dimBorder      = new SolidColorBrush(Color.FromArgb(255, 13, 37, 53));
+
+        void Style(Button btn, TextBlock text, bool selected)
+        {
+            btn.Background  = selected ? selectedBg : dimBg;
+            btn.BorderBrush = selected ? selectedBorder : dimBorder;
+            text.Foreground = selected ? selectedBrush : dimBrush;
+        }
+
+        var mode = WindowModeSettings.Current.Mode;
+        Style(WindowModeActualBtn,   WindowModeActualBtnText,   mode == "actual");
+        Style(WindowModeWindowedBtn, WindowModeWindowedBtnText, mode == "windowed");
     }
 
     // ── Sound ─────────────────────────────────────────────────────────────────
@@ -659,6 +710,7 @@ public partial class MainWindow : Window
         _hotkeyOverlay?.Close();
         _tutorialOverlay?.Close();
         _beginnerTutorialOverlay?.Close();
+        _leaderboardOverlay?.Close();
         _gameToast?.Close();
         _tutorialToast?.Close();
         _loadManipToast?.Close();
@@ -2950,10 +3002,10 @@ public partial class MainWindow : Window
         if (_fpsOverlay == null)
         {
             _fpsOverlay = new FpsOverlayWindow();
-            // Show() first: PlaceInCorner (inside ApplyFpsOverlayAppearance) needs the
-            // window's actual Width/Height, which SizeToContent only resolves once the
-            // window has been shown and laid out — calling it beforehand reads NaN and
-            // places the overlay at the wrong spot until the corner is re-applied later.
+            // Show() first: PlaceInCorner (inside ApplyFpsOverlayAppearance) needs a real
+            // Width/Height, which SizeToContent only resolves once shown/laid out. The window
+            // also re-pins itself to its corner on any later SizeChanged (see FpsOverlayWindow),
+            // covering the custom font finishing its load a moment after this first pass.
             _fpsOverlay.Show();
             ApplyFpsOverlayAppearance();
         }
@@ -5047,6 +5099,21 @@ public partial class MainWindow : Window
     }
 
     // ── Main buttons ──────────────────────────────────────────────────────────
+
+    private void LeaderboardButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_leaderboardOverlay is { IsVisible: true })
+        {
+            _leaderboardOverlay.Close();
+        }
+        else
+        {
+            _leaderboardOverlay = new LeaderboardOverlay();
+            _leaderboardOverlay.Closed += (_, _) => _leaderboardOverlay = null;
+            _leaderboardOverlay.Show();
+            _leaderboardOverlay.Activate();
+        }
+    }
 
     private void PlayButton_Click(object sender, RoutedEventArgs e)
     {

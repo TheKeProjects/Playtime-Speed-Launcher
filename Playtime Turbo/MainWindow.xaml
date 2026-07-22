@@ -41,13 +41,30 @@
                        VerticalAlignment="Center"
                        Margin="6,0,0,0"/>
         </StackPanel>
-        <TextBlock Grid.Row="0"
-                   x:Name="VersionLabel"
-                   Text="v1.0.0"
-                   FontFamily="Cascadia Code, Consolas, Courier New"
-                   FontSize="10" Foreground="#1A3A55"
-                   HorizontalAlignment="Right" VerticalAlignment="Center"
-                   Margin="0,0,12,0"/>
+        <StackPanel Grid.Row="0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Margin="0,0,12,0">
+            <Button x:Name="MinimizeBtn"
+                    Background="Transparent" BorderThickness="0"
+                    Padding="0" Click="MinimizeBtn_Click"
+                    VerticalAlignment="Center"
+                    Margin="0,0,10,0"
+                    Visibility="Collapsed"
+                    ToolTip="Minimize">
+                <Border BorderBrush="#1A3A55" BorderThickness="1"
+                        CornerRadius="3" Padding="8,4">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE921;"
+                               FontSize="10" Foreground="#2A5A7A"/>
+                </Border>
+            </Button>
+            <TextBlock x:Name="VersionLabel"
+                       Text="v1.0.0"
+                       FontFamily="Cascadia Code, Consolas, Courier New"
+                       FontSize="10" Foreground="#1A3A55"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
 
         <!-- ── CHAPTER CARDS ── -->
         <ScrollViewer Grid.Row="2"
@@ -129,7 +146,20 @@
                     HorizontalAlignment="Center"
                     Margin="0,4,0,14">
 
-            <Grid>
+            <Button x:Name="LeaderboardButton"
+                    Width="58" Height="58"
+                    local:ButtonHelper.CornerRadius="5"
+                    Background="#0A1825" BorderBrush="#112233"
+                    BorderThickness="2"
+                    ToolTipService.ToolTip="Leaderboard"
+                    Click="LeaderboardButton_Click">
+                <Image x:Name="LeaderboardTrophyImage"
+                       Width="26" Height="26"
+                       VerticalAlignment="Center"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+            </Button>
+
+            <Grid Margin="8,0,0,0">
                 <Button x:Name="SettingsButton"
                         Width="58" Height="58"
                         local:ButtonHelper.CornerRadius="5"
@@ -683,6 +713,40 @@
                                             </Popup>
                                         </StackPanel>
                                     </Grid>
+
+                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
+
+                                    <!-- Window mode -->
+                                    <TextBlock x:Name="WindowModeSectionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                    <Button x:Name="WindowModeActualBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10" Margin="0,0,0,8"
+                                            Click="WindowModeActualBtn_Click">
+                                        <TextBlock x:Name="WindowModeActualBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Button>
+                                    <Button x:Name="WindowModeWindowedBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10" Margin="0,0,0,8"
+                                            Click="WindowModeWindowedBtn_Click">
+                                        <TextBlock x:Name="WindowModeWindowedBtnText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Button>
+                                    <TextBlock x:Name="WindowModeHintText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" Foreground="#3A6A8A"
+                                               TextWrapping="Wrap" Margin="0,0,0,0"/>
                                 </StackPanel>
                             </ScrollViewer>
 

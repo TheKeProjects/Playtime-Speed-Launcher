@@ -35,6 +35,14 @@ public sealed class FpsOverlayWindow : Window
 
     private readonly TextBlock _text;
 
+    // Last corner placement request, re-applied every time the window's actual size changes
+    // (not just once after Show()) — the custom file-based font can finish loading a moment
+    // after the first layout pass, which resizes the window slightly and would otherwise leave
+    // a one-shot position calculation stale.
+    private Rect   _workArea;
+    private string _corner = "top-right";
+    private double _margin = 20;
+
     public FpsOverlayWindow()
     {
         Title              = "FPS";
@@ -62,6 +70,8 @@ public sealed class FpsOverlayWindow : Window
             CornerRadius = new CornerRadius(6),
             Child        = _text,
         };
+
+        SizeChanged += (_, _) => Reposition();
     }
 
     public void SetFps(double fps) => _text.Text = $"FPS: {fps:F0}";
@@ -79,12 +89,27 @@ public sealed class FpsOverlayWindow : Window
     /// <summary>Positions the overlay in a corner of the given screen work area.</summary>
     public void PlaceInCorner(Rect workArea, string corner, double margin = 20)
     {
-        Left = corner is "top-right" or "bottom-right"
-            ? workArea.Right - Width - margin
-            : workArea.Left + margin;
-        Top = corner is "bottom-left" or "bottom-right"
-            ? workArea.Bottom - Height - margin
-            : workArea.Top + margin;
+        _workArea = workArea;
+        _corner   = corner;
+        _margin   = margin;
+        Reposition();
+    }
+
+    private void Reposition()
+    {
+        if (_workArea.IsEmpty) return;
+
+        // ActualWidth/ActualHeight reflect the current rendered size even if this fires from a
+        // late re-layout (e.g. the custom font finishing its load) — Width/Height alone can lag.
+        double w = ActualWidth  > 0 ? ActualWidth  : Width;
+        double h = ActualHeight > 0 ? ActualHeight : Height;
+
+        Left = _corner is "top-right" or "bottom-right"
+            ? _workArea.Right - w - _margin
+            : _workArea.Left + _margin;
+        Top = _corner is "bottom-left" or "bottom-right"
+            ? _workArea.Bottom - h - _margin
+            : _workArea.Top + _margin;
     }
 
     protected override void OnSourceInitialized(EventArgs e)

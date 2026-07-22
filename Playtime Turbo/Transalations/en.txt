@@ -10,6 +10,10 @@ add_install = ADD
 settings_title = [ SETTINGS ]
 sound_effects = Sound effects
 language_label = Language
+window_mode_section = WINDOW MODE
+window_mode_actual = Actual (fullscreen, no window controls)
+window_mode_windowed = Windowed (covers the full screen, adds a minimize button)
+window_mode_hint = Both modes keep the launcher covering the whole screen. "Windowed" adds a minimize button so you can drop to the desktop without closing the app.
 
 # Intro
 intro_skip = [ click to skip ]

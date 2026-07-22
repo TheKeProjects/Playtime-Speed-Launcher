@@ -1,3 +1,4 @@
-2.0.8
+2.0.9
 - Fixed position of the FPS overlay
-- Fixed a bug that causes the game stop if you click the keyboard overlay
+- Added the option to minimize the launcher
+- Added the leaderboards for every chapter

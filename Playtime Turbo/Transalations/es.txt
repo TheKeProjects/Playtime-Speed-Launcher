@@ -10,6 +10,10 @@ add_install = AÑADIR
 settings_title = [ CONFIGURACIÓN ]
 sound_effects = Efectos de sonido
 language_label = Idioma
+window_mode_section = MODO DE VENTANA
+window_mode_actual = Actual (pantalla completa, sin controles de ventana)
+window_mode_windowed = Ventana (cubre toda la pantalla, añade botón de minimizar)
+window_mode_hint = Ambos modos mantienen el launcher cubriendo toda la pantalla. "Ventana" añade un botón para minimizar y volver al escritorio sin cerrar la app.
 
 # Intro
 intro_skip = [ clic para saltar ]

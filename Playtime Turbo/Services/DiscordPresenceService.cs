@@ -32,7 +32,7 @@ namespace SpeedrunLauncher.Services;
 public sealed class DiscordPresenceService : IDisposable
 {
     // ── Replace with YourDiscordApplicationID ─────────────────────────────────
-    private static readonly string AppId = "YourDiscordApplicationID";
+    private static readonly string AppId = "AppId";
     // ──────────────────────────────────────────────────────────────────────────
 
     private DiscordRpcClient? _client;
