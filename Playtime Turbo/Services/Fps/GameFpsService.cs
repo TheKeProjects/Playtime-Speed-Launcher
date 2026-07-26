@@ -63,13 +63,17 @@ public sealed class GameFpsService : IDisposable
             Stop();
             return;
         }
-        catch
+        catch (Exception)
         {
             Stop();
             return;
         }
 
-        if (_helperProcess == null) { Stop(); return; }
+        if (_helperProcess == null)
+        {
+            Stop();
+            return;
+        }
 
         _ = RunPipeLoopAsync(_pipe, _cts.Token);
     }

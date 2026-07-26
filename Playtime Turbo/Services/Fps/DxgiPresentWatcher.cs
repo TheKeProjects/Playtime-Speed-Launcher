@@ -48,7 +48,7 @@ public sealed class DxgiPresentWatcher : IDisposable
         _thread = new Thread(() =>
         {
             try { _session.Source.Process(); }
-            catch { /* session was disposed to stop tracing */ }
+            catch { }
         })
         { IsBackground = true };
         _thread.Start();

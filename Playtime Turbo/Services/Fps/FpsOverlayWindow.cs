@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace SpeedrunLauncher.Services.Fps;
 
@@ -34,6 +35,14 @@ public sealed class FpsOverlayWindow : Window
     }
 
     private readonly TextBlock _text;
+
+    // Some games (especially borderless-fullscreen) periodically re-assert their own window as
+    // HWND_TOPMOST to stay above the taskbar. That wins the z-order fight against WPF's
+    // Topmost=true — which is only (re)applied when this window activates — and can permanently
+    // bury the overlay behind the game even though both are nominally "topmost". Re-asserting
+    // our own topmost position on a timer keeps this overlay on top no matter how often the game
+    // re-asserts its own.
+    private readonly DispatcherTimer _topmostTimer = new() { Interval = TimeSpan.FromSeconds(1.5) };
 
     // Last corner placement request, re-applied every time the window's actual size changes
     // (not just once after Show()) — the custom file-based font can finish loading a moment
@@ -120,6 +129,16 @@ public sealed class FpsOverlayWindow : Window
         var ex   = NativeMethods.GetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE);
         NativeMethods.SetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE,
             ex | NativeMethods.WS_EX_TRANSPARENT | NativeMethods.WS_EX_LAYERED);
+
+        _topmostTimer.Tick += (_, _) => NativeMethods.SetWindowPos(hwnd, NativeMethods.HWND_TOPMOST,
+            0, 0, 0, 0, NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+        _topmostTimer.Start();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _topmostTimer.Stop();
+        base.OnClosed(e);
     }
 
     private static class NativeMethods
@@ -128,8 +147,18 @@ public sealed class FpsOverlayWindow : Window
         public const int WS_EX_LAYERED   = 0x80000;
         public const int WS_EX_TRANSPARENT = 0x20;
 
+        public static readonly nint HWND_TOPMOST = -1;
+        public const uint SWP_NOSIZE     = 0x0001;
+        public const uint SWP_NOMOVE     = 0x0002;
+        public const uint SWP_NOACTIVATE = 0x0010;
+
         [DllImport("user32.dll")]
         public static extern int GetWindowLong(nint hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter,
+            int x, int y, int cx, int cy, uint uFlags);
 
         [DllImport("user32.dll")]
         public static extern int SetWindowLong(nint hWnd, int nIndex, int dwNewLong);

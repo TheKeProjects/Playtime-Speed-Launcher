@@ -232,10 +232,15 @@ f11_remap_mouse5       = Mouse 5
 f11_remap_hint         = While enabled, the F11 key is blocked and the button above presses F11 instead, for as long as the launcher stays open.
 
 chapter1_section       = CHAPTER 1
-chapter1_enable_label  = Enable Freeze/Normal Loads
 chapter1_freeze_label  = Freeze loads
 chapter1_normal_label  = Normal loads
-chapter1_hint          = These hotkeys only take effect while a Chapter 1 game is running.
+chapter1_hint          = These keys are read directly from Load Manip's config file and take effect in-game once Load Manip is installed.
+chapter1_loadmanip_not_installed = (load manip not installed)
+
+chapter1_fullbright_section       = FULLBRIGHT
+chapter1_fullbright_unlit_label   = Unlit key
+chapter1_fullbright_lit_label     = Lit key
+chapter1_fullbright_not_installed = (fullbright not installed)
 
 chapter4_section       = CHAPTER 4
 chapter4_enable_label  = Enable Freeze/Slow/Normal Loads

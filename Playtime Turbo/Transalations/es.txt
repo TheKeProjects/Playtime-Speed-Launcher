@@ -232,10 +232,15 @@ f11_remap_mouse5       = Ratón 5
 f11_remap_hint         = Mientras esté activo, la tecla F11 queda bloqueada y el botón de arriba la simula en su lugar, mientras el launcher esté abierto.
 
 chapter1_section       = CAPÍTULO 1
-chapter1_enable_label  = Activar Congelar/Normalizar cargas
 chapter1_freeze_label  = Congelar cargas
 chapter1_normal_label  = Cargas normales
-chapter1_hint          = Estas teclas solo hacen efecto mientras haya un juego del Capítulo 1 en ejecución.
+chapter1_hint          = Estas teclas se leen directamente del archivo de configuración de Load Manip y hacen efecto en el juego una vez que Load Manip esté instalado.
+chapter1_loadmanip_not_installed = (load manip no instalado)
+
+chapter1_fullbright_section       = FULLBRIGHT
+chapter1_fullbright_unlit_label   = Tecla sin luz
+chapter1_fullbright_lit_label     = Tecla con luz
+chapter1_fullbright_not_installed = (fullbright no instalado)
 
 chapter4_section       = CAPÍTULO 4
 chapter4_enable_label  = Activar Congelar/Ralentizar/Normalizar cargas

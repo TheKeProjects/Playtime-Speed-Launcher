@@ -23,8 +23,10 @@ public partial class MainWindow : Window
 {
     private readonly List<ChapterInfo>                            _chapters          = ChapterInfo.GetAll();
     private readonly List<Border>                                 _cards             = [];
+    private readonly List<TextBlock>                              _hoursTexts        = [];
     private readonly List<Button>                                 _ue4ssBtns         = [];
     private readonly InstallationsStore                           _store             = InstallationsStore.Load();
+    private readonly ChapterPlaytimeStore                          _playtimeStore     = ChapterPlaytimeStore.Load();
     private readonly Dictionary<string, CancellationTokenSource> _activePolls       = [];
     private readonly Dictionary<string, List<string>>            _downloadLogs      = [];
     private readonly Dictionary<string, TextBlock>               _downloadLogBlocks = [];
@@ -52,7 +54,21 @@ public partial class MainWindow : Window
     private string? _loadManipPaksDir;
     private string? _loadManipZipPath;
     private string? _loadManipUe4ssZipPath;
+    private string? _loadManipMarkerZipPath;
     private bool    _loadManipUe4ssInstalledThisSession;
+
+    private Button? _fullBrightBtn;
+    private string? _fullBrightWin64Dir;
+    private string? _fullBrightPaksDir;
+    private string? _fullBrightZipPath;
+    private string? _fullBrightUe4ssZipPath;
+    private string? _fullBrightMarkerZipPath;
+    private string? _fullBrightConfigZipPath;
+
+    private bool                     _capturingFullBrightKey;
+    private string?                  _fullBrightCaptureTarget; // "KeyUnlit" or "KeyLit"
+    private KeyEventHandler?         _fullBrightKeyCapture;
+    private MouseButtonEventHandler? _fullBrightMouseCapture;
 
     // ── UE4SS temp hotkey remap ───────────────────────────────────────────────
     private bool    _ue4ssTempRemap    = false;
@@ -130,9 +146,12 @@ public partial class MainWindow : Window
     private bool _coresEnabled;
 
     // ── Chapter 1 Freeze/Normal loads (Controls tab) ─────────────────────────
-    private HotkeyBinding _chapter1Freeze = new(HotkeyInputType.Keyboard, 0x49, 0); // I
-    private HotkeyBinding _chapter1Normal = new(HotkeyInputType.Keyboard, 0x4F, 0); // O
-    private bool _chapter1RemapEnabled;
+    // Reads/writes LoadManip_Config.ini directly — the Load Manip mod itself reads this
+    // file for its Freeze/Normal keybinds, so no OS-level hook/key-injection is needed.
+    private bool                     _capturingChapter1Hotkey;
+    private string?                  _chapter1CaptureTarget; // "KeyFreeze" or "KeyNormal"
+    private KeyEventHandler?         _chapter1HotkeyCapture;
+    private MouseButtonEventHandler? _chapter1MouseHotkeyCapture;
 
     // ── Chapter 4 Freeze/Slow/Normal loads (Controls tab) ────────────────────
     private HotkeyBinding _chapter4Freeze = new(HotkeyInputType.Keyboard, 0x49, 0); // I
@@ -191,14 +210,6 @@ public partial class MainWindow : Window
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "cores_enabled.cfg");
 
-    private static readonly string Chapter1RemapHotkeyFile =
-        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SpeedrunLauncher", "chapter1_loadmanip_hotkeys.cfg");
-
-    private static readonly string Chapter1RemapEnabledFile =
-        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SpeedrunLauncher", "chapter1_loadmanip_enabled.cfg");
-
     private static readonly string Chapter4RemapHotkeyFile =
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "chapter4_remap_hotkeys.cfg");
@@ -248,7 +259,10 @@ public partial class MainWindow : Window
         PlayIntro();
         StartGameWatcher();
         _fpsService.FpsUpdated += fps =>
-            Dispatcher.BeginInvoke(() => _fpsOverlay?.SetFps(fps));
+            Dispatcher.BeginInvoke(() =>
+            {
+                _fpsOverlay?.SetFps(fps);
+            });
         StartLiveSplitPoller();
         Services.VideoTutorialService.Initialize();
         LoadSteamUser();
@@ -392,11 +406,14 @@ public partial class MainWindow : Window
         CoresWarningText.Text            = Loc.Get("cores_warning");
         CoresEnableLabel.Text            = Loc.Get("cores_enable_label");
         Chapter1SectionLabel.Text        = Loc.Get("chapter1_section");
-        Chapter1EnableLabel.Text         = Loc.Get("chapter1_enable_label");
         Chapter1FreezeLabel.Text         = Loc.Get("chapter1_freeze_label");
         Chapter1NormalLabel.Text         = Loc.Get("chapter1_normal_label");
         Chapter1HintText.Text            = Loc.Get("chapter1_hint");
+        Chapter1FullbrightSectionLabel.Text = Loc.Get("chapter1_fullbright_section");
+        Chapter1FullbrightUnlitLabel.Text   = Loc.Get("chapter1_fullbright_unlit_label");
+        Chapter1FullbrightLitLabel.Text     = Loc.Get("chapter1_fullbright_lit_label");
         RefreshChapter1UI();
+        RefreshFullBrightKeysUI();
         Chapter4SectionLabel.Text        = Loc.Get("chapter4_section");
         Chapter4EnableLabel.Text         = Loc.Get("chapter4_enable_label");
         Chapter4FreezeLabel.Text         = Loc.Get("chapter4_freeze_label");
@@ -680,9 +697,6 @@ public partial class MainWindow : Window
         LoadLoadManipHotkeys();
         LoadCoresEnabled();
         if (_coresEnabled) InstallLoadManipHook();
-        LoadChapter1RemapHotkeys();
-        LoadChapter1RemapEnabled();
-        if (_chapter1RemapEnabled) InstallChapter1RemapHook();
         LoadChapter4RemapHotkeys();
         LoadChapter4RemapEnabled();
         if (_chapter4RemapEnabled) InstallChapter4RemapHook();
@@ -705,7 +719,6 @@ public partial class MainWindow : Window
         UnregisterHotKey(hwnd, HOTKEY_ID);
         UnregisterHotKey(hwnd, TUTORIAL_HOTKEY_ID);
         UninstallLoadManipHook();
-        UninstallChapter1RemapHook();
         UninstallChapter4RemapHook();
         _hotkeyOverlay?.Close();
         _tutorialOverlay?.Close();
@@ -1087,7 +1100,7 @@ public partial class MainWindow : Window
         SettingsOverlaysScroll.Visibility     = index == 8 ? Visibility.Visible : Visibility.Collapsed;
         SettingsIconThemeScroll.Visibility    = index == 9 ? Visibility.Visible : Visibility.Collapsed;
 
-        if (index == 1) { RefreshChapter1UI(); RefreshChapter4UI(); }
+        if (index == 1) { RefreshChapter1UI(); RefreshChapter4UI(); RefreshFullBrightKeysUI(); }
         if (index == 4) RefreshDiscordToggles();
         if (index == 7) RefreshCoresToggle();
         if (index == 8) RefreshOverlaysTab();
@@ -1132,26 +1145,6 @@ public partial class MainWindow : Window
     private nint _loadManipKeyboardHook;
     private LowLevelKeyboardProc? _loadManipKeyboardProc;
     private delegate nint LowLevelKeyboardProc(int nCode, nint wParam, nint lParam);
-
-    // ── Chapter 1 Freeze/Normal loads hotkeys ────────────────────────────────
-    // Pure input remap, like F11 Remap: a configured trigger (key or mouse button) sends a
-    // synthetic "I" (Freeze) or "O" (Normal) keypress to the game. No process affinity/priority
-    // is touched here — this never calls into LoadManipService / the Cores feature.
-
-    private bool                     _capturingChapter1Hotkey;
-    private int                      _chapter1CaptureTarget; // 0=freeze, 1=normal
-    private KeyEventHandler?         _chapter1HotkeyCapture;
-    private MouseButtonEventHandler? _chapter1MouseHotkeyCapture;
-
-    private const uint Chapter1FreezeTargetVk = 0x49; // I — fixed in-game hotkey, not remappable
-    private const uint Chapter1NormalTargetVk = 0x4F; // O — fixed in-game hotkey, not remappable
-
-    // Low-level keyboard/mouse hooks for chapter 1 loads (only fire while a chapter 1 game is foreground)
-    private nint _chapter1KeyboardHook;
-    private nint _chapter1MouseHook;
-    private LowLevelKeyboardProc? _chapter1KeyboardProc;
-    private LowLevelKeyboardProc? _chapter1MouseProc;
-    private readonly HashSet<uint> _chapter1HeldTriggers = [];
 
     // ── Chapter 4 Freeze/Slow/Normal loads hotkeys ───────────────────────────
     // Same pure input remap as Chapter 1, with a third slot (Slow Loads).
@@ -1334,114 +1327,6 @@ public partial class MainWindow : Window
             }
         }
         return CallNextHookEx(_loadManipKeyboardHook, nCode, wParam, lParam);
-    }
-
-    private void InstallChapter1RemapHook()
-    {
-        UninstallChapter1RemapHook();
-        using var curProcess = System.Diagnostics.Process.GetCurrentProcess();
-        using var curModule  = curProcess.MainModule!;
-        var hMod = GetModuleHandle(curModule.ModuleName);
-        _chapter1KeyboardProc = Chapter1KeyboardHookProc;
-        _chapter1KeyboardHook = SetWindowsHookEx(13, _chapter1KeyboardProc, hMod, 0);
-
-        // Only pay for a global mouse hook (which adds latency to every mouse move system-wide)
-        // when a binding actually needs it.
-        if (_chapter1Freeze.Type == HotkeyInputType.Mouse || _chapter1Normal.Type == HotkeyInputType.Mouse)
-        {
-            _chapter1MouseProc = Chapter1MouseHookProc;
-            _chapter1MouseHook = SetWindowsHookEx(14, _chapter1MouseProc, hMod, 0);
-        }
-    }
-
-    private void UninstallChapter1RemapHook()
-    {
-        if (_chapter1KeyboardHook != 0)
-        {
-            UnhookWindowsHookEx(_chapter1KeyboardHook);
-            _chapter1KeyboardHook = 0;
-        }
-        if (_chapter1MouseHook != 0)
-        {
-            UnhookWindowsHookEx(_chapter1MouseHook);
-            _chapter1MouseHook = 0;
-        }
-        _chapter1KeyboardProc = null;
-        _chapter1MouseProc    = null;
-        _chapter1HeldTriggers.Clear();
-    }
-
-    private bool Chapter1RemapActive() =>
-        _chapter1RemapEnabled && GetRunningChapter()?.Number == 1 && IsGameForeground();
-
-    private nint Chapter1KeyboardHookProc(int nCode, nint wParam, nint lParam)
-    {
-        if (nCode >= 0)
-        {
-            var data     = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-            var msg      = (int)wParam;
-            var isDown   = msg is 0x0100 or 0x0104; // WM_KEYDOWN, WM_SYSKEYDOWN
-            var isUp     = msg is 0x0101 or 0x0105; // WM_KEYUP, WM_SYSKEYUP
-            var injected = (data.flags & LLKHF_INJECTED) != 0;
-
-            var isTargetKey = data.vkCode == Chapter1FreezeTargetVk || data.vkCode == Chapter1NormalTargetVk;
-
-            if (!injected && Chapter1RemapActive())
-            {
-                HandleChapter1Trigger(data.vkCode, isDown, isUp);
-
-                // Swallow the real in-game Freeze/Normal keys so they aren't double-processed —
-                // our own synthetic presses (reported as injected) still get through above.
-                if (isTargetKey) return 1;
-            }
-        }
-        return CallNextHookEx(_chapter1KeyboardHook, nCode, wParam, lParam);
-    }
-
-    private void HandleChapter1Trigger(uint vkCode, bool isDown, bool isUp)
-    {
-        bool isFreeze = _chapter1Freeze.Type == HotkeyInputType.Keyboard && _chapter1Freeze.KeyVk == vkCode;
-        bool isNormal = _chapter1Normal.Type == HotkeyInputType.Keyboard && _chapter1Normal.KeyVk == vkCode;
-        if (!isFreeze && !isNormal) return;
-
-        if (isDown && _chapter1HeldTriggers.Add(vkCode))
-        {
-            // Defer off the hook's call stack: injecting a keyboard event synchronously from
-            // within the keyboard hook that's currently handling a real event of the same key
-            // (the default I→I / O→O binding) can get silently dropped by Windows.
-            var targetVk = isFreeze ? Chapter1FreezeTargetVk : Chapter1NormalTargetVk;
-            Dispatcher.BeginInvoke(() => SendRemapKey(targetVk));
-        }
-        else if (isUp)
-            _chapter1HeldTriggers.Remove(vkCode);
-    }
-
-    private nint Chapter1MouseHookProc(int nCode, nint wParam, nint lParam)
-    {
-        if (nCode >= 0 && ((int)wParam == WM_XBUTTONDOWN || (int)wParam == WM_MBUTTONDOWN) && Chapter1RemapActive())
-        {
-            var data    = System.Runtime.InteropServices.Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
-            var xButton = (int)(data.mouseData >> 16);
-            var pressed = (int)wParam switch
-            {
-                WM_MBUTTONDOWN => HotkeyMouseButtons.Middle,
-                WM_XBUTTONDOWN => xButton == 1 ? HotkeyMouseButtons.XButton1
-                                : xButton == 2 ? HotkeyMouseButtons.XButton2 : 0,
-                _ => 0,
-            };
-
-            if (pressed != 0)
-            {
-                bool isFreeze = _chapter1Freeze.Type == HotkeyInputType.Mouse && _chapter1Freeze.MouseButton == pressed;
-                bool isNormal = _chapter1Normal.Type == HotkeyInputType.Mouse && _chapter1Normal.MouseButton == pressed;
-                if (isFreeze || isNormal)
-                {
-                    var targetVk = isFreeze ? Chapter1FreezeTargetVk : Chapter1NormalTargetVk;
-                    Dispatcher.BeginInvoke(() => SendRemapKey(targetVk));
-                }
-            }
-        }
-        return CallNextHookEx(_chapter1MouseHook, nCode, wParam, lParam);
     }
 
     private void InstallChapter4RemapHook()
@@ -1642,20 +1527,168 @@ public partial class MainWindow : Window
     }
 
     // ── Chapter 1 Freeze/Normal loads (Controls tab) ─────────────────────────
+    // Reads/writes LoadManip_Config.ini directly (KeyFreeze/KeyNormal) — the Load Manip mod
+    // itself reads this file, so no OS-level hook/key-injection is needed for Chapter 1 anymore.
 
-    private void LoadChapter1RemapHotkeys()
+    /// <summary>Resolves the live, already-installed LoadManip_Config.ini for the currently
+    /// active Chapter 1 install, or null if Load Manip isn't installed there.</summary>
+    private string? GetActiveLoadManipConfigPath()
     {
-        try
+        var chapter = _chapters.FirstOrDefault(c => c.Number == 1);
+        var exePath = chapter != null ? GetActiveExePath(chapter) : null;
+        if (string.IsNullOrEmpty(exePath)) return null;
+
+        var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+        if (win64 is null) return null;
+
+        var projectRoot = LoadManipFilesService.GetProjectRoot(win64);
+        if (projectRoot is null) return null;
+
+        var path = IOPath.Combine(projectRoot, LoadManipFilesService.ConfigFileName);
+        return File.Exists(path) ? path : null;
+    }
+
+    private static (string? freeze, string? normal) ParseLoadManipConfig(string path)
+    {
+        string? freeze = null, normal = null;
+        foreach (var line in File.ReadAllLines(path))
         {
-            if (!File.Exists(Chapter1RemapHotkeyFile)) return;
-            var lines = File.ReadAllLines(Chapter1RemapHotkeyFile);
-            if (lines.Length >= 2)
-            {
-                if (TryParseHotkeyBinding(lines[0], out var freeze)) _chapter1Freeze = freeze;
-                if (TryParseHotkeyBinding(lines[1], out var normal)) _chapter1Normal = normal;
-            }
+            var t = line.Trim();
+            if (t.Length == 0 || t.StartsWith("#") || t.StartsWith("[") || !t.Contains('='))
+                continue;
+
+            var parts = t.Split('=', 2);
+            var key   = parts[0].Trim();
+            var value = parts[1].Trim();
+            if (key.Equals("KeyFreeze", StringComparison.OrdinalIgnoreCase)) freeze = value;
+            else if (key.Equals("KeyNormal", StringComparison.OrdinalIgnoreCase)) normal = value;
         }
-        catch { }
+        return (freeze, normal);
+    }
+
+    /// <summary>Shows editable Freeze/Normal key rows reading from the live installed
+    /// config.ini when Load Manip is installed for the active Chapter 1 exe, or
+    /// "(load manip not installed)" otherwise.</summary>
+    private void RefreshChapter1UI()
+    {
+        if (_capturingChapter1Hotkey) CancelChapter1Capture();
+
+        var path = GetActiveLoadManipConfigPath();
+        var (freeze, normal) = path != null ? ParseLoadManipConfig(path) : (null, null);
+        bool editable = freeze != null && normal != null;
+
+        Chapter1FreezeRow.Visibility               = editable ? Visibility.Visible : Visibility.Collapsed;
+        Chapter1NormalRow.Visibility                = editable ? Visibility.Visible : Visibility.Collapsed;
+        Chapter1LoadManipNotInstalledText.Visibility = editable ? Visibility.Collapsed : Visibility.Visible;
+        Chapter1LoadManipNotInstalledText.Text       = Loc.Get("chapter1_loadmanip_not_installed");
+
+        var normalBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        var normalFg    = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+        Chapter1FreezeBtn.BorderBrush  = normalBrush;
+        Chapter1FreezeText.Foreground  = normalFg;
+        Chapter1NormalBtn.BorderBrush  = normalBrush;
+        Chapter1NormalText.Foreground  = normalFg;
+
+        if (editable)
+        {
+            Chapter1FreezeText.Text = freeze;
+            Chapter1NormalText.Text = normal;
+        }
+    }
+
+    private void Chapter1FreezeBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter1Capture("KeyFreeze", Chapter1FreezeBtn, Chapter1FreezeText);
+    private void Chapter1NormalBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter1Capture("KeyNormal", Chapter1NormalBtn, Chapter1NormalText);
+
+    private void StartChapter1Capture(string configKey, Button btn, TextBlock text)
+    {
+        if (_capturingChapter1Hotkey)
+        {
+            var wasThis = _chapter1CaptureTarget == configKey;
+            CancelChapter1Capture();
+            RefreshChapter1UI();
+            if (wasThis) return;
+        }
+
+        _capturingChapter1Hotkey = true;
+        _chapter1CaptureTarget   = configKey;
+        text.Text       = Loc.Get("f11_remap_press_input");
+        text.Foreground = new SolidColorBrush(Teal);
+        btn.BorderBrush = new SolidColorBrush(Teal);
+
+        _chapter1HotkeyCapture = CaptureChapter1KeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _chapter1HotkeyCapture, true);
+
+        _chapter1MouseHotkeyCapture = CaptureChapter1MouseDown;
+        AddHandler(UIElement.PreviewMouseDownEvent, _chapter1MouseHotkeyCapture, true);
+    }
+
+    private void CancelChapter1Capture()
+    {
+        _capturingChapter1Hotkey = false;
+        if (_chapter1HotkeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewKeyDownEvent, _chapter1HotkeyCapture);
+            _chapter1HotkeyCapture = null;
+        }
+        if (_chapter1MouseHotkeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewMouseDownEvent, _chapter1MouseHotkeyCapture);
+            _chapter1MouseHotkeyCapture = null;
+        }
+    }
+
+    private void ApplyChapter1Key(string configKey, string value)
+    {
+        var path = GetActiveLoadManipConfigPath();
+        if (path != null)
+            LoadManipFilesService.UpdateConfigKey(path, configKey, value);
+        RefreshChapter1UI();
+    }
+
+    private void CaptureChapter1KeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key is Key.LeftCtrl or Key.RightCtrl
+                or Key.LeftShift or Key.RightShift
+                or Key.LeftAlt or Key.RightAlt
+                or Key.LWin or Key.RWin
+                or Key.None)
+            return;
+
+        var target = _chapter1CaptureTarget!;
+        CancelChapter1Capture();
+
+        if (key == Key.Escape)
+        {
+            RefreshChapter1UI();
+            e.Handled = true;
+            return;
+        }
+
+        var name = WpfKeyToUnrealKeyName(key);
+        if (name != null) ApplyChapter1Key(target, name);
+        else RefreshChapter1UI();
+        e.Handled = true;
+    }
+
+    private void CaptureChapter1MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        var name = e.ChangedButton switch
+        {
+            MouseButton.Middle   => "MiddleMouseButton",
+            MouseButton.XButton1 => "ThumbMouseButton",
+            MouseButton.XButton2 => "ThumbMouseButton2",
+            _ => null,
+        };
+        if (name is null) return;
+
+        var target = _chapter1CaptureTarget!;
+        CancelChapter1Capture();
+        ApplyChapter1Key(target, name);
+        e.Handled = true;
     }
 
     private static bool TryParseHotkeyBinding(string line, out HotkeyBinding binding)
@@ -1683,39 +1716,6 @@ public partial class MainWindow : Window
         _                     => $"K{b.KeyVk}",
     };
 
-    private void SaveChapter1RemapHotkeys()
-    {
-        try
-        {
-            var dir = IOPath.GetDirectoryName(Chapter1RemapHotkeyFile)!;
-            Directory.CreateDirectory(dir);
-            File.WriteAllText(Chapter1RemapHotkeyFile,
-                $"{HotkeyBindingToToken(_chapter1Freeze)}\n{HotkeyBindingToToken(_chapter1Normal)}");
-        }
-        catch { }
-    }
-
-    private void LoadChapter1RemapEnabled()
-    {
-        try
-        {
-            if (File.Exists(Chapter1RemapEnabledFile))
-                _chapter1RemapEnabled = File.ReadAllText(Chapter1RemapEnabledFile).Trim() == "1";
-        }
-        catch { }
-    }
-
-    private void SaveChapter1RemapEnabled()
-    {
-        try
-        {
-            var dir = IOPath.GetDirectoryName(Chapter1RemapEnabledFile)!;
-            Directory.CreateDirectory(dir);
-            File.WriteAllText(Chapter1RemapEnabledFile, _chapter1RemapEnabled ? "1" : "0");
-        }
-        catch { }
-    }
-
     private string HotkeyBindingToString(HotkeyBinding binding) => binding.Type switch
     {
         HotkeyInputType.Keyboard => KeyToString(KeyInterop.KeyFromVirtualKey((int)binding.KeyVk)),
@@ -1728,138 +1728,6 @@ public partial class MainWindow : Window
         },
         _ => Loc.Get("f11_remap_none"),
     };
-
-    private void RefreshChapter1Buttons()
-    {
-        Chapter1FreezeText.Text = HotkeyBindingToString(_chapter1Freeze);
-        Chapter1NormalText.Text = HotkeyBindingToString(_chapter1Normal);
-
-        var normalBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
-        var normalFg    = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
-        Chapter1FreezeBtn.BorderBrush  = normalBrush;
-        Chapter1FreezeText.Foreground  = normalFg;
-        Chapter1NormalBtn.BorderBrush  = normalBrush;
-        Chapter1NormalText.Foreground  = normalFg;
-    }
-
-    private void RefreshChapter1UI()
-    {
-        SetToggle(Chapter1EnableText, _chapter1RemapEnabled);
-        RefreshChapter1Buttons();
-    }
-
-    private void Chapter1EnableBtn_Click(object sender, RoutedEventArgs e)
-    {
-        _chapter1RemapEnabled = !_chapter1RemapEnabled;
-        SaveChapter1RemapEnabled();
-        RefreshChapter1UI();
-
-        if (_chapter1RemapEnabled)
-            InstallChapter1RemapHook();
-        else
-            UninstallChapter1RemapHook();
-    }
-
-    private void Chapter1FreezeBtn_Click(object sender, RoutedEventArgs e) =>
-        StartChapter1Capture(0, Chapter1FreezeBtn, Chapter1FreezeText);
-    private void Chapter1NormalBtn_Click(object sender, RoutedEventArgs e) =>
-        StartChapter1Capture(1, Chapter1NormalBtn, Chapter1NormalText);
-
-    private void StartChapter1Capture(int target, Button btn, TextBlock text)
-    {
-        if (_capturingChapter1Hotkey)
-        {
-            var wasThis = _chapter1CaptureTarget == target;
-            CancelChapter1Capture();
-            RefreshChapter1Buttons();
-            if (wasThis) return;
-        }
-
-        _capturingChapter1Hotkey = true;
-        _chapter1CaptureTarget   = target;
-        text.Text       = Loc.Get("f11_remap_press_input");
-        text.Foreground = new SolidColorBrush(Teal);
-        btn.BorderBrush = new SolidColorBrush(Teal);
-
-        _chapter1HotkeyCapture = CaptureChapter1KeyDown;
-        AddHandler(UIElement.PreviewKeyDownEvent, _chapter1HotkeyCapture, true);
-
-        _chapter1MouseHotkeyCapture = CaptureChapter1MouseDown;
-        AddHandler(UIElement.PreviewMouseDownEvent, _chapter1MouseHotkeyCapture, true);
-    }
-
-    private void CancelChapter1Capture()
-    {
-        _capturingChapter1Hotkey = false;
-        if (_chapter1HotkeyCapture != null)
-        {
-            RemoveHandler(UIElement.PreviewKeyDownEvent, _chapter1HotkeyCapture);
-            _chapter1HotkeyCapture = null;
-        }
-        if (_chapter1MouseHotkeyCapture != null)
-        {
-            RemoveHandler(UIElement.PreviewMouseDownEvent, _chapter1MouseHotkeyCapture);
-            _chapter1MouseHotkeyCapture = null;
-        }
-    }
-
-    private void ApplyChapter1Binding(int target, HotkeyBinding binding)
-    {
-        switch (target)
-        {
-            case 0: _chapter1Freeze = binding; break;
-            case 1: _chapter1Normal = binding; break;
-        }
-
-        SaveChapter1RemapHotkeys();
-        RefreshChapter1Buttons();
-        if (_chapter1RemapEnabled) InstallChapter1RemapHook();
-    }
-
-    private void CaptureChapter1KeyDown(object sender, KeyEventArgs e)
-    {
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
-
-        if (key is Key.LeftCtrl or Key.RightCtrl
-                or Key.LeftShift or Key.RightShift
-                or Key.LeftAlt or Key.RightAlt
-                or Key.LWin or Key.RWin
-                or Key.None)
-            return;
-
-        var target = _chapter1CaptureTarget;
-        CancelChapter1Capture();
-
-        if (key == Key.Escape)
-        {
-            RefreshChapter1Buttons();
-            e.Handled = true;
-            return;
-        }
-
-        var vk = (uint)KeyInterop.VirtualKeyFromKey(key);
-        ApplyChapter1Binding(target, new HotkeyBinding(HotkeyInputType.Keyboard, vk, 0));
-        e.Handled = true;
-    }
-
-    private void CaptureChapter1MouseDown(object sender, MouseButtonEventArgs e)
-    {
-        int? mouseButton = e.ChangedButton switch
-        {
-            MouseButton.Middle   => HotkeyMouseButtons.Middle,
-            MouseButton.XButton1 => HotkeyMouseButtons.XButton1,
-            MouseButton.XButton2 => HotkeyMouseButtons.XButton2,
-            _ => null,
-        };
-
-        if (mouseButton is null) return;
-
-        var target = _chapter1CaptureTarget;
-        CancelChapter1Capture();
-
-        ApplyChapter1Binding(target, new HotkeyBinding(HotkeyInputType.Mouse, 0, mouseButton.Value));
-        e.Handled = true;
-    }
 
     private void LoadChapter4RemapHotkeys()
     {
@@ -2930,9 +2798,11 @@ public partial class MainWindow : Window
             : $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}.{cs:D2}";
     }
 
+    private static readonly TimeSpan GameWatcherInterval = TimeSpan.FromSeconds(2);
+
     private void StartGameWatcher()
     {
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        var timer = new DispatcherTimer { Interval = GameWatcherInterval };
         timer.Tick += GameWatcherTick;
         timer.Start();
     }
@@ -2947,15 +2817,20 @@ public partial class MainWindow : Window
             var path = _chapters[i].GameExePath;
             if (string.IsNullOrEmpty(path)) { _gameWasRunning[i] = false; _runningChapterPid[i] = 0; continue; }
 
+            var exeName = IOPath.GetFileNameWithoutExtension(path);
             bool running;
             try
             {
-                var procs = Process.GetProcessesByName(IOPath.GetFileNameWithoutExtension(path));
+                var procs = Process.GetProcessesByName(exeName);
                 running = procs.Length > 0;
                 _runningChapterPid[i] = running ? procs[0].Id : 0;
                 foreach (var p in procs) p.Dispose();
             }
-            catch { running = false; _runningChapterPid[i] = 0; }
+            catch (Exception)
+            {
+                running = false;
+                _runningChapterPid[i] = 0;
+            }
 
             if (_gameWatcherInitialized && running && !_gameWasRunning[i])
             {
@@ -2965,6 +2840,12 @@ public partial class MainWindow : Window
 
             if (running && !_gameWasRunning[i]) StartFpsTracking(_runningChapterPid[i]);
             else if (!running && _gameWasRunning[i]) StopFpsTracking();
+
+            if (running)
+            {
+                _playtimeStore.AddSeconds(_chapters[i].Number, GameWatcherInterval.TotalSeconds);
+                UpdateHoursText(i);
+            }
 
             if (running != _gameWasRunning[i]) stateChanged = true;
             _gameWasRunning[i] = running;
@@ -3281,19 +3162,27 @@ public partial class MainWindow : Window
         for (int i = 0; i < _chapters.Count; i++)
         {
             var chapter = _chapters[i];
-            var card = MakeCard(chapter, IOPath.Combine(bannerDir, $"Chapter {i + 1}.jpg"));
+            var card = MakeCard(chapter, IOPath.Combine(bannerDir, $"Chapter {i + 1}.jpg"), out var hoursText);
             var idx = i;
             card.MouseDown   += (_, _) => SelectChapter(idx);
             card.MouseEnter  += (_, _) => { OnCardHover(idx, true); PlaySfx("OpcionMover.WAV", noStop: true); };
             card.MouseLeave  += (_, _) => OnCardHover(idx, false);
             _cards.Add(card);
+            _hoursTexts.Add(hoursText);
             CardsPanel.Children.Add(card);
         }
         RefreshUe4ssBtnStates();
         RefreshLoadManipBtnStates();
+        RefreshFullBrightBtnStates();
     }
 
-    private Border MakeCard(ChapterInfo chapter, string bannerPath)
+    private void UpdateHoursText(int index)
+    {
+        var chapter = _chapters[index];
+        _hoursTexts[index].Text = ChapterPlaytimeStore.Format(_playtimeStore.GetPlaytime(chapter.Number));
+    }
+
+    private Border MakeCard(ChapterInfo chapter, string bannerPath, out TextBlock hoursText)
     {
         var grid = new Grid();
 
@@ -3328,6 +3217,16 @@ public partial class MainWindow : Window
             Foreground = new SolidColorBrush(Color.FromArgb(230, 230, 240, 255)),
             TextWrapping = TextWrapping.Wrap,
         });
+
+        hoursText = new TextBlock
+        {
+            Text = ChapterPlaytimeStore.Format(_playtimeStore.GetPlaytime(chapter.Number)),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 10,
+            Foreground = new SolidColorBrush(TealDim),
+            Margin = new Thickness(0, 2, 0, 0),
+        };
+        bottom.Children.Add(hoursText);
 
         if (chapter.Number == 1 || chapter.Number == 2 || chapter.Number == 3 || chapter.Number >= 4)
         {
@@ -3445,6 +3344,33 @@ public partial class MainWindow : Window
                 loadManipBtn.Click     += LoadManipCardBtn_Click;
                 actionsPanel.Children.Add(loadManipBtn);
                 _loadManipBtns[chapter.Number] = loadManipBtn;
+            }
+
+            if (chapter.Number == 1)
+            {
+                var fullBrightBtn = new Button
+                {
+                    Background      = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
+                    BorderBrush     = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
+                    BorderThickness = new Thickness(1),
+                    Padding         = new Thickness(10, 5, 10, 5),
+                    Margin          = new Thickness(6, 0, 0, 0),
+                    Tag             = chapter.Number,
+                };
+                ButtonHelper.SetCornerRadius(fullBrightBtn, new CornerRadius(3));
+                fullBrightBtn.Content = new TextBlock
+                {
+                    Text              = "FULLBRIGHT",
+                    FontFamily        = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize          = 9,
+                    FontWeight        = FontWeights.Bold,
+                    Foreground        = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                fullBrightBtn.MouseDown += (s, ev) => ev.Handled = true;
+                fullBrightBtn.Click     += FullBrightCardBtn_Click;
+                actionsPanel.Children.Add(fullBrightBtn);
+                _fullBrightBtn = fullBrightBtn;
             }
 
             bottom.Children.Add(actionsPanel);
@@ -3577,6 +3503,7 @@ public partial class MainWindow : Window
 
         RefreshUe4ssBtnStates();
         RefreshLoadManipBtnStates();
+        RefreshFullBrightBtnStates();
     }
 
     private string GetVersionLabel(ChapterInfo ch)
@@ -3674,11 +3601,15 @@ public partial class MainWindow : Window
         if (customs.Count > 0)
         {
             InstallsList.Children.Add(MakeSectionLabel(Loc.Get("section_custom")));
-            foreach (var inst in customs)
+            for (int i = 0; i < customs.Count; i++)
+            {
+                var inst = customs[i];
                 InstallsList.Children.Add(
                     MakeInstallRow(inst.Name, inst.ExePath,
                         isAuto: false, isSelected: sel == inst.ExePath,
-                        chapterNum: chNum, exePath: inst.ExePath, inst: inst));
+                        chapterNum: chNum, exePath: inst.ExePath, inst: inst,
+                        isFirst: i == 0, isLast: i == customs.Count - 1));
+            }
         }
     }
 
@@ -3692,7 +3623,8 @@ public partial class MainWindow : Window
 
     private Border MakeInstallRow(string name, string subtitle,
         bool isAuto, bool isSelected, int chapterNum, string exePath,
-        InstallationInfo? inst = null, string? iconOverride = null)
+        InstallationInfo? inst = null, string? iconOverride = null,
+        bool isFirst = false, bool isLast = false)
     {
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) });
@@ -3771,6 +3703,37 @@ public partial class MainWindow : Window
 
         if (!isAuto)
         {
+            var capPathMove = exePath; var capChMove = chapterNum;
+
+            Button MakeMoveBtn(string glyph, int direction, bool enabled)
+            {
+                var btn = new Button
+                {
+                    Width = 22, Height = 26,
+                    Background = new SolidColorBrush(Color.FromArgb(40, 120, 130, 140)),
+                    BorderThickness = new Thickness(0), Padding = new Thickness(0),
+                    Margin = new Thickness(4, 0, 0, 0),
+                    IsEnabled = enabled,
+                    Opacity = enabled ? 1.0 : 0.25,
+                    Content = new TextBlock
+                    {
+                        FontFamily = new FontFamily("Segoe MDL2 Assets"), Text = glyph,
+                        FontSize = 10, Foreground = new SolidColorBrush(Color.FromArgb(220, 160, 180, 200)),
+                        HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                    },
+                };
+                ButtonHelper.SetCornerRadius(btn, new CornerRadius(3));
+                btn.Click += (_, _) =>
+                {
+                    _store.MoveCustom(capChMove, capPathMove, direction);
+                    BuildInstallationsList();
+                };
+                return btn;
+            }
+
+            right.Children.Add(MakeMoveBtn("", -1, !isFirst));
+            right.Children.Add(MakeMoveBtn("", 1, !isLast));
+
             var capPathEdit = exePath; var capChEdit = chapterNum;
 
             var editBtn = new Button
@@ -6727,7 +6690,11 @@ public partial class MainWindow : Window
 
         if (installedViaLoadManip)
         {
-            Ue4ssPopupQuestion.Text   = "Load Manip and its UE4SS files must be\nremoved before installing the original UE4SS.";
+            bool fullBrightAlsoInstalled = _ue4ssTargetChapter == 1
+                && _ue4ssWin64Dir != null && FullBrightFilesService.IsInstalled(_ue4ssWin64Dir);
+            Ue4ssPopupQuestion.Text = fullBrightAlsoInstalled
+                ? "Load Manip, FullBright and their UE4SS files must be\nremoved before installing the original UE4SS."
+                : "Load Manip and its UE4SS files must be\nremoved before installing the original UE4SS.";
             Ue4ssYesBtn.Visibility    = Visibility.Collapsed;
             Ue4ssDeleteBtn.Visibility = Visibility.Visible;
             Ue4ssDeleteBtn.IsEnabled  = true;
@@ -6803,6 +6770,12 @@ public partial class MainWindow : Window
             var paksDir      = LoadManipFilesService.GetPaksDir(win64);
             var loadManipZip = LoadManipFilesService.GetZipPath(_ue4ssTargetChapter);
             var ue4ssZipPath = LoadManipFilesService.GetUe4ssZipPath(_ue4ssTargetChapter);
+            var markerZipPath = LoadManipFilesService.GetPlaytimeMarkerZipPath(_ue4ssTargetChapter);
+
+            bool fullBrightInstalled = _ue4ssTargetChapter == 1 && FullBrightFilesService.IsInstalled(win64);
+            var fullBrightZip        = fullBrightInstalled ? FullBrightFilesService.GetZipPath(1) : null;
+            var fullBrightUe4ssZip   = fullBrightInstalled ? FullBrightFilesService.GetUe4ssZipPath(1) : null;
+            var fullBrightMarkerZip  = fullBrightInstalled ? FullBrightFilesService.GetPlaytimeMarkerZipPath(1) : null;
 
             if (_ue4ssZipPath is null || !File.Exists(_ue4ssZipPath))
             {
@@ -6815,15 +6788,32 @@ public partial class MainWindow : Window
             {
                 await Task.Run(() =>
                 {
+                    // FullBright's pak/UE4SS build overwrote Load Manip's own files, so it must
+                    // be removed first — otherwise its extra files (fullbright.playtime, the
+                    // FullBright/CheatManagerEnablerMod ue4ss Mods) would be left orphaned once
+                    // the plain UE4SS build is extracted over everything.
+                    if (fullBrightInstalled && paksDir != null
+                        && fullBrightZip != null && File.Exists(fullBrightZip)
+                        && fullBrightUe4ssZip != null && File.Exists(fullBrightUe4ssZip)
+                        && fullBrightMarkerZip != null && File.Exists(fullBrightMarkerZip))
+                    {
+                        // Keep config.ini (holds the user's chosen keybinds) even though it
+                        // ships in the config zip — only pak/UE4SS/marker get removed here.
+                        FullBrightFilesService.Uninstall(paksDir, win64, fullBrightZip, fullBrightUe4ssZip, fullBrightMarkerZip);
+                    }
+
                     if (paksDir != null && loadManipZip != null && File.Exists(loadManipZip))
                         LoadManipFilesService.Uninstall(paksDir, loadManipZip);
                     if (ue4ssZipPath != null && File.Exists(ue4ssZipPath))
-                        LoadManipFilesService.UninstallUe4ss(win64, ue4ssZipPath);
+                        LoadManipFilesService.UninstallUe4ss(win64, ue4ssZipPath, markerZipPath);
 
                     ZipFile.ExtractToDirectory(originalUe4ssZip, win64, overwriteFiles: true);
                 });
                 RefreshUe4ssBtnStates();
                 RefreshLoadManipBtnStates();
+                RefreshFullBrightBtnStates();
+                RefreshFullBrightKeysUI();
+                RefreshChapter1UI();
                 ShowUe4ssDialog($"UE4SS installed successfully!\n\n{win64}", success: true);
             }
             catch (Exception ex)
@@ -7093,6 +7083,7 @@ public partial class MainWindow : Window
         _loadManipPaksDir      = null;
         _loadManipZipPath      = null;
         _loadManipUe4ssZipPath = null;
+        _loadManipMarkerZipPath = null;
 
         if (chapter != null)
         {
@@ -7102,6 +7093,7 @@ public partial class MainWindow : Window
 
             _loadManipZipPath      = LoadManipFilesService.GetZipPath(chapter.Number);
             _loadManipUe4ssZipPath = LoadManipFilesService.GetUe4ssZipPath(chapter.Number);
+            _loadManipMarkerZipPath = LoadManipFilesService.GetPlaytimeMarkerZipPath(chapter.Number);
             if (_loadManipWin64Dir != null)
                 _loadManipPaksDir = LoadManipFilesService.GetPaksDir(_loadManipWin64Dir);
         }
@@ -7128,19 +7120,30 @@ public partial class MainWindow : Window
         {
             LoadManipPopupQuestion.Text = "UE4SS is required before adding\nLoad Manip files for Chapter 1.";
             LoadManipInstallUe4ssBtn.Visibility = Visibility.Visible;
+            LoadManipWarningText.Text = "⚠ Only compatible with Patch 1.3";
             LoadManipWarningText.Visibility = Visibility.Visible;
         }
         else if (installed)
         {
+            bool fullBrightAlsoInstalled = _loadManipTargetChapter == 1
+                && _loadManipWin64Dir != null && FullBrightFilesService.IsInstalled(_loadManipWin64Dir);
             LoadManipPopupQuestion.Text = "Do you want to remove Load Manip files\nfrom this version?";
             LoadManipDeleteBtn.Visibility = Visibility.Visible;
+            if (fullBrightAlsoInstalled)
+            {
+                LoadManipWarningText.Text = "⚠ FullBright is installed on top of Load Manip\nand will be removed as well.";
+                LoadManipWarningText.Visibility = Visibility.Visible;
+            }
         }
         else
         {
             LoadManipPopupQuestion.Text = "Do you want to add Load Manip files\nto this version?";
             LoadManipYesBtn.Visibility = Visibility.Visible;
             if (_loadManipTargetChapter == 1)
+            {
+                LoadManipWarningText.Text = "⚠ Only compatible with Patch 1.3";
                 LoadManipWarningText.Visibility = Visibility.Visible;
+            }
         }
     }
 
@@ -7180,6 +7183,7 @@ public partial class MainWindow : Window
         var paksDir      = _loadManipPaksDir;
         var zipPath      = _loadManipZipPath;
         var ue4ssZipPath = _loadManipUe4ssZipPath;
+        var markerZipPath = _loadManipMarkerZipPath;
 
         if (_loadManipTargetChapter == 1)
         {
@@ -7225,12 +7229,13 @@ public partial class MainWindow : Window
         {
             await Task.Run(() =>
             {
-                LoadManipFilesService.Install(paksDir, zipPath);
+                LoadManipFilesService.Install(paksDir, zipPath, LoadManipFilesService.GetConfigZipPath(_loadManipTargetChapter));
                 if (_loadManipTargetChapter == 1 && ue4ssZipPath != null)
-                    LoadManipFilesService.InstallUe4ss(win64Dir, ue4ssZipPath);
+                    LoadManipFilesService.InstallUe4ss(win64Dir, ue4ssZipPath, markerZipPath);
             });
             RefreshLoadManipBtnStates();
             RefreshUe4ssBtnStates();
+            RefreshChapter1UI();
             ShowLoadManipDialog($"Load Manip files installed successfully!\n\n{paksDir}", success: true);
         }
         catch (Exception ex)
@@ -7248,12 +7253,32 @@ public partial class MainWindow : Window
 
         try
         {
-            var paksDir      = _loadManipPaksDir;
-            var zipPath      = _loadManipZipPath;
-            var win64Dir     = _loadManipWin64Dir;
-            var ue4ssZipPath = _loadManipUe4ssZipPath;
+            var paksDir       = _loadManipPaksDir;
+            var zipPath       = _loadManipZipPath;
+            var win64Dir      = _loadManipWin64Dir;
+            var ue4ssZipPath  = _loadManipUe4ssZipPath;
+            var markerZipPath = _loadManipMarkerZipPath;
+
+            bool fullBrightInstalled = _loadManipTargetChapter == 1 && win64Dir != null
+                && FullBrightFilesService.IsInstalled(win64Dir);
+            var fullBrightZip       = fullBrightInstalled ? FullBrightFilesService.GetZipPath(1) : null;
+            var fullBrightUe4ssZip  = fullBrightInstalled ? FullBrightFilesService.GetUe4ssZipPath(1) : null;
+            var fullBrightMarkerZip = fullBrightInstalled ? FullBrightFilesService.GetPlaytimeMarkerZipPath(1) : null;
+
             await Task.Run(() =>
             {
+                // FullBright can't exist without Load Manip — its pak/UE4SS overwrote Load
+                // Manip's own files (same paths). Remove it first, otherwise its
+                // fullbright.playtime marker survives and keeps reporting FullBright as
+                // "installed" even after Load Manip (and most of its files) are gone.
+                if (fullBrightInstalled && win64Dir != null
+                    && fullBrightZip != null && File.Exists(fullBrightZip)
+                    && fullBrightUe4ssZip != null && File.Exists(fullBrightUe4ssZip)
+                    && fullBrightMarkerZip != null && File.Exists(fullBrightMarkerZip))
+                {
+                    FullBrightFilesService.Uninstall(paksDir, win64Dir, fullBrightZip, fullBrightUe4ssZip, fullBrightMarkerZip);
+                }
+
                 LoadManipFilesService.Uninstall(paksDir, zipPath);
 
                 // Also remove the UE4SS build Load Manip installed, so the standalone
@@ -7261,12 +7286,17 @@ public partial class MainWindow : Window
                 if (win64Dir != null && ue4ssZipPath != null && File.Exists(ue4ssZipPath)
                     && LoadManipFilesService.IsUe4ssFromLoadManip(win64Dir))
                 {
-                    LoadManipFilesService.UninstallUe4ss(win64Dir, ue4ssZipPath);
+                    LoadManipFilesService.UninstallUe4ss(win64Dir, ue4ssZipPath, markerZipPath);
                 }
             });
             RefreshLoadManipBtnStates();
             RefreshUe4ssBtnStates();
-            ShowLoadManipDialog("Load Manip files removed successfully!", success: true);
+            RefreshFullBrightBtnStates();
+            RefreshFullBrightKeysUI();
+            RefreshChapter1UI();
+            ShowLoadManipDialog(fullBrightInstalled
+                ? "Load Manip and FullBright files removed successfully!"
+                : "Load Manip files removed successfully!", success: true);
         }
         catch (Exception ex)
         {
@@ -7358,5 +7388,511 @@ public partial class MainWindow : Window
             }
             btn.Opacity = installed ? 1.0 : 0.3;
         }
+    }
+
+    // ── FullBright (Chapter 1) ───────────────────────────────────────────────
+
+    private void FullBrightCardBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ComputeFullBrightTargets())
+        {
+            ShowFullBrightDialog("No game path found for this chapter.\nPlease set up the game installation first.");
+            return;
+        }
+
+        UpdateFullBrightPopupState();
+        OpenFullBrightOverlay();
+    }
+
+    /// <summary>Resolves the win64/paks/zip paths for FullBright (Chapter 1 only).
+    /// Returns false (and leaves the targets null) when no game path is found.</summary>
+    private bool ComputeFullBrightTargets()
+    {
+        var chapter = _chapters.FirstOrDefault(c => c.Number == 1);
+        _fullBrightWin64Dir      = null;
+        _fullBrightPaksDir       = null;
+        _fullBrightZipPath       = null;
+        _fullBrightUe4ssZipPath  = null;
+        _fullBrightMarkerZipPath = null;
+        _fullBrightConfigZipPath = null;
+
+        if (chapter != null)
+        {
+            var exePath = GetActiveExePath(chapter);
+            if (!string.IsNullOrEmpty(exePath))
+                _fullBrightWin64Dir = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+
+            _fullBrightZipPath       = FullBrightFilesService.GetZipPath(chapter.Number);
+            _fullBrightUe4ssZipPath  = FullBrightFilesService.GetUe4ssZipPath(chapter.Number);
+            _fullBrightMarkerZipPath = FullBrightFilesService.GetPlaytimeMarkerZipPath(chapter.Number);
+            _fullBrightConfigZipPath = FullBrightFilesService.GetConfigZipPath(chapter.Number);
+            if (_fullBrightWin64Dir != null)
+                _fullBrightPaksDir = LoadManipFilesService.GetPaksDir(_fullBrightWin64Dir);
+        }
+
+        return _fullBrightWin64Dir != null;
+    }
+
+    private void UpdateFullBrightPopupState()
+    {
+        bool installed = _fullBrightWin64Dir != null && FullBrightFilesService.IsInstalled(_fullBrightWin64Dir);
+
+        FullBrightYesBtn.Visibility    = installed ? Visibility.Collapsed : Visibility.Visible;
+        FullBrightDeleteBtn.Visibility = installed ? Visibility.Visible : Visibility.Collapsed;
+        FullBrightWarningText.Visibility = Visibility.Visible;
+
+        FullBrightPopupQuestion.Text = installed
+            ? "Do you want to remove FullBright files\nfrom this version?"
+            : "Do you want to add FullBright files\nto this version?";
+        FullBrightWarningText.Text = installed
+            ? "⚠ Removing FullBright also removes Load Manip's\noverwritten files — Load Manip will be reinstalled automatically."
+            : "⚠ Only compatible with Patch 1.3";
+    }
+
+    private void OpenFullBrightOverlay()
+    {
+        FullBrightOverlay.Opacity    = 0;
+        FullBrightOverlay.Visibility = Visibility.Visible;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        FullBrightOverlay.BeginAnimation(UIElement.OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)));
+        FullBrightPopupScale.BeginAnimation(ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(0.85, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+        FullBrightPopupScale.BeginAnimation(ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(0.85, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+    }
+
+    private void CloseFullBrightOverlay()
+    {
+        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(180)) { EasingFunction = ease };
+        fade.Completed += (_, _) => FullBrightOverlay.Visibility = Visibility.Collapsed;
+        FullBrightOverlay.BeginAnimation(UIElement.OpacityProperty, fade);
+    }
+
+    private void FullBrightNoBtn_Click(object sender, RoutedEventArgs e)
+        => CloseFullBrightOverlay();
+
+    private void ShowFullBrightDialog(string message, bool success = false)
+    {
+        WpfDialog.Show(this, "FULLBRIGHT", new TextBlock
+        {
+            Text         = message,
+            FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize     = 12,
+            Foreground   = new SolidColorBrush(success
+                ? Color.FromArgb(200, 0, 204, 170)
+                : Color.FromArgb(200, 160, 180, 200)),
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth     = 360,
+        }, closeText: "OK");
+    }
+
+    /// <summary>Ensures Load Manip (Chapter 1) is fully installed — pak, UE4SS build, and
+    /// launcher.playtime marker — before FullBright is laid on top of it. Duplicates the relevant
+    /// steps of LoadManipYesBtn_Click rather than calling into it, so that method's own code path
+    /// stays completely untouched. Returns false (after showing a dialog, if appropriate) on
+    /// failure or if the user cancels the "delete existing UE4SS" confirm.</summary>
+    private async Task<bool> EnsureLoadManipInstalledAsync(string win64Dir, string paksDir)
+    {
+        var zipPath       = LoadManipFilesService.GetZipPath(1);
+        var ue4ssZipPath  = LoadManipFilesService.GetUe4ssZipPath(1);
+        var markerZipPath = LoadManipFilesService.GetPlaytimeMarkerZipPath(1);
+
+        if (zipPath is null || !File.Exists(zipPath) || ue4ssZipPath is null || !File.Exists(ue4ssZipPath))
+        {
+            ShowFullBrightDialog("Load Manip zip not found. Try restarting the launcher.");
+            return false;
+        }
+
+        if (LoadManipFilesService.IsInstalled(paksDir, zipPath))
+            return true;
+
+        // Same "existing non-Load-Manip UE4SS must be confirmed-deleted first" branch as
+        // LoadManipYesBtn_Click, duplicated so that method is never modified.
+        if (IsUe4ssInstalled(win64Dir) && !LoadManipFilesService.IsUe4ssFromLoadManip(win64Dir))
+        {
+            var confirmContent = new TextBlock
+            {
+                Text         = "This requires deleting the current UE4SS files.\nDo you want to delete them?",
+                FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize     = 12,
+                Foreground   = new SolidColorBrush(Color.FromArgb(200, 160, 180, 200)),
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth     = 360,
+            };
+            var confirmResult = WpfDialog.Show(this, "FULLBRIGHT", confirmContent,
+                primaryText: "YES", closeText: "CANCEL");
+            if (confirmResult != WpfDialogResult.Primary) return false;
+
+            try
+            {
+                var genericUe4ssZip = IOPath.Combine(
+                    ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
+                if (File.Exists(genericUe4ssZip))
+                    await Task.Run(() => LoadManipFilesService.UninstallUe4ss(win64Dir, genericUe4ssZip));
+            }
+            catch (Exception ex)
+            {
+                ShowFullBrightDialog($"Error deleting existing UE4SS files:\n{ex.Message}");
+                return false;
+            }
+        }
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                LoadManipFilesService.Install(paksDir, zipPath, LoadManipFilesService.GetConfigZipPath(1));
+                LoadManipFilesService.InstallUe4ss(win64Dir, ue4ssZipPath, markerZipPath);
+            });
+            RefreshLoadManipBtnStates();
+            RefreshUe4ssBtnStates();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            ShowFullBrightDialog($"Error installing Load Manip files:\n{ex.Message}");
+            return false;
+        }
+    }
+
+    private async void FullBrightYesBtn_Click(object sender, RoutedEventArgs e)
+    {
+        CloseFullBrightOverlay();
+
+        if (_fullBrightPaksDir is null || _fullBrightWin64Dir is null)
+        {
+            ShowFullBrightDialog("No game path found for this chapter.\nPlease set up the game installation first.");
+            return;
+        }
+
+        if (_fullBrightZipPath is null || !File.Exists(_fullBrightZipPath)
+            || _fullBrightUe4ssZipPath is null || !File.Exists(_fullBrightUe4ssZipPath)
+            || _fullBrightMarkerZipPath is null || !File.Exists(_fullBrightMarkerZipPath))
+        {
+            ShowFullBrightDialog("FullBright zip not found. Try restarting the launcher.");
+            return;
+        }
+
+        var win64Dir      = _fullBrightWin64Dir;
+        var paksDir       = _fullBrightPaksDir;
+        var zipPath       = _fullBrightZipPath;
+        var ue4ssZipPath  = _fullBrightUe4ssZipPath;
+        var markerZipPath = _fullBrightMarkerZipPath;
+        var configZipPath = _fullBrightConfigZipPath;
+
+        var loadManipPaksDir = LoadManipFilesService.GetPaksDir(win64Dir);
+        if (loadManipPaksDir is null)
+        {
+            ShowFullBrightDialog("No game path found for this chapter.\nPlease set up the game installation first.");
+            return;
+        }
+
+        var loadManipZipPath = LoadManipFilesService.GetZipPath(1);
+        bool loadManipInstalled = loadManipZipPath != null && File.Exists(loadManipZipPath)
+            && LoadManipFilesService.IsInstalled(loadManipPaksDir, loadManipZipPath);
+
+        if (!loadManipInstalled)
+        {
+            var confirmContent = new TextBlock
+            {
+                Text         = "FullBright requires Load Manip.\nInstall Load Manip now?",
+                FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize     = 12,
+                Foreground   = new SolidColorBrush(Color.FromArgb(200, 160, 180, 200)),
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth     = 360,
+            };
+            var confirmResult = WpfDialog.Show(this, "FULLBRIGHT", confirmContent,
+                primaryText: "YES", closeText: "CANCEL");
+            if (confirmResult != WpfDialogResult.Primary) return;
+
+            if (!await EnsureLoadManipInstalledAsync(win64Dir, loadManipPaksDir))
+                return;
+        }
+
+        try
+        {
+            await Task.Run(() =>
+                FullBrightFilesService.Install(paksDir, win64Dir, zipPath, ue4ssZipPath, markerZipPath, configZipPath));
+            RefreshFullBrightBtnStates();
+            RefreshFullBrightKeysUI();
+            RefreshLoadManipBtnStates();
+            RefreshUe4ssBtnStates();
+            RefreshChapter1UI();
+            ShowFullBrightDialog($"FullBright files installed successfully!\n\n{paksDir}", success: true);
+        }
+        catch (Exception ex)
+        {
+            ShowFullBrightDialog($"Error installing FullBright files:\n{ex.Message}");
+        }
+    }
+
+    private async void FullBrightDeleteBtn_Click(object sender, RoutedEventArgs e)
+    {
+        CloseFullBrightOverlay();
+
+        if (_fullBrightPaksDir is null || _fullBrightWin64Dir is null
+            || _fullBrightZipPath is null || !File.Exists(_fullBrightZipPath)
+            || _fullBrightUe4ssZipPath is null || !File.Exists(_fullBrightUe4ssZipPath)
+            || _fullBrightMarkerZipPath is null || !File.Exists(_fullBrightMarkerZipPath))
+            return;
+
+        var win64Dir      = _fullBrightWin64Dir;
+        var paksDir       = _fullBrightPaksDir;
+        var zipPath       = _fullBrightZipPath;
+        var ue4ssZipPath  = _fullBrightUe4ssZipPath;
+        var markerZipPath = _fullBrightMarkerZipPath;
+
+        var loadManipZipPath      = LoadManipFilesService.GetZipPath(1);
+        var loadManipUe4ssZipPath = LoadManipFilesService.GetUe4ssZipPath(1);
+        var loadManipMarkerZipPath = LoadManipFilesService.GetPlaytimeMarkerZipPath(1);
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                // Keep config.ini (holds the user's chosen keybinds) even though it ships in
+                // the config zip — only pak/UE4SS/marker get removed here.
+                FullBrightFilesService.Uninstall(paksDir, win64Dir, zipPath, ue4ssZipPath, markerZipPath);
+
+                // FullBright's pak/UE4SS overwrote Load Manip's own files (same paths), so
+                // removing FullBright also removed them — restore Load Manip's base files
+                // so it stays installed/functional afterward.
+                if (loadManipZipPath != null && File.Exists(loadManipZipPath)
+                    && loadManipUe4ssZipPath != null && File.Exists(loadManipUe4ssZipPath))
+                {
+                    LoadManipFilesService.Install(paksDir, loadManipZipPath, LoadManipFilesService.GetConfigZipPath(1));
+                    LoadManipFilesService.InstallUe4ss(win64Dir, loadManipUe4ssZipPath, loadManipMarkerZipPath);
+                }
+            });
+            RefreshFullBrightBtnStates();
+            RefreshFullBrightKeysUI();
+            RefreshLoadManipBtnStates();
+            RefreshUe4ssBtnStates();
+            RefreshChapter1UI();
+            ShowFullBrightDialog("FullBright files removed and Load Manip restored successfully!", success: true);
+        }
+        catch (Exception ex)
+        {
+            ShowFullBrightDialog($"Error removing FullBright files:\n{ex.Message}");
+        }
+    }
+
+    private void RefreshFullBrightBtnStates()
+    {
+        if (_fullBrightBtn is null) return;
+
+        var chapter = _chapters.FirstOrDefault(c => c.Number == 1);
+        var exePath = chapter != null ? GetActiveExePath(chapter) : null;
+        bool installed = false;
+        if (!string.IsNullOrEmpty(exePath))
+        {
+            var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+            if (win64 != null)
+                installed = FullBrightFilesService.IsInstalled(win64);
+        }
+        _fullBrightBtn.Opacity = installed ? 1.0 : 0.3;
+    }
+
+    /// <summary>Resolves the live, already-installed FullBright config.ini for the currently
+    /// active Chapter 1 install, or null if FullBright isn't installed there.</summary>
+    private string? GetActiveFullBrightConfigPath()
+    {
+        var chapter = _chapters.FirstOrDefault(c => c.Number == 1);
+        var exePath = chapter != null ? GetActiveExePath(chapter) : null;
+        if (string.IsNullOrEmpty(exePath)) return null;
+
+        var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+        if (win64 is null) return null;
+
+        var projectRoot = FullBrightFilesService.GetProjectRoot(win64);
+        if (projectRoot is null) return null;
+
+        var path = IOPath.Combine(projectRoot, FullBrightFilesService.ConfigFileName);
+        return File.Exists(path) ? path : null;
+    }
+
+    /// <summary>Shows editable Unlit/Lit key rows reading from the live installed config.ini
+    /// when FullBright is installed for the active Chapter 1 exe, or "(fullbright not installed)"
+    /// otherwise.</summary>
+    private void RefreshFullBrightKeysUI()
+    {
+        if (_capturingFullBrightKey) CancelFullBrightCapture();
+
+        var path = GetActiveFullBrightConfigPath();
+        var (unlit, lit) = path != null ? ParseFullBrightConfig(path) : (null, null);
+        bool editable = unlit != null && lit != null;
+
+        Chapter1FullbrightUnlitRow.Visibility         = editable ? Visibility.Visible : Visibility.Collapsed;
+        Chapter1FullbrightLitRow.Visibility           = editable ? Visibility.Visible : Visibility.Collapsed;
+        Chapter1FullbrightNotInstalledText.Visibility = editable ? Visibility.Collapsed : Visibility.Visible;
+        Chapter1FullbrightNotInstalledText.Text       = Loc.Get("chapter1_fullbright_not_installed");
+
+        var normalBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        var normalFg    = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+        Chapter1FullbrightUnlitBtn.BorderBrush = normalBrush;
+        Chapter1FullbrightLitBtn.BorderBrush   = normalBrush;
+        Chapter1FullbrightUnlitText.Foreground = normalFg;
+        Chapter1FullbrightLitText.Foreground   = normalFg;
+
+        if (editable)
+        {
+            Chapter1FullbrightUnlitText.Text = unlit;
+            Chapter1FullbrightLitText.Text   = lit;
+        }
+    }
+
+    private static (string? unlit, string? lit) ParseFullBrightConfig(string path)
+    {
+        string? unlit = null, lit = null;
+        foreach (var line in File.ReadAllLines(path))
+        {
+            var t = line.Trim();
+            if (t.Length == 0 || t.StartsWith("#") || t.StartsWith("[") || !t.Contains('='))
+                continue;
+
+            var parts = t.Split('=', 2);
+            var key   = parts[0].Trim();
+            var value = parts[1].Trim();
+            if (key.Equals("KeyUnlit", StringComparison.OrdinalIgnoreCase)) unlit = value;
+            else if (key.Equals("KeyLit", StringComparison.OrdinalIgnoreCase)) lit = value;
+        }
+        return (unlit, lit);
+    }
+
+    // ── FullBright key capture (overlay-only — writes directly to config.ini, no OS hook) ────
+
+    private void Chapter1FullbrightUnlitBtn_Click(object sender, RoutedEventArgs e) =>
+        StartFullBrightCapture("KeyUnlit", Chapter1FullbrightUnlitBtn, Chapter1FullbrightUnlitText);
+    private void Chapter1FullbrightLitBtn_Click(object sender, RoutedEventArgs e) =>
+        StartFullBrightCapture("KeyLit", Chapter1FullbrightLitBtn, Chapter1FullbrightLitText);
+
+    private void StartFullBrightCapture(string configKey, Button btn, TextBlock text)
+    {
+        if (_capturingFullBrightKey)
+        {
+            var wasThis = _fullBrightCaptureTarget == configKey;
+            CancelFullBrightCapture();
+            RefreshFullBrightKeysUI();
+            if (wasThis) return;
+        }
+
+        _capturingFullBrightKey  = true;
+        _fullBrightCaptureTarget = configKey;
+        text.Text       = Loc.Get("f11_remap_press_input");
+        text.Foreground = new SolidColorBrush(Teal);
+        btn.BorderBrush = new SolidColorBrush(Teal);
+
+        _fullBrightKeyCapture = CaptureFullBrightKeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _fullBrightKeyCapture, true);
+
+        _fullBrightMouseCapture = CaptureFullBrightMouseDown;
+        AddHandler(UIElement.PreviewMouseDownEvent, _fullBrightMouseCapture, true);
+    }
+
+    private void CancelFullBrightCapture()
+    {
+        _capturingFullBrightKey = false;
+        if (_fullBrightKeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewKeyDownEvent, _fullBrightKeyCapture);
+            _fullBrightKeyCapture = null;
+        }
+        if (_fullBrightMouseCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewMouseDownEvent, _fullBrightMouseCapture);
+            _fullBrightMouseCapture = null;
+        }
+    }
+
+    private void CaptureFullBrightKeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key is Key.LeftCtrl or Key.RightCtrl
+                or Key.LeftShift or Key.RightShift
+                or Key.LeftAlt or Key.RightAlt
+                or Key.LWin or Key.RWin
+                or Key.None)
+            return;
+
+        var target = _fullBrightCaptureTarget!;
+        CancelFullBrightCapture();
+
+        if (key == Key.Escape)
+        {
+            RefreshFullBrightKeysUI();
+            e.Handled = true;
+            return;
+        }
+
+        var name = WpfKeyToUnrealKeyName(key);
+        if (name != null) ApplyFullBrightKey(target, name);
+        else RefreshFullBrightKeysUI();
+        e.Handled = true;
+    }
+
+    private void CaptureFullBrightMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        var name = e.ChangedButton switch
+        {
+            MouseButton.Middle   => "MiddleMouseButton",
+            MouseButton.XButton1 => "ThumbMouseButton",
+            MouseButton.XButton2 => "ThumbMouseButton2",
+            _ => null,
+        };
+        if (name is null) return;
+
+        var target = _fullBrightCaptureTarget!;
+        CancelFullBrightCapture();
+        ApplyFullBrightKey(target, name);
+        e.Handled = true;
+    }
+
+    private void ApplyFullBrightKey(string configKey, string value)
+    {
+        var path = GetActiveFullBrightConfigPath();
+        if (path != null)
+            FullBrightFilesService.UpdateConfigKey(path, configKey, value);
+        RefreshFullBrightKeysUI();
+    }
+
+    /// <summary>Maps a WPF key to the key-name string FullBright's config.ini (and Unreal's
+    /// input system) expects — e.g. Key.K -&gt; "K", Key.F5 -&gt; "F5", Key.NumPad1 -&gt; "NumPadOne".
+    /// Returns null for keys with no sensible mapping.</summary>
+    private static string? WpfKeyToUnrealKeyName(Key key)
+    {
+        if (key >= Key.A && key <= Key.Z) return key.ToString();
+        if (key >= Key.F1 && key <= Key.F24) return key.ToString();
+
+        return key switch
+        {
+            Key.D0 => "Zero", Key.D1 => "One", Key.D2 => "Two", Key.D3 => "Three", Key.D4 => "Four",
+            Key.D5 => "Five", Key.D6 => "Six", Key.D7 => "Seven", Key.D8 => "Eight", Key.D9 => "Nine",
+
+            Key.NumPad0 => "NumPadZero", Key.NumPad1 => "NumPadOne", Key.NumPad2 => "NumPadTwo",
+            Key.NumPad3 => "NumPadThree", Key.NumPad4 => "NumPadFour", Key.NumPad5 => "NumPadFive",
+            Key.NumPad6 => "NumPadSix", Key.NumPad7 => "NumPadSeven", Key.NumPad8 => "NumPadEight",
+            Key.NumPad9 => "NumPadNine",
+            Key.Multiply => "Multiply", Key.Add => "Add", Key.Subtract => "Subtract",
+            Key.Divide => "Divide", Key.Decimal => "Decimal",
+
+            Key.Left => "Left", Key.Right => "Right", Key.Up => "Up", Key.Down => "Down",
+
+            Key.Space => "SpaceBar", Key.Enter => "Enter", Key.Tab => "Tab", Key.Back => "BackSpace",
+            Key.Delete => "Delete", Key.Insert => "Insert", Key.Home => "Home", Key.End => "End",
+            Key.PageUp => "PageUp", Key.PageDown => "PageDown", Key.CapsLock => "CapsLock",
+            Key.NumLock => "NumLock", Key.Scroll => "ScrollLock", Key.Pause => "Pause",
+
+            Key.OemComma => "Comma", Key.OemPeriod => "Period", Key.OemQuestion => "Slash",
+            Key.OemSemicolon => "Semicolon", Key.OemQuotes => "Quote",
+            Key.OemOpenBrackets => "LeftBracket", Key.OemCloseBrackets => "RightBracket",
+            Key.OemPipe => "Backslash", Key.OemMinus => "Hyphen", Key.OemPlus => "Equals",
+            Key.OemTilde => "Tilde",
+
+            _ => null,
+        };
     }
 }

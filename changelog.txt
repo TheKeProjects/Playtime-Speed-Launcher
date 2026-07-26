@@ -1,4 +1,6 @@
-2.0.9
-- Fixed position of the FPS overlay
-- Added the option to minimize the launcher
-- Added the leaderboards for every chapter
+2.0.10
+- Added a timer that tracks in-game hours per chapter
+- Fixed several bugs with the FPS counter
+- Improved detection of Load Manip for Chapter 1
+- Added the ability to reorder installed versions
+- Added Fullbright mod for chapter 1 (Thanks to @AdrianPG77)

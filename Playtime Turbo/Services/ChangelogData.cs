@@ -7,6 +7,14 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.0.10", "25/07/2026",
+        [
+            "Added a timer that tracks in-game hours per chapter",
+            "Fixed several bugs with the FPS counter",
+            "Improved detection of Load Manip for Chapter 1",
+            "Added the ability to reorder installed versions",
+            "Added Fullbright mod for chapter 1 (Thanks to @AdrianPG77)",
+        ]),
         new("2.0.9", "22/07/2026",
         [
             "Fixed position of the FPS overlay",

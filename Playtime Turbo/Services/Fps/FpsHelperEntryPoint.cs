@@ -24,17 +24,15 @@ public static class FpsHelperEntryPoint
 
     public static int Run(string[] args)
     {
-        if (args.Length < 3 || !int.TryParse(args[1], out var targetPid))
-            return 1;
+        if (args.Length < 3 || !int.TryParse(args[1], out var targetPid)) return 1;
 
-        if (!TraceEventSession.IsElevated().GetValueOrDefault())
-            return 2;
+        if (!TraceEventSession.IsElevated().GetValueOrDefault()) return 2;
 
         var pipeName = args[2];
 
         using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.Out);
         try { pipe.Connect(3000); }
-        catch { return 3; }
+        catch (Exception) { return 3; }
 
         using var writer = new StreamWriter(pipe) { AutoFlush = true };
 
@@ -49,12 +47,13 @@ public static class FpsHelperEntryPoint
                 Thread.Sleep(ReportInterval);
 
                 try { Process.GetProcessById(targetPid); }
-                catch (ArgumentException) { break; } // target game has exited
+                catch (ArgumentException) { break; }
 
-                writer.WriteLine(window.CurrentFps().ToString("F1", CultureInfo.InvariantCulture));
+                var fps = window.CurrentFps();
+                writer.WriteLine(fps.ToString("F1", CultureInfo.InvariantCulture));
             }
         }
-        catch (IOException) { /* parent stopped listening */ }
+        catch (IOException) { }
         catch (ObjectDisposedException) { }
 
         return 0;

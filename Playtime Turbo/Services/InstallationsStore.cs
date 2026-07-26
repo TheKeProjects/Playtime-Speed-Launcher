@@ -120,6 +120,19 @@ public class InstallationsStore
         Save();
     }
 
+    /// <summary>Swaps a custom installation with its neighbor in the list order
+    /// (direction -1 moves it up, +1 moves it down). No-op past either end.</summary>
+    public void MoveCustom(int chapter, string exePath, int direction)
+    {
+        if (!_customs.TryGetValue(chapter, out var list)) return;
+        var idx = list.FindIndex(x => x.ExePath.Equals(exePath, StringComparison.OrdinalIgnoreCase));
+        var newIdx = idx + direction;
+        if (idx < 0 || newIdx < 0 || newIdx >= list.Count) return;
+
+        (list[idx], list[newIdx]) = (list[newIdx], list[idx]);
+        Save();
+    }
+
     public void RemoveCustom(int chapter, string exePath)
     {
         if (!_customs.ContainsKey(chapter)) return;
