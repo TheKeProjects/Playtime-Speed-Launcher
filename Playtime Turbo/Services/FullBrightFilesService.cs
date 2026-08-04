@@ -4,7 +4,7 @@ using IOPath = System.IO.Path;
 namespace SpeedrunLauncher.Services;
 
 /// <summary>
-/// Installs/removes the "FullBright" pak mod files (Chapter 1) into a game
+/// Installs/removes the "FullBright" pak mod files (Chapters 1 and 5) into a game
 /// install's Content\Paks, Binaries\Win64 and project-root folders. Requires
 /// Load Manip to already be installed, since its pak/UE4SS files intentionally
 /// overwrite Load Manip's own. Zip contents are read at runtime so the set of
@@ -15,14 +15,16 @@ public static class FullBrightFilesService
     public static string? GetZipPath(int chapterNumber) => chapterNumber switch
     {
         1 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 Night Vision", "FullBright", "FullBrightCH1.zip"),
+        5 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 5 Night Vision", "FullBright", "FullBrightCH5.zip"),
         _ => null,
     };
 
-    /// <summary>Zip with the UE4SS build FullBright Chapter 1 needs, extracted into
+    /// <summary>Zip with the UE4SS build FullBright Chapters 1 and 5 need, extracted into
     /// the .../Binaries/Win64 folder alongside the game exe, overwriting Load Manip's build.</summary>
     public static string? GetUe4ssZipPath(int chapterNumber) => chapterNumber switch
     {
         1 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 Night Vision", "FullBright", "FullBrightCH1UE4SS.zip"),
+        5 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 5 Night Vision", "FullBright", "FullBrightCH5UE4SS.zip"),
         _ => null,
     };
 
@@ -32,6 +34,7 @@ public static class FullBrightFilesService
     public static string? GetPlaytimeMarkerZipPath(int chapterNumber) => chapterNumber switch
     {
         1 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 Night Vision", "FullBright", "FullBrightCH1Playtime.zip"),
+        5 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 5 Night Vision", "FullBright", "FullBrightCH5Playtime.zip"),
         _ => null,
     };
 
@@ -44,6 +47,7 @@ public static class FullBrightFilesService
     public static string? GetConfigZipPath(int chapterNumber) => chapterNumber switch
     {
         1 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 Night Vision", "FullBright", "ConfigFullBrightCH1.zip"),
+        5 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 5 Night Vision", "FullBright", "ConfigFullBrightCH5.zip"),
         _ => null,
     };
 

@@ -13,6 +13,12 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Length > 0 && e.Args[0] == Services.SteamShortcutHelperEntryPoint.Arg)
+        {
+            Environment.Exit(Services.SteamShortcutHelperEntryPoint.Run(e.Args));
+            return;
+        }
+
         base.OnStartup(e);
         ResourceExtractor.Extract();
         new MainWindow().Show();

@@ -30,6 +30,8 @@ ch4_title = SAFE HAVEN
 ch4_desc = Venture through the dark corridors of the factory in search of the truth about Playtime Co.'s experiments.
 ch5_title = BROKEN THINGS
 ch5_desc = Venture even deeper into the horrifying depths of the factory as Huggy Wuggy, Playtime's security system, hunts you down.
+ch6_title = COMING SOON
+ch6_desc = Coming Soon
 patch = Patch
 
 # Versions overlay
@@ -162,6 +164,15 @@ updates_close = BACK
 
 # Steam
 steam_launch_btn = OPEN LAUNCHER WITH STEAM
+add_to_steam_btn = ADD TO STEAM
+add_to_steam_icon_label = Choose an icon:
+add_to_steam_warning_running = Steam will be closed and reopened to apply this shortcut.
+add_to_steam_warning_not_running = Steam is not currently running — the shortcut will be added directly.
+add_to_steam_success = Added to Steam!\nRestart Steam if it doesn't show up yet.
+add_to_steam_error_no_exe = Could not determine this app's executable path.
+add_to_steam_error_no_icon = Selected icon file wasn't found. Try restarting the launcher.
+add_to_steam_error_no_steam = Steam installation not found.
+add_to_steam_error_generic = Error adding to Steam:\n{0}
 steam_tutorial_btn = SET UP CONTROLLER SUPPORT
 steam_tutorial_paste_here = Paste the command here
 steam_tutorial_copy_btn = COPY COMMAND
@@ -231,16 +242,28 @@ f11_remap_mouse4       = Mouse 4
 f11_remap_mouse5       = Mouse 5
 f11_remap_hint         = While enabled, the F11 key is blocked and the button above presses F11 instead, for as long as the launcher stays open.
 
+loadmanip_controls_section = LOAD MANIP
+
 chapter1_section       = CHAPTER 1
 chapter1_freeze_label  = Freeze loads
 chapter1_normal_label  = Normal loads
 chapter1_hint          = These keys are read directly from Load Manip's config file and take effect in-game once Load Manip is installed.
 chapter1_loadmanip_not_installed = (load manip not installed)
 
+chapter5_section       = CHAPTER 5
+chapter5_freeze_label  = Freeze loads
+chapter5_normal_label  = Normal loads
+chapter5_loadmanip_not_installed = (load manip not installed)
+
 chapter1_fullbright_section       = FULLBRIGHT
 chapter1_fullbright_unlit_label   = Unlit key
 chapter1_fullbright_lit_label     = Lit key
 chapter1_fullbright_not_installed = (fullbright not installed)
+
+chapter5_fullbright_section       = FULLBRIGHT
+chapter5_fullbright_unlit_label   = Unlit key
+chapter5_fullbright_lit_label     = Lit key
+chapter5_fullbright_not_installed = (fullbright not installed)
 
 chapter4_section       = CHAPTER 4
 chapter4_enable_label  = Enable Freeze/Slow/Normal Loads
@@ -295,6 +318,27 @@ settings_tab_livesplit  = ⏱️ LiveSplit
 settings_tab_cores     = 🧠 Cores
 settings_tab_overlays  = 🖥️ Overlays
 settings_tab_icontheme = 🎨 Icon & Theme
+settings_tab_loadmanip = 🧩 Load Manip
+settings_tab_handmods  = ✋ Hand Mods
+
+# Hand Mods (section in settings)
+handmods_hub_label     = ✋ Hand Mods — Select a Chapter
+chapter2_section       = CHAPTER 2
+chapter3_section       = CHAPTER 3
+handmods_submit_entry_btn   = ➕ Submit a Hand Mod
+handmods_submit_header      = ✋ Submit a Hand Mod
+handmods_submit_chapter_label = CHAPTER
+handmods_submit_name_label    = MOD NAME
+handmods_submit_colors_label  = HAND COLOR(S)
+handmods_submit_files_label   = MOD FILES
+handmods_submit_files_btn     = Choose Files…
+handmods_submit_no_files      = No files selected
+handmods_submit_send_btn      = Send
+handmods_submit_sending       = Sending…
+handmods_submit_success       = ✔ Thanks! Your mod was submitted for review.
+handmods_submit_err_name      = Give your mod a name first.
+handmods_submit_err_files     = Attach at least one mod file first.
+handmods_submit_err_send      = Couldn't send it. Try again.
 
 # Overlays (section in settings)
 overlays_section          = CONTROLLER OVERLAY

@@ -24,6 +24,7 @@ public class WpfDialog : Window
         ResizeMode = ResizeMode.NoResize;
         SizeToContent = SizeToContent.WidthAndHeight;
         ShowInTaskbar = false;
+        Topmost = true;
         Background = new SolidColorBrush(Color.FromRgb(9, 20, 30));
 
         var grid = new Grid();

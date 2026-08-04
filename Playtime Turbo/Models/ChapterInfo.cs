@@ -97,5 +97,14 @@ public class ChapterInfo
                 new() { Name = "Parche 2", AppId = 4100940, DepotId = 4100940, ManifestId = "2433159361022984191", DownloadSize = "11,1 GB" },
             ],
         },
+        new ChapterInfo
+        {
+            Number = 6,
+            Title = "PRÓXIMAMENTE",
+            SubTitle = "Chapter 6",
+            Description = "Coming Soon",
+            SteamFolderName = "Poppy Playtime",
+            IsAvailable = false,
+        },
     ];
 }

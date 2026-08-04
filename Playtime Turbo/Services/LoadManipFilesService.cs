@@ -4,7 +4,7 @@ using IOPath = System.IO.Path;
 namespace SpeedrunLauncher.Services;
 
 /// <summary>
-/// Installs/removes the "Load Manip" pak mod files (Chapter 1 and Chapter 4)
+/// Installs/removes the "Load Manip" pak mod files (Chapters 1, 4 and 5)
 /// into a game install's Content\Paks folder. Zip contents are read at
 /// runtime so the set of files/folders to extract or delete always matches
 /// what actually ships in the zip.
@@ -15,14 +15,16 @@ public static class LoadManipFilesService
     {
         1 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Load Manip Chapter 1", "LoadManipCH1.zip"),
         4 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Load Manip Chapter 4", "LoadManipCH4.zip"),
+        5 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Load Manip Chapter 5", "LoadManipCH5.zip"),
         _ => null,
     };
 
-    /// <summary>Zip with the UE4SS build Load Manip Chapter 1 needs, extracted into
+    /// <summary>Zip with the UE4SS build Load Manip Chapters 1 and 5 need, extracted into
     /// the .../Binaries/Win64 folder alongside the game exe.</summary>
     public static string? GetUe4ssZipPath(int chapterNumber) => chapterNumber switch
     {
         1 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Load Manip Chapter 1", "LoadManipCH1UE4SS.zip"),
+        5 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Load Manip Chapter 5", "LoadManipCH5UE4SS.zip"),
         _ => null,
     };
 
@@ -32,6 +34,7 @@ public static class LoadManipFilesService
     public static string? GetPlaytimeMarkerZipPath(int chapterNumber) => chapterNumber switch
     {
         1 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Load Manip Chapter 1", "LoadManipCH1Playtime.zip"),
+        5 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Load Manip Chapter 5", "LoadManipCH5Playtime.zip"),
         _ => null,
     };
 
@@ -44,6 +47,7 @@ public static class LoadManipFilesService
     public static string? GetConfigZipPath(int chapterNumber) => chapterNumber switch
     {
         1 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Load Manip Chapter 1", "ConfigLoadManipCH1.zip"),
+        5 => IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Load Manip Chapter 5", "ConfigLoadManipCH5.zip"),
         _ => null,
     };
 
@@ -159,14 +163,38 @@ public static class LoadManipFilesService
             else
             {
                 var target = IOPath.Combine(targetDir, rel);
-                if (File.Exists(target)) File.Delete(target);
+                if (File.Exists(target))
+                {
+                    ClearReadOnly(target);
+                    File.Delete(target);
+                }
             }
         }
 
         foreach (var dir in dirsToDelete.OrderBy(d => d.Length))
         {
             if (Directory.Exists(dir))
+            {
+                // Some UE4SS builds ship folders with the ReadOnly attribute set on the
+                // directory entry itself (e.g. ue4ss/Default_UVTD_Configs/Config); Directory.Delete
+                // throws "Access is denied" on those even once empty, so clear it first.
+                ClearReadOnlyRecursive(dir);
                 Directory.Delete(dir, recursive: true);
+            }
         }
+    }
+
+    private static void ClearReadOnly(string path)
+    {
+        var attrs = File.GetAttributes(path);
+        if (attrs.HasFlag(FileAttributes.ReadOnly))
+            File.SetAttributes(path, attrs & ~FileAttributes.ReadOnly);
+    }
+
+    private static void ClearReadOnlyRecursive(string dir)
+    {
+        foreach (var entry in Directory.EnumerateFileSystemEntries(dir, "*", SearchOption.AllDirectories))
+            ClearReadOnly(entry);
+        ClearReadOnly(dir);
     }
 }

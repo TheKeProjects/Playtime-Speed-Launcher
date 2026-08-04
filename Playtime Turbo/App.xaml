@@ -110,6 +110,49 @@
                 </DrawingImage.Drawing>
             </DrawingImage>
 
+            <!-- Load Manip icon (converted from Assets\Images\loadmanip.svg) -->
+            <DrawingImage x:Key="LoadManipIcon">
+                <DrawingImage.Drawing>
+                    <DrawingGroup>
+                        <!-- Folder -->
+                        <GeometryDrawing>
+                            <GeometryDrawing.Pen>
+                                <Pen Brush="#FF00CCAA" Thickness="3" LineJoin="Round" StartLineCap="Round" EndLineCap="Round"/>
+                            </GeometryDrawing.Pen>
+                            <GeometryDrawing.Geometry>
+                                <PathGeometry Figures="M8,18 C8,15.8 9.8,14 12,14 H24 L29,20 H52 C54.2,20 56,21.8 56,24 V46 C56,48.2 54.2,50 52,50 H12 C9.8,50 8,48.2 8,46 Z"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                        <!-- Folder opening -->
+                        <GeometryDrawing>
+                            <GeometryDrawing.Pen>
+                                <Pen Brush="#FF00CCAA" Thickness="3" StartLineCap="Round" EndLineCap="Round"/>
+                            </GeometryDrawing.Pen>
+                            <GeometryDrawing.Geometry>
+                                <PathGeometry Figures="M8,24 H56"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                        <!-- Gear -->
+                        <GeometryDrawing>
+                            <GeometryDrawing.Pen>
+                                <Pen Brush="#FF00CCAA" Thickness="2.5"/>
+                            </GeometryDrawing.Pen>
+                            <GeometryDrawing.Geometry>
+                                <EllipseGeometry Center="47,43" RadiusX="4.5" RadiusY="4.5"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                        <GeometryDrawing>
+                            <GeometryDrawing.Pen>
+                                <Pen Brush="#FF00CCAA" Thickness="2.5" StartLineCap="Round" EndLineCap="Round"/>
+                            </GeometryDrawing.Pen>
+                            <GeometryDrawing.Geometry>
+                                <PathGeometry Figures="M47,35 V37 M47,51 V49 M55,43 H53 M39,43 H41 M52.7,37.3 L51.3,38.7 M52.7,48.7 L51.3,47.3 M41.3,48.7 L42.7,47.3 M41.3,37.3 L42.7,38.7"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                    </DrawingGroup>
+                </DrawingImage.Drawing>
+            </DrawingImage>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

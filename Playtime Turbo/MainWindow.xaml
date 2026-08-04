@@ -67,16 +67,69 @@
         </StackPanel>
 
         <!-- ── CHAPTER CARDS ── -->
-        <ScrollViewer Grid.Row="2"
-                      HorizontalScrollBarVisibility="Hidden"
-                      VerticalScrollBarVisibility="Disabled"
-                      VerticalAlignment="Center">
-            <StackPanel x:Name="CardsPanel"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Margin="40,8"/>
-        </ScrollViewer>
+        <Grid Grid.Row="2">
+            <ScrollViewer x:Name="CardsScrollViewer"
+                          Margin="24,0,24,0"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Disabled"
+                          VerticalAlignment="Center">
+                <ScrollViewer.Resources>
+                    <Style TargetType="{x:Type ScrollBar}">
+                        <Setter Property="Height" Value="6"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type ScrollBar}">
+                                    <Track x:Name="PART_Track" IsDirectionReversed="False">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Command="ScrollBar.PageLeftCommand" Focusable="False">
+                                                <RepeatButton.Template>
+                                                    <ControlTemplate TargetType="{x:Type RepeatButton}">
+                                                        <Rectangle Fill="Transparent"/>
+                                                    </ControlTemplate>
+                                                </RepeatButton.Template>
+                                            </RepeatButton>
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Command="ScrollBar.PageRightCommand" Focusable="False">
+                                                <RepeatButton.Template>
+                                                    <ControlTemplate TargetType="{x:Type RepeatButton}">
+                                                        <Rectangle Fill="Transparent"/>
+                                                    </ControlTemplate>
+                                                </RepeatButton.Template>
+                                            </RepeatButton>
+                                        </Track.IncreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb>
+                                                <Thumb.Template>
+                                                    <ControlTemplate TargetType="{x:Type Thumb}">
+                                                        <Border x:Name="ThumbBorder"
+                                                                Background="#1A3A55"
+                                                                CornerRadius="3"
+                                                                Height="6"
+                                                                VerticalAlignment="Center"/>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="ThumbBorder" Property="Background" Value="#00CCAA"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+                                        </Track.Thumb>
+                                    </Track>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ScrollViewer.Resources>
+                <StackPanel x:Name="CardsPanel"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Margin="0,8"/>
+            </ScrollViewer>
+        </Grid>
 
         <!-- ── CHAPTER INFO ── -->
         <StackPanel Grid.Row="3"
@@ -137,61 +190,86 @@
                        TextWrapping="Wrap"
                        MaxWidth="900"
                        TextAlignment="Center"
+                       MinHeight="40"
                        Margin="0,6,0,0"/>
         </StackPanel>
 
         <!-- ── ACTION BUTTONS ── -->
-        <StackPanel Grid.Row="4"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Center"
-                    Margin="0,4,0,14">
+        <!-- Grid.Column="1" (Auto, flanked by two equal "*" columns) always sits centered on
+             screen no matter how wide the left/right button groups are, so PlayButton's center
+             stays pinned to the window's horizontal center. -->
+        <Grid Grid.Row="4" Margin="0,4,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-            <Button x:Name="LeaderboardButton"
-                    Width="58" Height="58"
-                    local:ButtonHelper.CornerRadius="5"
-                    Background="#0A1825" BorderBrush="#112233"
-                    BorderThickness="2"
-                    ToolTipService.ToolTip="Leaderboard"
-                    Click="LeaderboardButton_Click">
-                <Image x:Name="LeaderboardTrophyImage"
-                       Width="26" Height="26"
-                       VerticalAlignment="Center"
-                       RenderOptions.BitmapScalingMode="HighQuality"/>
-            </Button>
+            <StackPanel Grid.Column="0" Orientation="Horizontal"
+                        HorizontalAlignment="Right" VerticalAlignment="Center">
 
-            <Grid Margin="8,0,0,0">
-                <Button x:Name="SettingsButton"
+                <Button x:Name="HandModsMenuButton"
                         Width="58" Height="58"
                         local:ButtonHelper.CornerRadius="5"
                         Background="#0A1825" BorderBrush="#112233"
                         BorderThickness="2"
-                        ToolTipService.ToolTip="Configuración"
-                        Click="SettingsButton_Click">
-                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE713;"
-                               FontSize="22" Foreground="#3A6A8A"/>
+                        ToolTipService.ToolTip="Hand Mods"
+                        Click="HandModsMenuButton_Click">
+                    <Image x:Name="HandModsMenuIcon"
+                           Width="26" Height="26"
+                           VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
                 </Button>
-                <Button x:Name="SettingsUpdateBadge"
-                        Width="20" Height="20"
-                        HorizontalAlignment="Right" VerticalAlignment="Top"
-                        Margin="0,-5,-5,0"
-                        Background="#CC2200" BorderThickness="0"
-                        local:ButtonHelper.CornerRadius="10"
-                        Visibility="Collapsed"
-                        Panel.ZIndex="10"
-                        Click="SettingsUpdateBadge_Click">
-                    <TextBlock Text="!" FontSize="11" FontWeight="Bold"
-                               Foreground="White"
-                               FontFamily="Cascadia Code, Consolas, Courier New"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                <Button x:Name="LeaderboardButton"
+                        Width="58" Height="58"
+                        local:ButtonHelper.CornerRadius="5"
+                        Background="#0A1825" BorderBrush="#112233"
+                        BorderThickness="2"
+                        ToolTipService.ToolTip="Leaderboard"
+                        Click="LeaderboardButton_Click"
+                        Margin="8,0,0,0">
+                    <Image x:Name="LeaderboardTrophyImage"
+                           Width="26" Height="26"
+                           VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
                 </Button>
-            </Grid>
+
+                <Grid Margin="8,0,0,0">
+                    <Button x:Name="SettingsButton"
+                            Width="58" Height="58"
+                            local:ButtonHelper.CornerRadius="5"
+                            Background="#0A1825" BorderBrush="#112233"
+                            BorderThickness="2"
+                            ToolTipService.ToolTip="Configuración"
+                            Click="SettingsButton_Click">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE713;"
+                                   FontSize="22" Foreground="#3A6A8A"/>
+                    </Button>
+                    <Button x:Name="SettingsUpdateBadge"
+                            Width="20" Height="20"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Margin="0,-5,-5,0"
+                            Background="#CC2200" BorderThickness="0"
+                            local:ButtonHelper.CornerRadius="10"
+                            Visibility="Collapsed"
+                            Panel.ZIndex="10"
+                            Click="SettingsUpdateBadge_Click">
+                        <TextBlock Text="!" FontSize="11" FontWeight="Bold"
+                                   Foreground="White"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </StackPanel>
 
             <Button x:Name="PlayButton"
+                    Grid.Column="1"
                     Height="58" MinWidth="260"
                     local:ButtonHelper.CornerRadius="5"
                     Background="#00CCAA" BorderThickness="0"
                     Click="PlayButton_Click"
-                    Margin="8,0,0,0">
+                    Margin="8,0,8,0">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE768;"
                                FontSize="16" Foreground="#060C12"
@@ -205,18 +283,20 @@
                 </StackPanel>
             </Button>
 
-            <Button x:Name="QuitButton"
-                    Width="58" Height="58"
-                    local:ButtonHelper.CornerRadius="5"
-                    Background="#1A0606" BorderBrush="#440000"
-                    BorderThickness="1"
-                    Click="QuitButton_Click"
-                    Margin="8,0,0,0">
-                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7E8;"
-                           FontSize="20" Foreground="#CC3333"/>
-            </Button>
+            <StackPanel Grid.Column="2" Orientation="Horizontal"
+                        HorizontalAlignment="Left" VerticalAlignment="Center">
+                <Button x:Name="QuitButton"
+                        Width="58" Height="58"
+                        local:ButtonHelper.CornerRadius="5"
+                        Background="#1A0606" BorderBrush="#440000"
+                        BorderThickness="1"
+                        Click="QuitButton_Click">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7E8;"
+                               FontSize="20" Foreground="#CC3333"/>
+                </Button>
+            </StackPanel>
 
-        </StackPanel>
+        </Grid>
 
         <!-- ── BOTTOM BAR ── -->
         <Border Grid.Row="5" Background="#08111A"
@@ -398,7 +478,7 @@
               Grid.RowSpan="6"
               Visibility="Collapsed"
               Background="#BB000000">
-            <Border Width="620" Height="520" Background="#09141E"
+            <Border Width="620" Height="640" Background="#09141E"
                     BorderBrush="#153048" BorderThickness="1"
                     CornerRadius="4"
                     VerticalAlignment="Center"
@@ -460,6 +540,23 @@
                                             HorizontalAlignment="Stretch"
                                             VerticalAlignment="Stretch">
                                         <TextBlock x:Name="SettingsTabControlsText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
+                                <Button x:Name="SettingsTabLoadManipBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabLoadManip_Click">
+                                    <Border x:Name="SettingsTabLoadManipBorder"
+                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <TextBlock x:Name="SettingsTabLoadManipText"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
                                                    FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
                                                    VerticalAlignment="Center"/>
@@ -830,172 +927,6 @@
                                                FontSize="9" Foreground="#3A6A8A"
                                                TextWrapping="Wrap" Margin="0,8,0,0"/>
 
-                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
-
-                                    <!-- Chapter 1 -->
-                                    <TextBlock x:Name="Chapter1SectionLabel"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="9" FontWeight="Bold"
-                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
-                                    <Grid x:Name="Chapter1FreezeRow">
-                                        <TextBlock x:Name="Chapter1FreezeLabel"
-                                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="12" Foreground="#8AAABB"
-                                                   VerticalAlignment="Center"/>
-                                        <Button x:Name="Chapter1FreezeBtn"
-                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
-                                                local:ButtonHelper.CornerRadius="4"
-                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0,10,0" Click="Chapter1FreezeBtn_Click">
-                                            <TextBlock x:Name="Chapter1FreezeText"
-                                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                                       FontSize="10" Foreground="#8AAABB"
-                                                       VerticalAlignment="Center"/>
-                                        </Button>
-                                    </Grid>
-                                    <Grid x:Name="Chapter1NormalRow" Margin="0,8,0,0">
-                                        <TextBlock x:Name="Chapter1NormalLabel"
-                                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="12" Foreground="#8AAABB"
-                                                   VerticalAlignment="Center"/>
-                                        <Button x:Name="Chapter1NormalBtn"
-                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
-                                                local:ButtonHelper.CornerRadius="4"
-                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0,10,0" Click="Chapter1NormalBtn_Click">
-                                            <TextBlock x:Name="Chapter1NormalText"
-                                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                                       FontSize="10" Foreground="#8AAABB"
-                                                       VerticalAlignment="Center"/>
-                                        </Button>
-                                    </Grid>
-                                    <TextBlock x:Name="Chapter1LoadManipNotInstalledText"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="10" Foreground="#5A8AA0"
-                                               TextWrapping="Wrap"/>
-                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
-
-                                    <TextBlock x:Name="Chapter1FullbrightSectionLabel"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="9" FontWeight="Bold"
-                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
-                                    <Grid x:Name="Chapter1FullbrightUnlitRow">
-                                        <TextBlock x:Name="Chapter1FullbrightUnlitLabel"
-                                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="12" Foreground="#8AAABB"
-                                                   VerticalAlignment="Center"/>
-                                        <Button x:Name="Chapter1FullbrightUnlitBtn"
-                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
-                                                local:ButtonHelper.CornerRadius="4"
-                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0,10,0" Click="Chapter1FullbrightUnlitBtn_Click">
-                                            <TextBlock x:Name="Chapter1FullbrightUnlitText"
-                                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                                       FontSize="10" Foreground="#8AAABB"
-                                                       VerticalAlignment="Center"/>
-                                        </Button>
-                                    </Grid>
-                                    <Grid x:Name="Chapter1FullbrightLitRow" Margin="0,8,0,0">
-                                        <TextBlock x:Name="Chapter1FullbrightLitLabel"
-                                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="12" Foreground="#8AAABB"
-                                                   VerticalAlignment="Center"/>
-                                        <Button x:Name="Chapter1FullbrightLitBtn"
-                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
-                                                local:ButtonHelper.CornerRadius="4"
-                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0,10,0" Click="Chapter1FullbrightLitBtn_Click">
-                                            <TextBlock x:Name="Chapter1FullbrightLitText"
-                                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                                       FontSize="10" Foreground="#8AAABB"
-                                                       VerticalAlignment="Center"/>
-                                        </Button>
-                                    </Grid>
-                                    <TextBlock x:Name="Chapter1FullbrightNotInstalledText"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="10" Foreground="#5A8AA0"
-                                               TextWrapping="Wrap"/>
-
-                                    <TextBlock x:Name="Chapter1HintText"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="9" Foreground="#3A6A8A"
-                                               TextWrapping="Wrap" Margin="0,8,0,0"/>
-
-                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
-
-                                    <!-- Chapter 4 -->
-                                    <TextBlock x:Name="Chapter4SectionLabel"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="9" FontWeight="Bold"
-                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
-                                    <Grid>
-                                        <TextBlock x:Name="Chapter4EnableLabel"
-                                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="12" Foreground="#8AAABB"
-                                                   VerticalAlignment="Center"/>
-                                        <Button x:Name="Chapter4EnableBtn"
-                                                Height="26" MinWidth="60" HorizontalAlignment="Right"
-                                                local:ButtonHelper.CornerRadius="3"
-                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0" Click="Chapter4EnableBtn_Click">
-                                            <TextBlock x:Name="Chapter4EnableText"
-                                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                                       FontSize="10" FontWeight="Bold"/>
-                                        </Button>
-                                    </Grid>
-                                    <Grid Margin="0,8,0,0">
-                                        <TextBlock x:Name="Chapter4FreezeLabel"
-                                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="12" Foreground="#8AAABB"
-                                                   VerticalAlignment="Center"/>
-                                        <Button x:Name="Chapter4FreezeBtn"
-                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
-                                                local:ButtonHelper.CornerRadius="4"
-                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0,10,0" Click="Chapter4FreezeBtn_Click">
-                                            <TextBlock x:Name="Chapter4FreezeText"
-                                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                                       FontSize="10" Foreground="#8AAABB"
-                                                       VerticalAlignment="Center"/>
-                                        </Button>
-                                    </Grid>
-                                    <Grid Margin="0,8,0,0">
-                                        <TextBlock x:Name="Chapter4SlowLabel"
-                                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="12" Foreground="#8AAABB"
-                                                   VerticalAlignment="Center"/>
-                                        <Button x:Name="Chapter4SlowBtn"
-                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
-                                                local:ButtonHelper.CornerRadius="4"
-                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0,10,0" Click="Chapter4SlowBtn_Click">
-                                            <TextBlock x:Name="Chapter4SlowText"
-                                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                                       FontSize="10" Foreground="#8AAABB"
-                                                       VerticalAlignment="Center"/>
-                                        </Button>
-                                    </Grid>
-                                    <Grid Margin="0,8,0,0">
-                                        <TextBlock x:Name="Chapter4NormalLabel"
-                                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="12" Foreground="#8AAABB"
-                                                   VerticalAlignment="Center"/>
-                                        <Button x:Name="Chapter4NormalBtn"
-                                                Height="30" MinWidth="130" HorizontalAlignment="Right"
-                                                local:ButtonHelper.CornerRadius="4"
-                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0,10,0" Click="Chapter4NormalBtn_Click">
-                                            <TextBlock x:Name="Chapter4NormalText"
-                                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                                       FontSize="10" Foreground="#8AAABB"
-                                                       VerticalAlignment="Center"/>
-                                        </Button>
-                                    </Grid>
-                                    <TextBlock x:Name="Chapter4HintText"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="9" Foreground="#3A6A8A"
-                                               TextWrapping="Wrap" Margin="0,8,0,0"/>
-
                                 </StackPanel>
                             </ScrollViewer>
 
@@ -1014,6 +945,24 @@
                                                    VerticalAlignment="Center"
                                                    RenderOptions.BitmapScalingMode="HighQuality"/>
                                             <TextBlock x:Name="CopyForSteamBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button x:Name="AddToSteamBtn"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            local:ButtonHelper.CornerRadius="4"
+                                            Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="12,10" Margin="0,8,0,0"
+                                            Click="AddToSteamBtn_Click">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Image x:Name="AddToSteamBtnIcon"
+                                                   Width="18" Height="18"
+                                                   VerticalAlignment="Center"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                            <TextBlock x:Name="AddToSteamBtnText"
                                                        FontFamily="Cascadia Code, Consolas, Courier New"
                                                        FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
                                                        VerticalAlignment="Center" Margin="10,0,0,0"/>
@@ -1601,6 +1550,345 @@
                                                    FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
                                                    VerticalAlignment="Center"/>
                                     </Button>
+
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- ═══ LOAD MANIP TAB ═══ -->
+                            <ScrollViewer x:Name="SettingsLoadManipScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                                <StackPanel Margin="24,18">
+
+                                    <TextBlock x:Name="LoadManipControlsSectionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+
+                                    <!-- Hub: pick a chapter -->
+                                    <StackPanel x:Name="LoadManipHubPanel">
+                                        <Button x:Name="LoadManipChapter1NavBtn"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10" Margin="0,0,0,8"
+                                                Click="LoadManipChapter1NavBtn_Click">
+                                            <TextBlock x:Name="LoadManipChapter1NavBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                        <Button x:Name="LoadManipChapter4NavBtn"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10" Margin="0,0,0,8"
+                                                Click="LoadManipChapter4NavBtn_Click">
+                                            <TextBlock x:Name="LoadManipChapter4NavBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                        <Button x:Name="LoadManipChapter5NavBtn"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="12,10"
+                                                Click="LoadManipChapter5NavBtn_Click">
+                                            <TextBlock x:Name="LoadManipChapter5NavBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <!-- Chapter 1: Load Manip + FullBright -->
+                                    <StackPanel x:Name="LoadManipChapter1Panel" Visibility="Collapsed">
+                                        <Button x:Name="LoadManipChapter1BackBtn"
+                                                HorizontalAlignment="Left"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,5,10,5" Margin="0,0,0,16"
+                                                Click="LoadManipChapter1BackBtn_Click">
+                                            <TextBlock x:Name="LoadManipChapter1BackBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+
+                                        <TextBlock x:Name="Chapter1SectionLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" FontWeight="Bold"
+                                                   Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                        <Grid x:Name="Chapter1FreezeRow">
+                                            <TextBlock x:Name="Chapter1FreezeLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter1FreezeBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter1FreezeBtn_Click">
+                                                <TextBlock x:Name="Chapter1FreezeText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <Grid x:Name="Chapter1NormalRow" Margin="0,8,0,0">
+                                            <TextBlock x:Name="Chapter1NormalLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter1NormalBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter1NormalBtn_Click">
+                                                <TextBlock x:Name="Chapter1NormalText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <TextBlock x:Name="Chapter1LoadManipNotInstalledText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" Foreground="#5A8AA0"
+                                                   TextWrapping="Wrap"/>
+
+                                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
+
+                                        <TextBlock x:Name="Chapter1FullbrightSectionLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" FontWeight="Bold"
+                                                   Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                        <Grid x:Name="Chapter1FullbrightUnlitRow">
+                                            <TextBlock x:Name="Chapter1FullbrightUnlitLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter1FullbrightUnlitBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter1FullbrightUnlitBtn_Click">
+                                                <TextBlock x:Name="Chapter1FullbrightUnlitText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <Grid x:Name="Chapter1FullbrightLitRow" Margin="0,8,0,0">
+                                            <TextBlock x:Name="Chapter1FullbrightLitLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter1FullbrightLitBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter1FullbrightLitBtn_Click">
+                                                <TextBlock x:Name="Chapter1FullbrightLitText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <TextBlock x:Name="Chapter1FullbrightNotInstalledText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" Foreground="#5A8AA0"
+                                                   TextWrapping="Wrap"/>
+
+                                        <TextBlock x:Name="Chapter1HintText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" Foreground="#3A6A8A"
+                                                   TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                    </StackPanel>
+
+                                    <!-- Chapter 4: Load Manip remap keys -->
+                                    <StackPanel x:Name="LoadManipChapter4Panel" Visibility="Collapsed">
+                                        <Button x:Name="LoadManipChapter4BackBtn"
+                                                HorizontalAlignment="Left"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,5,10,5" Margin="0,0,0,16"
+                                                Click="LoadManipChapter4BackBtn_Click">
+                                            <TextBlock x:Name="LoadManipChapter4BackBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+
+                                        <TextBlock x:Name="Chapter4SectionLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" FontWeight="Bold"
+                                                   Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                        <Grid>
+                                            <TextBlock x:Name="Chapter4EnableLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter4EnableBtn"
+                                                    Height="26" MinWidth="60" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="3"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0" Click="Chapter4EnableBtn_Click">
+                                                <TextBlock x:Name="Chapter4EnableText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" FontWeight="Bold"/>
+                                            </Button>
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <TextBlock x:Name="Chapter4FreezeLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter4FreezeBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter4FreezeBtn_Click">
+                                                <TextBlock x:Name="Chapter4FreezeText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <TextBlock x:Name="Chapter4SlowLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter4SlowBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter4SlowBtn_Click">
+                                                <TextBlock x:Name="Chapter4SlowText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <TextBlock x:Name="Chapter4NormalLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter4NormalBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter4NormalBtn_Click">
+                                                <TextBlock x:Name="Chapter4NormalText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <TextBlock x:Name="Chapter4HintText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" Foreground="#3A6A8A"
+                                                   TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                    </StackPanel>
+
+                                    <!-- Chapter 5: Load Manip keys -->
+                                    <StackPanel x:Name="LoadManipChapter5Panel" Visibility="Collapsed">
+                                        <Button x:Name="LoadManipChapter5BackBtn"
+                                                HorizontalAlignment="Left"
+                                                local:ButtonHelper.CornerRadius="4"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,5,10,5" Margin="0,0,0,16"
+                                                Click="LoadManipChapter5BackBtn_Click">
+                                            <TextBlock x:Name="LoadManipChapter5BackBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+
+                                        <TextBlock x:Name="Chapter5SectionLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" FontWeight="Bold"
+                                                   Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                        <Grid x:Name="Chapter5FreezeRow">
+                                            <TextBlock x:Name="Chapter5FreezeLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter5FreezeBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter5FreezeBtn_Click">
+                                                <TextBlock x:Name="Chapter5FreezeText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <Grid x:Name="Chapter5NormalRow" Margin="0,8,0,0">
+                                            <TextBlock x:Name="Chapter5NormalLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter5NormalBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter5NormalBtn_Click">
+                                                <TextBlock x:Name="Chapter5NormalText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <TextBlock x:Name="Chapter5LoadManipNotInstalledText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" Foreground="#5A8AA0"
+                                                   TextWrapping="Wrap"/>
+
+                                        <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
+
+                                        <TextBlock x:Name="Chapter5FullbrightSectionLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" FontWeight="Bold"
+                                                   Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                        <Grid x:Name="Chapter5FullbrightUnlitRow">
+                                            <TextBlock x:Name="Chapter5FullbrightUnlitLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter5FullbrightUnlitBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter5FullbrightUnlitBtn_Click">
+                                                <TextBlock x:Name="Chapter5FullbrightUnlitText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <Grid x:Name="Chapter5FullbrightLitRow" Margin="0,8,0,0">
+                                            <TextBlock x:Name="Chapter5FullbrightLitLabel"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="12" Foreground="#8AAABB"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="Chapter5FullbrightLitBtn"
+                                                    Height="30" MinWidth="130" HorizontalAlignment="Right"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                    Padding="10,0,10,0" Click="Chapter5FullbrightLitBtn_Click">
+                                                <TextBlock x:Name="Chapter5FullbrightLitText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="10" Foreground="#8AAABB"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                        <TextBlock x:Name="Chapter5FullbrightNotInstalledText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="10" Foreground="#5A8AA0"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
 
                                 </StackPanel>
                             </ScrollViewer>
@@ -2898,6 +3186,118 @@
             </Border>
         </Grid>
 
+        <!-- ── ADD TO STEAM OVERLAY ── -->
+        <Grid x:Name="AddToSteamOverlay"
+              Grid.RowSpan="6"
+              Visibility="Collapsed"
+              Background="#BB000000">
+            <Border Width="460" Background="#09141E"
+                    BorderBrush="#153048" BorderThickness="1"
+                    CornerRadius="4"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="AddToSteamPopupScale" ScaleX="1" ScaleY="1"/>
+                </Border.RenderTransform>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="48"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="52"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#060F18"
+                            BorderBrush="#0D2030" BorderThickness="0,0,0,1">
+                        <TextBlock Text="[ ADD TO STEAM ]"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="13" FontWeight="Bold" Foreground="#00CCAA"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Row="1" Margin="24,20,24,20" HorizontalAlignment="Center">
+                        <TextBlock x:Name="AddToSteamIconPickerLabel"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="10" FontWeight="Bold" Foreground="#8AAABB"
+                                   HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button x:Name="AddToSteamIconDefaultBtn" Width="52" Height="52" Margin="0,0,8,0"
+                                    local:ButtonHelper.CornerRadius="4"
+                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="2"
+                                    Padding="4" Click="AddToSteamIconBtn_Click" Tag="iconHD.png">
+                                <Image x:Name="AddToSteamIconDefaultImg" Stretch="Uniform"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Button>
+                            <Button x:Name="AddToSteamIconChristmasBtn" Width="52" Height="52" Margin="0,0,8,0"
+                                    local:ButtonHelper.CornerRadius="4"
+                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="2"
+                                    Padding="4" Click="AddToSteamIconBtn_Click" Tag="iconHD Christmas.png">
+                                <Image x:Name="AddToSteamIconChristmasImg" Stretch="Uniform"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Button>
+                            <Button x:Name="AddToSteamIconHalloweenBtn" Width="52" Height="52" Margin="0,0,8,0"
+                                    local:ButtonHelper.CornerRadius="4"
+                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="2"
+                                    Padding="4" Click="AddToSteamIconBtn_Click" Tag="iconHD Halloween.png">
+                                <Image x:Name="AddToSteamIconHalloweenImg" Stretch="Uniform"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Button>
+                            <Button x:Name="AddToSteamIconLgbtqBtn" Width="52" Height="52" Margin="0,0,8,0"
+                                    local:ButtonHelper.CornerRadius="4"
+                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="2"
+                                    Padding="4" Click="AddToSteamIconBtn_Click" Tag="iconHD LGBTQ+.png">
+                                <Image x:Name="AddToSteamIconLgbtqImg" Stretch="Uniform"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Button>
+                            <Button x:Name="AddToSteamIconSummerBtn" Width="52" Height="52"
+                                    local:ButtonHelper.CornerRadius="4"
+                                    Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="2"
+                                    Padding="4" Click="AddToSteamIconBtn_Click" Tag="iconHD Summer.png">
+                                <Image x:Name="AddToSteamIconSummerImg" Stretch="Uniform"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Button>
+                        </StackPanel>
+
+                        <TextBlock x:Name="AddToSteamWarningText"
+                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                   FontSize="10" FontWeight="Bold" Foreground="#E8A000"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                    </StackPanel>
+
+                    <Border Grid.Row="2" Background="#060F18"
+                            BorderBrush="#0D2030" BorderThickness="0,1,0,0">
+                        <Grid Margin="14,0">
+                            <Button x:Name="AddToSteamCancelBtn"
+                                    Height="36" MinWidth="110"
+                                    local:ButtonHelper.CornerRadius="3"
+                                    Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
+                                    Padding="16,0"
+                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Click="AddToSteamCancelBtn_Click">
+                                <TextBlock x:Name="AddToSteamCancelBtnText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="12" FontWeight="Bold"
+                                           Foreground="#CC3333"/>
+                            </Button>
+                            <Button x:Name="AddToSteamConfirmBtn"
+                                    Height="36" MinWidth="150"
+                                    local:ButtonHelper.CornerRadius="3"
+                                    Background="#00503C" BorderBrush="#00B482" BorderThickness="1"
+                                    Padding="16,0"
+                                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                                    Click="AddToSteamConfirmBtn_Click">
+                                <TextBlock x:Name="AddToSteamConfirmBtnText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="12" FontWeight="Bold"
+                                           Foreground="#00CCAA"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
         <!-- ── FULLBRIGHT OVERLAY ── -->
         <Grid x:Name="FullBrightOverlay"
               Grid.RowSpan="6"
@@ -2989,6 +3389,241 @@
                                                Foreground="#CC3333"/>
                                 </Button>
                             </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="HandModsOverlay"
+              Grid.RowSpan="6"
+              Visibility="Collapsed"
+              Background="#BB000000">
+
+            <Border Width="480" Height="440"
+                    Background="#09141E"
+                    BorderBrush="#153048" BorderThickness="1"
+                    CornerRadius="4"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="48"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="52"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#060F18"
+                            BorderBrush="#0D2030" BorderThickness="0,0,0,1">
+                        <Grid Margin="6,0">
+                            <Button x:Name="HandModsBackBtn"
+                                    Background="Transparent" BorderThickness="0"
+                                    Width="38" Height="38"
+                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Visibility="Collapsed"
+                                    Click="HandModsBackBtn_Click">
+                                <TextBlock Text="&#x2190;"
+                                           FontFamily="Consolas" FontSize="20"
+                                           Foreground="#00CCAA"/>
+                            </Button>
+
+                            <TextBlock x:Name="HandModsHeader"
+                                       Text="✋ Hand Mods"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="13" FontWeight="Bold"
+                                       Foreground="#00CCAA"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="1">
+                        <ScrollViewer x:Name="HandModsHubScroll" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="24,18">
+                                <TextBlock x:Name="HandModsHubLabel"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="12" FontWeight="Bold"
+                                           Foreground="#00CCAA" Margin="0,0,0,10"/>
+
+                                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                        local:ButtonHelper.CornerRadius="4"
+                                        Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                        Padding="12,10" Margin="0,0,0,8"
+                                        Click="HandModsChapter1Btn_Click">
+                                    <TextBlock x:Name="HandModsChapter1BtnText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                               VerticalAlignment="Center"/>
+                                </Button>
+                                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                        local:ButtonHelper.CornerRadius="4"
+                                        Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                        Padding="12,10" Margin="0,0,0,8"
+                                        Click="HandModsChapter2Btn_Click">
+                                    <TextBlock x:Name="HandModsChapter2BtnText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                               VerticalAlignment="Center"/>
+                                </Button>
+                                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                        local:ButtonHelper.CornerRadius="4"
+                                        Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                        Padding="12,10" Margin="0,0,0,8"
+                                        Click="HandModsChapter3Btn_Click">
+                                    <TextBlock x:Name="HandModsChapter3BtnText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                               VerticalAlignment="Center"/>
+                                </Button>
+                                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                        local:ButtonHelper.CornerRadius="4"
+                                        Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                        Padding="12,10" Margin="0,0,0,8"
+                                        Click="HandModsChapter4Btn_Click">
+                                    <TextBlock x:Name="HandModsChapter4BtnText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                               VerticalAlignment="Center"/>
+                                </Button>
+                                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                        local:ButtonHelper.CornerRadius="4"
+                                        Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                        Padding="12,10"
+                                        Click="HandModsChapter5Btn_Click">
+                                    <TextBlock x:Name="HandModsChapter5BtnText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                               VerticalAlignment="Center"/>
+                                </Button>
+
+                                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                        local:ButtonHelper.CornerRadius="4"
+                                        Background="#0C1F14" BorderBrush="#1A4A2E" BorderThickness="1"
+                                        Padding="12,10" Margin="0,14,0,0"
+                                        Click="HandModsSubmitEntryBtn_Click">
+                                    <TextBlock x:Name="HandModsSubmitEntryBtnText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold" Foreground="#00CC88"
+                                               VerticalAlignment="Center"/>
+                                </Button>
+                            </StackPanel>
+                        </ScrollViewer>
+                        <ScrollViewer x:Name="HandModsVersionScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                            <StackPanel x:Name="HandModsVersionList" Margin="12,10"/>
+                        </ScrollViewer>
+                        <ScrollViewer x:Name="HandModsListScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                            <StackPanel x:Name="HandModsList" Margin="12,10"/>
+                        </ScrollViewer>
+                        <ScrollViewer x:Name="HandModsSubmitScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                            <StackPanel Margin="24,18">
+                                <TextBlock x:Name="HandModsSubmitChapterLabel"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="10" FontWeight="Bold" Foreground="#3A6A8A"
+                                           Margin="0,0,0,6"/>
+                                <WrapPanel x:Name="HandModsSubmitChapterPanel" Margin="0,0,0,16"/>
+
+                                <TextBlock x:Name="HandModsSubmitNameLabel"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="10" FontWeight="Bold" Foreground="#3A6A8A"
+                                           Margin="0,0,0,6"/>
+                                <TextBox x:Name="HandModsSubmitNameBox"
+                                         FontFamily="Cascadia Code, Consolas, Courier New"
+                                         FontSize="12" Foreground="#D2DCE6"
+                                         Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                         Padding="8,6" Margin="0,0,0,16"/>
+
+                                <TextBlock x:Name="HandModsSubmitColorsLabel"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="10" FontWeight="Bold" Foreground="#3A6A8A"
+                                           Margin="0,0,0,6"/>
+                                <WrapPanel x:Name="HandModsSubmitColorsPanel" Margin="0,0,0,16"/>
+
+                                <TextBlock x:Name="HandModsSubmitFilesLabel"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="10" FontWeight="Bold" Foreground="#3A6A8A"
+                                           Margin="0,0,0,6"/>
+                                <Button x:Name="HandModsSubmitFilesBtn"
+                                        HorizontalAlignment="Left"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1"
+                                        Padding="12,6"
+                                        Click="HandModsSubmitFilesBtn_Click">
+                                    <TextBlock x:Name="HandModsSubmitFilesBtnText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                </Button>
+                                <TextBlock x:Name="HandModsSubmitFilesText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="10" Foreground="#5A7A9A"
+                                           TextWrapping="Wrap"
+                                           Margin="0,6,0,16"/>
+
+                                <TextBlock x:Name="HandModsSubmitStatusText"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="10" FontWeight="Bold"
+                                           TextWrapping="Wrap"
+                                           Visibility="Collapsed"
+                                           Margin="0,0,0,10"/>
+
+                                <Button x:Name="HandModsSubmitSendBtn"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                        Height="36"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#00503C" BorderBrush="#00B482" BorderThickness="1"
+                                        Click="HandModsSubmitSendBtn_Click">
+                                    <TextBlock x:Name="HandModsSubmitSendBtnText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold" Foreground="#00CCAA"/>
+                                </Button>
+                            </StackPanel>
+                        </ScrollViewer>
+                        <StackPanel x:Name="HandModsInstallPanel" Visibility="Collapsed"
+                                    Margin="28,24,28,24"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock x:Name="HandModsInstallModName"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="14" FontWeight="Bold" Foreground="#D2DCE6"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,16"/>
+                            <ProgressBar x:Name="HandModsProgressBar"
+                                         Value="0" Maximum="100"
+                                         Width="320" Height="8"/>
+                            <TextBlock x:Name="HandModsProgressText"
+                                       Text="Downloading… 0%"
+                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                       FontSize="11" Foreground="#00CCAA"
+                                       HorizontalAlignment="Center"
+                                       TextWrapping="Wrap" TextAlignment="Center"
+                                       Margin="0,10,0,0"/>
+                            <Button x:Name="HandModsInstallDoneBtn"
+                                    Height="34" MinWidth="120"
+                                    local:ButtonHelper.CornerRadius="3"
+                                    Background="#00503C" BorderBrush="#00B482" BorderThickness="1"
+                                    HorizontalAlignment="Center"
+                                    Visibility="Collapsed"
+                                    Margin="0,18,0,0"
+                                    Click="HandModsInstallDoneBtn_Click">
+                                <TextBlock Text="Done"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="11" FontWeight="Bold" Foreground="#00CCAA"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Grid.Row="2" Background="#060F18"
+                            BorderBrush="#0D2030" BorderThickness="0,1,0,0">
+                        <Grid Margin="14,0">
+                            <Button x:Name="CloseHandModsBtn"
+                                    Height="36" MinWidth="120"
+                                    local:ButtonHelper.CornerRadius="3"
+                                    Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1"
+                                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                                    Click="CloseHandModsBtn_Click">
+                                <TextBlock Text="Close"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="11" FontWeight="Bold"
+                                           Foreground="#3A6A8A"/>
+                            </Button>
                         </Grid>
                     </Border>
                 </Grid>

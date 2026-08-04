@@ -7,6 +7,26 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.0.11", "04/08/2026",
+        [
+            "## Additions",
+            "Added Load Manip mod for Chapter 5 (Thanks to @AdrianPG77)",
+            "Added Fullbright mod for Chapter 5 (Thanks to @AdrianPG77)",
+            "Added an option to add the launcher to Steam as an independent game",
+            "Added a Hand Mods system to browse and install community hand-skin mods per chapter",
+            "Added the option to submit new Hand Mods for review",
+            "Added a Chapter 6 card (Coming Soon)",
+
+            "## Bug Fixes",
+            "Fixed Load Manip mod not working with the Thumb Mouse Buttons",
+            "Fixed Fullbright mod not working with the Thumb Mouse Buttons",
+            "Fixed more bugs with the FPS counter",
+            "Fixed the Steam profile not showing up inside the launcher",
+            "Fixed the chapter description text shifting the chapter cards up or down depending on its length",
+
+            "## Other",
+            "Moved Load Manip settings into their own tab, with a chapter selector for Chapter 1, 4, and 5",
+        ]),
         new("2.0.10", "25/07/2026",
         [
             "Added a timer that tracks in-game hours per chapter",

@@ -1,4 +1,4 @@
-﻿﻿﻿using System.Diagnostics;
+﻿﻿﻿﻿using System.Diagnostics;
 using System.IO.Compression;
 using System.Windows;
 using System.Windows.Controls;
@@ -57,7 +57,8 @@ public partial class MainWindow : Window
     private string? _loadManipMarkerZipPath;
     private bool    _loadManipUe4ssInstalledThisSession;
 
-    private Button? _fullBrightBtn;
+    private readonly Dictionary<int, Button> _fullBrightBtns = [];
+    private int     _fullBrightTargetChapter = 0;
     private string? _fullBrightWin64Dir;
     private string? _fullBrightPaksDir;
     private string? _fullBrightZipPath;
@@ -65,10 +66,28 @@ public partial class MainWindow : Window
     private string? _fullBrightMarkerZipPath;
     private string? _fullBrightConfigZipPath;
 
+    private int                      _handModsTargetChapter = 0;
+    private string?                  _handModsWin64Dir;
+    private string?                  _handModsPaksDir;
+    private List<HandModsService.HandMod>? _handModsList;
+    private readonly Dictionary<int, List<HandModsService.HandMod>> _handModsCache = [];
+
+    private readonly List<Button>    _handModsSubmitChapterChips = [];
+    private readonly List<Button>    _handModsSubmitColorChips   = [];
+    private int                      _handModsSubmitChapter      = 1;
+    private readonly HashSet<string> _handModsSubmitColors       = [];
+    private readonly List<string>    _handModsSubmitFiles        = [];
+
     private bool                     _capturingFullBrightKey;
     private string?                  _fullBrightCaptureTarget; // "KeyUnlit" or "KeyLit"
     private KeyEventHandler?         _fullBrightKeyCapture;
     private MouseButtonEventHandler? _fullBrightMouseCapture;
+
+    // ── Chapter 5 FullBright key capture (mirrors the block above for Chapter 1) ────
+    private bool                     _capturingChapter5FullBrightKey;
+    private string?                  _chapter5FullBrightCaptureTarget; // "KeyUnlit" or "KeyLit"
+    private KeyEventHandler?         _chapter5FullBrightKeyCapture;
+    private MouseButtonEventHandler? _chapter5FullBrightMouseCapture;
 
     // ── UE4SS temp hotkey remap ───────────────────────────────────────────────
     private bool    _ue4ssTempRemap    = false;
@@ -152,6 +171,13 @@ public partial class MainWindow : Window
     private string?                  _chapter1CaptureTarget; // "KeyFreeze" or "KeyNormal"
     private KeyEventHandler?         _chapter1HotkeyCapture;
     private MouseButtonEventHandler? _chapter1MouseHotkeyCapture;
+
+    // ── Chapter 5 Freeze/Normal loads (Controls tab) ─────────────────────────
+    // Same LoadManip_Config.ini-based approach as Chapter 1 above.
+    private bool                     _capturingChapter5Hotkey;
+    private string?                  _chapter5CaptureTarget; // "KeyFreeze" or "KeyNormal"
+    private KeyEventHandler?         _chapter5HotkeyCapture;
+    private MouseButtonEventHandler? _chapter5MouseHotkeyCapture;
 
     // ── Chapter 4 Freeze/Slow/Normal loads (Controls tab) ────────────────────
     private HotkeyBinding _chapter4Freeze = new(HotkeyInputType.Keyboard, 0x49, 0); // I
@@ -247,12 +273,38 @@ public partial class MainWindow : Window
             TrophyImage.Source = new BitmapImage(new Uri(trophyPath));
             LeaderboardTrophyImage.Source = new BitmapImage(new Uri(trophyPath));
         }
+        var handIconPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "Hand.png");
+        if (System.IO.File.Exists(handIconPath))
+        {
+            HandModsMenuIcon.Source = new BitmapImage(new Uri(handIconPath));
+        }
         var steamIconPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "Steam.jpg");
         if (System.IO.File.Exists(steamIconPath))
+        {
             SteamBtnIcon.Source = new BitmapImage(new Uri(steamIconPath));
+            AddToSteamBtnIcon.Source = new BitmapImage(new Uri(steamIconPath));
+        }
+
+        var steamIconsDir = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Steam", "icons");
+        void LoadSteamIcon(Image img, string fileName)
+        {
+            var path = IOPath.Combine(steamIconsDir, fileName);
+            if (System.IO.File.Exists(path)) img.Source = new BitmapImage(new Uri(path));
+        }
+        LoadSteamIcon(AddToSteamIconDefaultImg,   "iconHD.png");
+        LoadSteamIcon(AddToSteamIconChristmasImg, "iconHD Christmas.png");
+        LoadSteamIcon(AddToSteamIconHalloweenImg, "iconHD Halloween.png");
+        LoadSteamIcon(AddToSteamIconLgbtqImg,     "iconHD LGBTQ+.png");
+        LoadSteamIcon(AddToSteamIconSummerImg,    "iconHD Summer.png");
         InitLangSelector();
         ApplyLanguage();
         SetupWindow();
+        CardsScrollViewer.PreviewMouseWheel += (s, e) =>
+        {
+            if (CardsScrollViewer.ScrollableWidth <= 0) return;
+            CardsScrollViewer.ScrollToHorizontalOffset(CardsScrollViewer.HorizontalOffset - e.Delta);
+            e.Handled = true;
+        };
         _ = DetectVersionsAsync();
         _ = DetectUpdatesAsync();
         _ = DetectLiveSplitAsync();
@@ -395,6 +447,21 @@ public partial class MainWindow : Window
         FpsOverlayFontPoppyBtnText.FontFamily    = FpsOverlayWindow.PoppyPlaytimeFont;
         FpsOverlayFontMonospaceBtnText.Text      = Loc.Get("fps_overlay_font_monospace");
         SettingsTabIconThemeText.Text    = Loc.Get("settings_tab_icontheme");
+        SettingsTabLoadManipText.Text    = Loc.Get("settings_tab_loadmanip");
+        HandModsHubLabel.Text            = Loc.Get("handmods_hub_label");
+        HandModsChapter1BtnText.Text     = Loc.Get("chapter1_section");
+        HandModsChapter2BtnText.Text     = Loc.Get("chapter2_section");
+        HandModsChapter3BtnText.Text     = Loc.Get("chapter3_section");
+        HandModsChapter4BtnText.Text     = Loc.Get("chapter4_section");
+        HandModsChapter5BtnText.Text     = Loc.Get("chapter5_section");
+        HandModsSubmitEntryBtnText.Text  = Loc.Get("handmods_submit_entry_btn");
+        HandModsSubmitChapterLabel.Text  = Loc.Get("handmods_submit_chapter_label");
+        HandModsSubmitNameLabel.Text     = Loc.Get("handmods_submit_name_label");
+        HandModsSubmitColorsLabel.Text   = Loc.Get("handmods_submit_colors_label");
+        HandModsSubmitFilesLabel.Text    = Loc.Get("handmods_submit_files_label");
+        HandModsSubmitFilesBtnText.Text  = Loc.Get("handmods_submit_files_btn");
+        HandModsSubmitFilesText.Text     = Loc.Get("handmods_submit_no_files");
+        HandModsSubmitSendBtnText.Text   = Loc.Get("handmods_submit_send_btn");
         IconThemeSectionLabel.Text       = Loc.Get("icontheme_section");
         IconThemeHintText.Text           = Loc.Get("icontheme_hint");
         IconThemeDefaultBtnText.Text     = Loc.Get("icontheme_default");
@@ -405,15 +472,30 @@ public partial class MainWindow : Window
         IconThemeChristmasBtnText.Text   = Loc.Get("icontheme_christmas");
         CoresWarningText.Text            = Loc.Get("cores_warning");
         CoresEnableLabel.Text            = Loc.Get("cores_enable_label");
+        LoadManipControlsSectionLabel.Text = Loc.Get("loadmanip_controls_section");
+        LoadManipChapter1NavBtnText.Text = Loc.Get("chapter1_section");
+        LoadManipChapter4NavBtnText.Text = Loc.Get("chapter4_section");
+        LoadManipChapter5NavBtnText.Text = Loc.Get("chapter5_section");
+        LoadManipChapter1BackBtnText.Text = Loc.Get("back");
+        LoadManipChapter4BackBtnText.Text = Loc.Get("back");
+        LoadManipChapter5BackBtnText.Text = Loc.Get("back");
         Chapter1SectionLabel.Text        = Loc.Get("chapter1_section");
         Chapter1FreezeLabel.Text         = Loc.Get("chapter1_freeze_label");
         Chapter1NormalLabel.Text         = Loc.Get("chapter1_normal_label");
+        Chapter5SectionLabel.Text        = Loc.Get("chapter5_section");
+        Chapter5FreezeLabel.Text         = Loc.Get("chapter5_freeze_label");
+        Chapter5NormalLabel.Text         = Loc.Get("chapter5_normal_label");
         Chapter1HintText.Text            = Loc.Get("chapter1_hint");
         Chapter1FullbrightSectionLabel.Text = Loc.Get("chapter1_fullbright_section");
         Chapter1FullbrightUnlitLabel.Text   = Loc.Get("chapter1_fullbright_unlit_label");
         Chapter1FullbrightLitLabel.Text     = Loc.Get("chapter1_fullbright_lit_label");
+        Chapter5FullbrightSectionLabel.Text = Loc.Get("chapter5_fullbright_section");
+        Chapter5FullbrightUnlitLabel.Text   = Loc.Get("chapter5_fullbright_unlit_label");
+        Chapter5FullbrightLitLabel.Text     = Loc.Get("chapter5_fullbright_lit_label");
         RefreshChapter1UI();
+        RefreshChapter5LoadManipUI();
         RefreshFullBrightKeysUI();
+        RefreshChapter5FullBrightUI();
         Chapter4SectionLabel.Text        = Loc.Get("chapter4_section");
         Chapter4EnableLabel.Text         = Loc.Get("chapter4_enable_label");
         Chapter4FreezeLabel.Text         = Loc.Get("chapter4_freeze_label");
@@ -429,6 +511,10 @@ public partial class MainWindow : Window
         OpenLiveSplitBtnText.Text      = "LiveSplit";
         OpenLiveSplitBtnBadge.Text     = "↑ UPDATE";
         CopyForSteamBtnText.Text       = Loc.Get("steam_launch_btn");
+        AddToSteamBtnText.Text         = Loc.Get("add_to_steam_btn");
+        AddToSteamIconPickerLabel.Text = Loc.Get("add_to_steam_icon_label");
+        AddToSteamCancelBtnText.Text   = Loc.Get("cancel");
+        AddToSteamConfirmBtnText.Text  = Loc.Get("add_to_steam_btn");
         SteamTutorialBtnText.Text      = Loc.Get("steam_tutorial_btn");
         CloseLiveSplitBtnText.Text     = Loc.Get("back");
         LiveSplitInstalledVersionLabel.Text = Loc.Get("livesplit_installed_version");
@@ -1076,14 +1162,15 @@ public partial class MainWindow : Window
 
     private void SettingsTabGeneral_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(0);
     private void SettingsTabControls_Click(object sender, RoutedEventArgs e)     => SelectSettingsTab(1);
-    private void SettingsTabSteam_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(2);
-    private void SettingsTabController_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(3);
-    private void SettingsTabDiscord_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(4);
-    private void SettingsTabUpdates_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(5);
-    private void SettingsTabLiveSplit_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(6);
-    private void SettingsTabCores_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(7);
-    private void SettingsTabOverlays_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(8);
-    private void SettingsTabIconTheme_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(9);
+    private void SettingsTabLoadManip_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(2);
+    private void SettingsTabSteam_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(3);
+    private void SettingsTabController_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(4);
+    private void SettingsTabDiscord_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(5);
+    private void SettingsTabUpdates_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(6);
+    private void SettingsTabLiveSplit_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(7);
+    private void SettingsTabCores_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(8);
+    private void SettingsTabOverlays_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(9);
+    private void SettingsTabIconTheme_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(10);
 
     private void SelectSettingsTab(int index)
     {
@@ -1091,25 +1178,34 @@ public partial class MainWindow : Window
 
         SettingsGeneralScroll.Visibility      = index == 0 ? Visibility.Visible : Visibility.Collapsed;
         SettingsControlsScroll.Visibility     = index == 1 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsSteamScroll.Visibility        = index == 2 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsControllerScroll.Visibility   = index == 3 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsDiscordScroll.Visibility      = index == 4 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsUpdatesScroll.Visibility      = index == 5 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsLiveSplitScroll.Visibility    = index == 6 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsCoresScroll.Visibility        = index == 7 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsOverlaysScroll.Visibility     = index == 8 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsIconThemeScroll.Visibility    = index == 9 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsLoadManipScroll.Visibility    = index == 2 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsSteamScroll.Visibility        = index == 3 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsControllerScroll.Visibility   = index == 4 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsDiscordScroll.Visibility      = index == 5 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsUpdatesScroll.Visibility      = index == 6 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsLiveSplitScroll.Visibility    = index == 7 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsCoresScroll.Visibility        = index == 8 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsOverlaysScroll.Visibility     = index == 9 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsIconThemeScroll.Visibility    = index == 10 ? Visibility.Visible : Visibility.Collapsed;
 
-        if (index == 1) { RefreshChapter1UI(); RefreshChapter4UI(); RefreshFullBrightKeysUI(); }
-        if (index == 4) RefreshDiscordToggles();
-        if (index == 7) RefreshCoresToggle();
-        if (index == 8) RefreshOverlaysTab();
-        if (index == 9) RefreshIconThemeButtons();
+        if (index == 2)
+        {
+            SelectLoadManipSubPage(0);
+            RefreshChapter1UI();
+            RefreshChapter5LoadManipUI();
+            RefreshFullBrightKeysUI();
+            RefreshChapter4UI();
+        }
+        if (index == 5) RefreshDiscordToggles();
+        if (index == 8) RefreshCoresToggle();
+        if (index == 9) RefreshOverlaysTab();
+        if (index == 10) RefreshIconThemeButtons();
 
         var tabs = new[]
         {
             (SettingsTabGeneralBorder,      SettingsTabGeneralText),
             (SettingsTabControlsBorder,     SettingsTabControlsText),
+            (SettingsTabLoadManipBorder,    SettingsTabLoadManipText),
             (SettingsTabSteamBorder,        SettingsTabSteamText),
             (SettingsTabControllerBorder,   SettingsTabControllerText),
             (SettingsTabDiscordBorder,      SettingsTabDiscordText),
@@ -1129,10 +1225,29 @@ public partial class MainWindow : Window
         for (int i = 0; i < tabs.Length; i++)
         {
             var (border, text) = tabs[i];
-            bool isUpdatesTab = i == 5 && _updateAlertActive && i != index;
+            bool isUpdatesTab = i == 6 && _updateAlertActive && i != index;
             border.BorderBrush = i == index ? tealBrush : transBrush;
             text.Foreground    = i == index ? tealBrush : isUpdatesTab ? redBrush : dimBrush;
         }
+    }
+
+    // ── Load Manip tab: chapter picker (hub) + per-chapter sub-pages ─────────
+
+    private void LoadManipChapter1NavBtn_Click(object sender, RoutedEventArgs e) => SelectLoadManipSubPage(1);
+    private void LoadManipChapter4NavBtn_Click(object sender, RoutedEventArgs e) => SelectLoadManipSubPage(2);
+    private void LoadManipChapter5NavBtn_Click(object sender, RoutedEventArgs e) => SelectLoadManipSubPage(3);
+    private void LoadManipChapter1BackBtn_Click(object sender, RoutedEventArgs e) => SelectLoadManipSubPage(0);
+    private void LoadManipChapter4BackBtn_Click(object sender, RoutedEventArgs e) => SelectLoadManipSubPage(0);
+    private void LoadManipChapter5BackBtn_Click(object sender, RoutedEventArgs e) => SelectLoadManipSubPage(0);
+
+    /// <summary>0=chapter picker hub, 1=Chapter 1 (Load Manip + FullBright), 2=Chapter 4
+    /// (Load Manip remap keys), 3=Chapter 5 (Load Manip keys).</summary>
+    private void SelectLoadManipSubPage(int page)
+    {
+        LoadManipHubPanel.Visibility      = page == 0 ? Visibility.Visible : Visibility.Collapsed;
+        LoadManipChapter1Panel.Visibility = page == 1 ? Visibility.Visible : Visibility.Collapsed;
+        LoadManipChapter4Panel.Visibility = page == 2 ? Visibility.Visible : Visibility.Collapsed;
+        LoadManipChapter5Panel.Visibility = page == 3 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // ── Load Manipulator hotkeys ─────────────────────────────────────────────
@@ -1531,10 +1646,10 @@ public partial class MainWindow : Window
     // itself reads this file, so no OS-level hook/key-injection is needed for Chapter 1 anymore.
 
     /// <summary>Resolves the live, already-installed LoadManip_Config.ini for the currently
-    /// active Chapter 1 install, or null if Load Manip isn't installed there.</summary>
-    private string? GetActiveLoadManipConfigPath()
+    /// active install of the given chapter, or null if Load Manip isn't installed there.</summary>
+    private string? GetActiveLoadManipConfigPath(int chapterNumber = 1)
     {
-        var chapter = _chapters.FirstOrDefault(c => c.Number == 1);
+        var chapter = _chapters.FirstOrDefault(c => c.Number == chapterNumber);
         var exePath = chapter != null ? GetActiveExePath(chapter) : null;
         if (string.IsNullOrEmpty(exePath)) return null;
 
@@ -1566,6 +1681,17 @@ public partial class MainWindow : Window
         return (freeze, normal);
     }
 
+    /// <summary>Maps a value stored in LoadManip_Config.ini to what's shown in the launcher UI —
+    /// e.g. the raw UE4SS key name "XBUTTON_ONE" displays as "Mouse 4". Keyboard keys pass through
+    /// unchanged since their raw name (e.g. "I", "F5") already reads fine.</summary>
+    private static string LoadManipKeyDisplayName(string configValue) => configValue switch
+    {
+        "XBUTTON_ONE" => "Mouse 4",
+        "XBUTTON_TWO" => "Mouse 5",
+        "MIDDLE_MOUSE_BUTTON" => "Middle Mouse",
+        _ => configValue,
+    };
+
     /// <summary>Shows editable Freeze/Normal key rows reading from the live installed
     /// config.ini when Load Manip is installed for the active Chapter 1 exe, or
     /// "(load manip not installed)" otherwise.</summary>
@@ -1591,8 +1717,8 @@ public partial class MainWindow : Window
 
         if (editable)
         {
-            Chapter1FreezeText.Text = freeze;
-            Chapter1NormalText.Text = normal;
+            Chapter1FreezeText.Text = LoadManipKeyDisplayName(freeze!);
+            Chapter1NormalText.Text = LoadManipKeyDisplayName(normal!);
         }
     }
 
@@ -1678,9 +1804,9 @@ public partial class MainWindow : Window
     {
         var name = e.ChangedButton switch
         {
-            MouseButton.Middle   => "MiddleMouseButton",
-            MouseButton.XButton1 => "ThumbMouseButton",
-            MouseButton.XButton2 => "ThumbMouseButton2",
+            MouseButton.Middle   => "MIDDLE_MOUSE_BUTTON",
+            MouseButton.XButton1 => "XBUTTON_ONE",
+            MouseButton.XButton2 => "XBUTTON_TWO",
             _ => null,
         };
         if (name is null) return;
@@ -1688,6 +1814,131 @@ public partial class MainWindow : Window
         var target = _chapter1CaptureTarget!;
         CancelChapter1Capture();
         ApplyChapter1Key(target, name);
+        e.Handled = true;
+    }
+
+    /// <summary>Shows editable Freeze/Normal key rows reading from the live installed
+    /// config.ini when Load Manip is installed for the active Chapter 5 exe, or
+    /// "(load manip not installed)" otherwise. Mirrors <see cref="RefreshChapter1UI"/>.</summary>
+    private void RefreshChapter5LoadManipUI()
+    {
+        if (_capturingChapter5Hotkey) CancelChapter5Capture();
+
+        var path = GetActiveLoadManipConfigPath(5);
+        var (freeze, normal) = path != null ? ParseLoadManipConfig(path) : (null, null);
+        bool editable = freeze != null && normal != null;
+
+        Chapter5FreezeRow.Visibility               = editable ? Visibility.Visible : Visibility.Collapsed;
+        Chapter5NormalRow.Visibility                = editable ? Visibility.Visible : Visibility.Collapsed;
+        Chapter5LoadManipNotInstalledText.Visibility = editable ? Visibility.Collapsed : Visibility.Visible;
+        Chapter5LoadManipNotInstalledText.Text       = Loc.Get("chapter5_loadmanip_not_installed");
+
+        var normalBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        var normalFg    = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+        Chapter5FreezeBtn.BorderBrush  = normalBrush;
+        Chapter5FreezeText.Foreground  = normalFg;
+        Chapter5NormalBtn.BorderBrush  = normalBrush;
+        Chapter5NormalText.Foreground  = normalFg;
+
+        if (editable)
+        {
+            Chapter5FreezeText.Text = LoadManipKeyDisplayName(freeze!);
+            Chapter5NormalText.Text = LoadManipKeyDisplayName(normal!);
+        }
+    }
+
+    private void Chapter5FreezeBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter5Capture("KeyFreeze", Chapter5FreezeBtn, Chapter5FreezeText);
+    private void Chapter5NormalBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter5Capture("KeyNormal", Chapter5NormalBtn, Chapter5NormalText);
+
+    private void StartChapter5Capture(string configKey, Button btn, TextBlock text)
+    {
+        if (_capturingChapter5Hotkey)
+        {
+            var wasThis = _chapter5CaptureTarget == configKey;
+            CancelChapter5Capture();
+            RefreshChapter5LoadManipUI();
+            if (wasThis) return;
+        }
+
+        _capturingChapter5Hotkey = true;
+        _chapter5CaptureTarget   = configKey;
+        text.Text       = Loc.Get("f11_remap_press_input");
+        text.Foreground = new SolidColorBrush(Teal);
+        btn.BorderBrush = new SolidColorBrush(Teal);
+
+        _chapter5HotkeyCapture = CaptureChapter5KeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _chapter5HotkeyCapture, true);
+
+        _chapter5MouseHotkeyCapture = CaptureChapter5MouseDown;
+        AddHandler(UIElement.PreviewMouseDownEvent, _chapter5MouseHotkeyCapture, true);
+    }
+
+    private void CancelChapter5Capture()
+    {
+        _capturingChapter5Hotkey = false;
+        if (_chapter5HotkeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewKeyDownEvent, _chapter5HotkeyCapture);
+            _chapter5HotkeyCapture = null;
+        }
+        if (_chapter5MouseHotkeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewMouseDownEvent, _chapter5MouseHotkeyCapture);
+            _chapter5MouseHotkeyCapture = null;
+        }
+    }
+
+    private void ApplyChapter5Key(string configKey, string value)
+    {
+        var path = GetActiveLoadManipConfigPath(5);
+        if (path != null)
+            LoadManipFilesService.UpdateConfigKey(path, configKey, value);
+        RefreshChapter5LoadManipUI();
+    }
+
+    private void CaptureChapter5KeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key is Key.LeftCtrl or Key.RightCtrl
+                or Key.LeftShift or Key.RightShift
+                or Key.LeftAlt or Key.RightAlt
+                or Key.LWin or Key.RWin
+                or Key.None)
+            return;
+
+        var target = _chapter5CaptureTarget!;
+        CancelChapter5Capture();
+
+        if (key == Key.Escape)
+        {
+            RefreshChapter5LoadManipUI();
+            e.Handled = true;
+            return;
+        }
+
+        var name = WpfKeyToUnrealKeyName(key);
+        if (name != null) ApplyChapter5Key(target, name);
+        else RefreshChapter5LoadManipUI();
+        e.Handled = true;
+    }
+
+    private void CaptureChapter5MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        var name = e.ChangedButton switch
+        {
+            MouseButton.Middle   => "MIDDLE_MOUSE_BUTTON",
+            MouseButton.XButton1 => "XBUTTON_ONE",
+            MouseButton.XButton2 => "XBUTTON_TWO",
+            _ => null,
+        };
+        if (name is null) return;
+
+        var target = _chapter5CaptureTarget!;
+        CancelChapter5Capture();
+        ApplyChapter5Key(target, name);
         e.Handled = true;
     }
 
@@ -2814,7 +3065,7 @@ public partial class MainWindow : Window
 
         for (int i = 0; i < _chapters.Count; i++)
         {
-            var path = _chapters[i].GameExePath;
+            var path = GetActiveExePath(_chapters[i]);
             if (string.IsNullOrEmpty(path)) { _gameWasRunning[i] = false; _runningChapterPid[i] = 0; continue; }
 
             var exeName = IOPath.GetFileNameWithoutExtension(path);
@@ -2822,9 +3073,18 @@ public partial class MainWindow : Window
             try
             {
                 var procs = Process.GetProcessesByName(exeName);
-                running = procs.Length > 0;
-                _runningChapterPid[i] = running ? procs[0].Id : 0;
+                // Some installs point at a thin UE launcher stub (e.g. "ch5_pro.exe") that stays
+                // resident as a parent process alongside the real renderer it spawns
+                // ("ch5_pro-Win64-Shipping.exe"). The stub never presents a frame, so FPS tracking
+                // must target the shipping process's PID when one is present, not the stub's.
+                var shippingProcs = Process.GetProcessesByName(exeName + "-Win64-Shipping");
+                var trackedProcs = shippingProcs.Length > 0 ? shippingProcs : procs;
+
+                running = procs.Length > 0 || shippingProcs.Length > 0;
+                _runningChapterPid[i] = running ? trackedProcs[0].Id : 0;
+
                 foreach (var p in procs) p.Dispose();
+                foreach (var p in shippingProcs) p.Dispose();
             }
             catch (Exception)
             {
@@ -3156,13 +3416,21 @@ public partial class MainWindow : Window
 
     // ── Chapter cards ─────────────────────────────────────────────────────────
 
+    private static string GetBannerPath(int chapterNumber)
+    {
+        var bannerDir  = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Banners");
+        var bannerPath = IOPath.Combine(bannerDir, $"Chapter {chapterNumber}.jpg");
+        if (!File.Exists(bannerPath))
+            bannerPath = IOPath.Combine(bannerDir, $"Chapter {chapterNumber}.png");
+        return bannerPath;
+    }
+
     private void BuildCards()
     {
-        var bannerDir = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Banners");
         for (int i = 0; i < _chapters.Count; i++)
         {
             var chapter = _chapters[i];
-            var card = MakeCard(chapter, IOPath.Combine(bannerDir, $"Chapter {i + 1}.jpg"), out var hoursText);
+            var card = MakeCard(chapter, GetBannerPath(i + 1), out var hoursText);
             var idx = i;
             card.MouseDown   += (_, _) => SelectChapter(idx);
             card.MouseEnter  += (_, _) => { OnCardHover(idx, true); PlaySfx("OpcionMover.WAV", noStop: true); };
@@ -3319,7 +3587,7 @@ public partial class MainWindow : Window
             actionsPanel.Children.Add(ue4ssBtn);
             _ue4ssBtns.Add(ue4ssBtn);
 
-            if (chapter.Number == 1 || chapter.Number == 4)
+            if (chapter.Number == 1 || chapter.Number == 4 || chapter.Number == 5)
             {
                 var loadManipBtn = new Button
                 {
@@ -3331,7 +3599,16 @@ public partial class MainWindow : Window
                     Tag             = chapter.Number,
                 };
                 ButtonHelper.SetCornerRadius(loadManipBtn, new CornerRadius(3));
-                loadManipBtn.Content = new TextBlock
+                var loadManipContent = new StackPanel { Orientation = Orientation.Horizontal };
+                loadManipContent.Children.Add(new Image
+                {
+                    Source            = (DrawingImage)FindResource("LoadManipIcon"),
+                    Width             = 12,
+                    Height            = 12,
+                    Margin            = new Thickness(0, 0, 5, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+                loadManipContent.Children.Add(new TextBlock
                 {
                     Text              = "MANIP",
                     FontFamily        = new FontFamily("Cascadia Code, Consolas, Courier New"),
@@ -3339,14 +3616,15 @@ public partial class MainWindow : Window
                     FontWeight        = FontWeights.Bold,
                     Foreground        = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
                     VerticalAlignment = VerticalAlignment.Center,
-                };
+                });
+                loadManipBtn.Content = loadManipContent;
                 loadManipBtn.MouseDown += (s, ev) => ev.Handled = true;
                 loadManipBtn.Click     += LoadManipCardBtn_Click;
                 actionsPanel.Children.Add(loadManipBtn);
                 _loadManipBtns[chapter.Number] = loadManipBtn;
             }
 
-            if (chapter.Number == 1)
+            if (chapter.Number == 1 || chapter.Number == 5)
             {
                 var fullBrightBtn = new Button
                 {
@@ -3370,7 +3648,7 @@ public partial class MainWindow : Window
                 fullBrightBtn.MouseDown += (s, ev) => ev.Handled = true;
                 fullBrightBtn.Click     += FullBrightCardBtn_Click;
                 actionsPanel.Children.Add(fullBrightBtn);
-                _fullBrightBtn = fullBrightBtn;
+                _fullBrightBtns[chapter.Number] = fullBrightBtn;
             }
 
             bottom.Children.Add(actionsPanel);
@@ -3381,7 +3659,39 @@ public partial class MainWindow : Window
         if (!chapter.IsAvailable)
         {
             var overlay = new Border { Background = new SolidColorBrush(Color.FromArgb(170, 5, 10, 18)) };
-            overlay.Child = new TextBlock
+
+            var overlayContent = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment   = VerticalAlignment.Center,
+            };
+
+            var lockedImgPath = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", "BLOQUEADO.png");
+            if (File.Exists(lockedImgPath))
+            {
+                overlayContent.Children.Add(new Border
+                {
+                    Width = 120, Height = 120,
+                    CornerRadius = new CornerRadius(8),
+                    BorderBrush = new SolidColorBrush(Teal),
+                    BorderThickness = new Thickness(2),
+                    Background = new SolidColorBrush(Color.FromArgb(160, 9, 20, 30)),
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        Color = Teal, BlurRadius = 20, ShadowDepth = 0, Opacity = 0.8,
+                    },
+                    Child = new Image
+                    {
+                        Source = new BitmapImage(new Uri(lockedImgPath)),
+                        Width = 90, Height = 90,
+                        Stretch = Stretch.Uniform,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment   = VerticalAlignment.Center,
+                    },
+                });
+            }
+
+            overlayContent.Children.Add(new TextBlock
             {
                 Text = Loc.Get("coming_soon"),
                 FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
@@ -3389,7 +3699,10 @@ public partial class MainWindow : Window
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment   = VerticalAlignment.Center,
                 TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center,
-            };
+                Margin = new Thickness(0, 10, 0, 0),
+            });
+
+            overlay.Child = overlayContent;
             grid.Children.Add(overlay);
         }
 
@@ -5063,6 +5376,8 @@ public partial class MainWindow : Window
 
     // ── Main buttons ──────────────────────────────────────────────────────────
 
+    private void HandModsMenuButton_Click(object sender, RoutedEventArgs e) => OpenHandModsHub();
+
     private void LeaderboardButton_Click(object sender, RoutedEventArgs e)
     {
         if (_leaderboardOverlay is { IsVisible: true })
@@ -5398,6 +5713,138 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(exePath)) return;
         try { Clipboard.SetText($"\"{exePath}\" %command%"); } catch { }
         ShowTutorialVideoPopup();
+    }
+
+    // ── Add to Steam (writes/updates our own shortcuts.vdf entry) ────────────
+
+    private string? _addToSteamSelectedIconFile;
+
+    private static string DefaultSteamIconFile() => IconThemeSettings.Current.EffectiveTheme switch
+    {
+        "lgbtq"     => "iconHD LGBTQ+.png",
+        "summer"    => "iconHD Summer.png",
+        "halloween" => "iconHD Halloween.png",
+        "christmas" => "iconHD Christmas.png",
+        _           => "iconHD.png",
+    };
+
+    private void AddToSteamBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _addToSteamSelectedIconFile = DefaultSteamIconFile();
+        HighlightSelectedSteamIconBtn();
+        AddToSteamWarningText.Text = SteamShortcutService.IsSteamRunning()
+            ? Loc.Get("add_to_steam_warning_running")
+            : Loc.Get("add_to_steam_warning_not_running");
+        OpenAddToSteamOverlay();
+    }
+
+    private void AddToSteamIconBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string fileName })
+        {
+            _addToSteamSelectedIconFile = fileName;
+            HighlightSelectedSteamIconBtn();
+        }
+    }
+
+    private void HighlightSelectedSteamIconBtn()
+    {
+        var buttons = new[]
+        {
+            (AddToSteamIconDefaultBtn,   "iconHD.png"),
+            (AddToSteamIconChristmasBtn, "iconHD Christmas.png"),
+            (AddToSteamIconHalloweenBtn, "iconHD Halloween.png"),
+            (AddToSteamIconLgbtqBtn,     "iconHD LGBTQ+.png"),
+            (AddToSteamIconSummerBtn,    "iconHD Summer.png"),
+        };
+        var selectedBrush = new SolidColorBrush(Teal);
+        var normalBrush   = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        foreach (var (btn, file) in buttons)
+            btn.BorderBrush = file == _addToSteamSelectedIconFile ? selectedBrush : normalBrush;
+    }
+
+    private void OpenAddToSteamOverlay()
+    {
+        AddToSteamOverlay.Opacity    = 0;
+        AddToSteamOverlay.Visibility = Visibility.Visible;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        AddToSteamOverlay.BeginAnimation(UIElement.OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)));
+        AddToSteamPopupScale.BeginAnimation(ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(0.85, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+        AddToSteamPopupScale.BeginAnimation(ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(0.85, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+    }
+
+    private void CloseAddToSteamOverlay()
+    {
+        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(180)) { EasingFunction = ease };
+        fade.Completed += (_, _) => AddToSteamOverlay.Visibility = Visibility.Collapsed;
+        AddToSteamOverlay.BeginAnimation(UIElement.OpacityProperty, fade);
+    }
+
+    private void AddToSteamCancelBtn_Click(object sender, RoutedEventArgs e) => CloseAddToSteamOverlay();
+
+    private void AddToSteamConfirmBtn_Click(object sender, RoutedEventArgs e)
+    {
+        CloseAddToSteamOverlay();
+
+        var exePath = Environment.ProcessPath ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+        if (string.IsNullOrEmpty(exePath))
+        {
+            ShowAddToSteamDialog(Loc.Get("add_to_steam_error_no_exe"));
+            return;
+        }
+
+        var iconFile = _addToSteamSelectedIconFile ?? DefaultSteamIconFile();
+        var iconSourcePath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Steam", "icons", iconFile);
+        if (!File.Exists(iconSourcePath))
+        {
+            ShowAddToSteamDialog(Loc.Get("add_to_steam_error_no_icon"));
+            return;
+        }
+
+        // The actual close-Steam/edit-vdf/restart-Steam sequence runs in a standalone helper
+        // process instead of here: if this exe is the one Steam is currently tracking as "the
+        // running game" (e.g. it replaced the real game's exe), Steam kills that tracked
+        // process the moment it shuts down, which would kill this operation mid-flight. A
+        // freshly spawned, Steam-untracked process isn't subject to that.
+        try
+        {
+            var psi = new ProcessStartInfo(exePath) { UseShellExecute = true, Verb = "runas" };
+            psi.ArgumentList.Add(SteamShortcutHelperEntryPoint.Arg);
+            psi.ArgumentList.Add(exePath);
+            psi.ArgumentList.Add(iconSourcePath);
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            ShowAddToSteamDialog(string.Format(Loc.Get("add_to_steam_error_generic"), ex.Message));
+            return;
+        }
+
+        // A graceful Application.Shutdown() isn't enough here: if this exe is the one Steam is
+        // tracking as "the running game" (old replace-the-exe setup), Steam's library still
+        // shows it as running until the process is actually gone, and the helper is about to
+        // shut Steam down right after this — so this process must be dead first, not just
+        // mid-cleanup. Hard-exit instead of waiting on window/thread teardown.
+        Environment.Exit(0);
+    }
+
+    private void ShowAddToSteamDialog(string message, bool success = false)
+    {
+        WpfDialog.Show(this, "ADD TO STEAM", new TextBlock
+        {
+            Text         = message,
+            FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize     = 12,
+            Foreground   = new SolidColorBrush(success
+                ? Color.FromArgb(200, 0, 204, 170)
+                : Color.FromArgb(200, 160, 180, 200)),
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth     = 360,
+        }, closeText: "OK");
     }
 
     private void ShowTutorialVideoPopup()
@@ -6316,9 +6763,26 @@ public partial class MainWindow : Window
             var card = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
             card.Children.Add(headerRow);
 
-            // Change items
+            // Change items. A "## " prefix marks a category header (e.g. "## Additions")
+            // instead of a bulleted change line.
+            bool isFirstChange = true;
             foreach (var change in entry.Changes)
             {
+                if (change.StartsWith("## "))
+                {
+                    card.Children.Add(new TextBlock
+                    {
+                        Text         = change[3..],
+                        FontFamily   = new System.Windows.Media.FontFamily("Cascadia Code, Consolas, Courier New"),
+                        FontSize     = 10,
+                        FontWeight   = FontWeights.Bold,
+                        Foreground   = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170)),
+                        Margin       = new Thickness(0, isFirstChange ? 4 : 10, 0, 2),
+                    });
+                    isFirstChange = false;
+                    continue;
+                }
+
                 var tb = new TextBlock
                 {
                     FontFamily   = new System.Windows.Media.FontFamily("Cascadia Code, Consolas, Courier New"),
@@ -6332,6 +6796,7 @@ public partial class MainWindow : Window
                 SetChangelogTextWithMentions(tb, change, clear: false);
 
                 card.Children.Add(tb);
+                isFirstChange = false;
             }
 
             ChangelogPanel.Children.Add(card);
@@ -6690,7 +7155,7 @@ public partial class MainWindow : Window
 
         if (installedViaLoadManip)
         {
-            bool fullBrightAlsoInstalled = _ue4ssTargetChapter == 1
+            bool fullBrightAlsoInstalled = (_ue4ssTargetChapter == 1 || _ue4ssTargetChapter == 5)
                 && _ue4ssWin64Dir != null && FullBrightFilesService.IsInstalled(_ue4ssWin64Dir);
             Ue4ssPopupQuestion.Text = fullBrightAlsoInstalled
                 ? "Load Manip, FullBright and their UE4SS files must be\nremoved before installing the original UE4SS."
@@ -6772,10 +7237,11 @@ public partial class MainWindow : Window
             var ue4ssZipPath = LoadManipFilesService.GetUe4ssZipPath(_ue4ssTargetChapter);
             var markerZipPath = LoadManipFilesService.GetPlaytimeMarkerZipPath(_ue4ssTargetChapter);
 
-            bool fullBrightInstalled = _ue4ssTargetChapter == 1 && FullBrightFilesService.IsInstalled(win64);
-            var fullBrightZip        = fullBrightInstalled ? FullBrightFilesService.GetZipPath(1) : null;
-            var fullBrightUe4ssZip   = fullBrightInstalled ? FullBrightFilesService.GetUe4ssZipPath(1) : null;
-            var fullBrightMarkerZip  = fullBrightInstalled ? FullBrightFilesService.GetPlaytimeMarkerZipPath(1) : null;
+            bool fullBrightInstalled = (_ue4ssTargetChapter == 1 || _ue4ssTargetChapter == 5)
+                && FullBrightFilesService.IsInstalled(win64);
+            var fullBrightZip        = fullBrightInstalled ? FullBrightFilesService.GetZipPath(_ue4ssTargetChapter) : null;
+            var fullBrightUe4ssZip   = fullBrightInstalled ? FullBrightFilesService.GetUe4ssZipPath(_ue4ssTargetChapter) : null;
+            var fullBrightMarkerZip  = fullBrightInstalled ? FullBrightFilesService.GetPlaytimeMarkerZipPath(_ue4ssTargetChapter) : null;
 
             if (_ue4ssZipPath is null || !File.Exists(_ue4ssZipPath))
             {
@@ -6813,7 +7279,9 @@ public partial class MainWindow : Window
                 RefreshLoadManipBtnStates();
                 RefreshFullBrightBtnStates();
                 RefreshFullBrightKeysUI();
+                RefreshChapter5FullBrightUI();
                 RefreshChapter1UI();
+                RefreshChapter5LoadManipUI();
                 ShowUe4ssDialog($"UE4SS installed successfully!\n\n{win64}", success: true);
             }
             catch (Exception ex)
@@ -7105,7 +7573,7 @@ public partial class MainWindow : Window
     /// touching its visibility/animation, so callers can swap state in place.</summary>
     private void UpdateLoadManipPopupState()
     {
-        bool needsUe4ss = _loadManipTargetChapter == 1
+        bool needsUe4ss = (_loadManipTargetChapter == 1 || _loadManipTargetChapter == 5)
             && _loadManipWin64Dir != null && !IsUe4ssInstalled(_loadManipWin64Dir);
         bool installed  = !needsUe4ss
             && _loadManipPaksDir != null && _loadManipZipPath != null && File.Exists(_loadManipZipPath)
@@ -7118,14 +7586,17 @@ public partial class MainWindow : Window
 
         if (needsUe4ss)
         {
-            LoadManipPopupQuestion.Text = "UE4SS is required before adding\nLoad Manip files for Chapter 1.";
+            LoadManipPopupQuestion.Text = $"UE4SS is required before adding\nLoad Manip files for Chapter {_loadManipTargetChapter}.";
             LoadManipInstallUe4ssBtn.Visibility = Visibility.Visible;
-            LoadManipWarningText.Text = "⚠ Only compatible with Patch 1.3";
-            LoadManipWarningText.Visibility = Visibility.Visible;
+            if (_loadManipTargetChapter == 1)
+            {
+                LoadManipWarningText.Text = "⚠ Only compatible with Patch 1.3";
+                LoadManipWarningText.Visibility = Visibility.Visible;
+            }
         }
         else if (installed)
         {
-            bool fullBrightAlsoInstalled = _loadManipTargetChapter == 1
+            bool fullBrightAlsoInstalled = (_loadManipTargetChapter == 1 || _loadManipTargetChapter == 5)
                 && _loadManipWin64Dir != null && FullBrightFilesService.IsInstalled(_loadManipWin64Dir);
             LoadManipPopupQuestion.Text = "Do you want to remove Load Manip files\nfrom this version?";
             LoadManipDeleteBtn.Visibility = Visibility.Visible;
@@ -7185,7 +7656,7 @@ public partial class MainWindow : Window
         var ue4ssZipPath = _loadManipUe4ssZipPath;
         var markerZipPath = _loadManipMarkerZipPath;
 
-        if (_loadManipTargetChapter == 1)
+        if (_loadManipTargetChapter == 1 || _loadManipTargetChapter == 5)
         {
             if (ue4ssZipPath is null || !File.Exists(ue4ssZipPath))
             {
@@ -7212,8 +7683,11 @@ public partial class MainWindow : Window
 
                 try
                 {
-                    var genericUe4ssZip = IOPath.Combine(
-                        ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
+                    // Chapter 5 runs a newer engine build than Chapters 1-4, so it needs its
+                    // own generic UE4SS build (see Ue4ssCardBtn_Click).
+                    var genericUe4ssZip = _loadManipTargetChapter >= 5
+                        ? IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 5", "Ue4ss.zip")
+                        : IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
                     if (File.Exists(genericUe4ssZip))
                         await Task.Run(() => LoadManipFilesService.UninstallUe4ss(win64Dir, genericUe4ssZip));
                 }
@@ -7230,12 +7704,13 @@ public partial class MainWindow : Window
             await Task.Run(() =>
             {
                 LoadManipFilesService.Install(paksDir, zipPath, LoadManipFilesService.GetConfigZipPath(_loadManipTargetChapter));
-                if (_loadManipTargetChapter == 1 && ue4ssZipPath != null)
+                if ((_loadManipTargetChapter == 1 || _loadManipTargetChapter == 5) && ue4ssZipPath != null)
                     LoadManipFilesService.InstallUe4ss(win64Dir, ue4ssZipPath, markerZipPath);
             });
             RefreshLoadManipBtnStates();
             RefreshUe4ssBtnStates();
             RefreshChapter1UI();
+            RefreshChapter5LoadManipUI();
             ShowLoadManipDialog($"Load Manip files installed successfully!\n\n{paksDir}", success: true);
         }
         catch (Exception ex)
@@ -7259,11 +7734,11 @@ public partial class MainWindow : Window
             var ue4ssZipPath  = _loadManipUe4ssZipPath;
             var markerZipPath = _loadManipMarkerZipPath;
 
-            bool fullBrightInstalled = _loadManipTargetChapter == 1 && win64Dir != null
-                && FullBrightFilesService.IsInstalled(win64Dir);
-            var fullBrightZip       = fullBrightInstalled ? FullBrightFilesService.GetZipPath(1) : null;
-            var fullBrightUe4ssZip  = fullBrightInstalled ? FullBrightFilesService.GetUe4ssZipPath(1) : null;
-            var fullBrightMarkerZip = fullBrightInstalled ? FullBrightFilesService.GetPlaytimeMarkerZipPath(1) : null;
+            bool fullBrightInstalled = (_loadManipTargetChapter == 1 || _loadManipTargetChapter == 5)
+                && win64Dir != null && FullBrightFilesService.IsInstalled(win64Dir);
+            var fullBrightZip       = fullBrightInstalled ? FullBrightFilesService.GetZipPath(_loadManipTargetChapter) : null;
+            var fullBrightUe4ssZip  = fullBrightInstalled ? FullBrightFilesService.GetUe4ssZipPath(_loadManipTargetChapter) : null;
+            var fullBrightMarkerZip = fullBrightInstalled ? FullBrightFilesService.GetPlaytimeMarkerZipPath(_loadManipTargetChapter) : null;
 
             await Task.Run(() =>
             {
@@ -7293,7 +7768,9 @@ public partial class MainWindow : Window
             RefreshUe4ssBtnStates();
             RefreshFullBrightBtnStates();
             RefreshFullBrightKeysUI();
+            RefreshChapter5FullBrightUI();
             RefreshChapter1UI();
+            RefreshChapter5LoadManipUI();
             ShowLoadManipDialog(fullBrightInstalled
                 ? "Load Manip and FullBright files removed successfully!"
                 : "Load Manip files removed successfully!", success: true);
@@ -7313,9 +7790,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Load Manip's UE4SS dependency only applies to Chapter 1, which always
-        // uses the shared Chapter 1-4 UE4SS build.
-        var ue4ssZipPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
+        // Load Manip's UE4SS dependency applies to Chapters 1 and 5. Chapter 5 runs a
+        // newer engine build than Chapters 1-4, so it needs its own generic UE4SS build
+        // (see Ue4ssCardBtn_Click).
+        var ue4ssZipPath = _loadManipTargetChapter >= 5
+            ? IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 5", "Ue4ss.zip")
+            : IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
         if (!File.Exists(ue4ssZipPath))
         {
             CloseLoadManipOverlay();
@@ -7390,10 +7870,12 @@ public partial class MainWindow : Window
         }
     }
 
-    // ── FullBright (Chapter 1) ───────────────────────────────────────────────
+    // ── FullBright (Chapters 1 and 5) ─────────────────────────────────────────
 
     private void FullBrightCardBtn_Click(object sender, RoutedEventArgs e)
     {
+        _fullBrightTargetChapter = (int)((Button)sender).Tag;
+
         if (!ComputeFullBrightTargets())
         {
             ShowFullBrightDialog("No game path found for this chapter.\nPlease set up the game installation first.");
@@ -7404,11 +7886,11 @@ public partial class MainWindow : Window
         OpenFullBrightOverlay();
     }
 
-    /// <summary>Resolves the win64/paks/zip paths for FullBright (Chapter 1 only).
+    /// <summary>Resolves the win64/paks/zip paths for the currently targeted chapter.
     /// Returns false (and leaves the targets null) when no game path is found.</summary>
     private bool ComputeFullBrightTargets()
     {
-        var chapter = _chapters.FirstOrDefault(c => c.Number == 1);
+        var chapter = _chapters.FirstOrDefault(c => c.Number == _fullBrightTargetChapter);
         _fullBrightWin64Dir      = null;
         _fullBrightPaksDir       = null;
         _fullBrightZipPath       = null;
@@ -7439,14 +7921,22 @@ public partial class MainWindow : Window
 
         FullBrightYesBtn.Visibility    = installed ? Visibility.Collapsed : Visibility.Visible;
         FullBrightDeleteBtn.Visibility = installed ? Visibility.Visible : Visibility.Collapsed;
-        FullBrightWarningText.Visibility = Visibility.Visible;
+        FullBrightWarningText.Visibility = Visibility.Collapsed;
 
         FullBrightPopupQuestion.Text = installed
             ? "Do you want to remove FullBright files\nfrom this version?"
             : "Do you want to add FullBright files\nto this version?";
-        FullBrightWarningText.Text = installed
-            ? "⚠ Removing FullBright also removes Load Manip's\noverwritten files — Load Manip will be reinstalled automatically."
-            : "⚠ Only compatible with Patch 1.3";
+
+        if (installed)
+        {
+            FullBrightWarningText.Text = "⚠ Removing FullBright also removes Load Manip's\noverwritten files — Load Manip will be reinstalled automatically.";
+            FullBrightWarningText.Visibility = Visibility.Visible;
+        }
+        else if (_fullBrightTargetChapter == 1)
+        {
+            FullBrightWarningText.Text = "⚠ Only compatible with Patch 1.3";
+            FullBrightWarningText.Visibility = Visibility.Visible;
+        }
     }
 
     private void OpenFullBrightOverlay()
@@ -7488,16 +7978,17 @@ public partial class MainWindow : Window
         }, closeText: "OK");
     }
 
-    /// <summary>Ensures Load Manip (Chapter 1) is fully installed — pak, UE4SS build, and
-    /// launcher.playtime marker — before FullBright is laid on top of it. Duplicates the relevant
-    /// steps of LoadManipYesBtn_Click rather than calling into it, so that method's own code path
-    /// stays completely untouched. Returns false (after showing a dialog, if appropriate) on
-    /// failure or if the user cancels the "delete existing UE4SS" confirm.</summary>
+    /// <summary>Ensures Load Manip (for <see cref="_fullBrightTargetChapter"/>) is fully installed
+    /// — pak, UE4SS build, and launcher.playtime marker — before FullBright is laid on top of it.
+    /// Duplicates the relevant steps of LoadManipYesBtn_Click rather than calling into it, so that
+    /// method's own code path stays completely untouched. Returns false (after showing a dialog,
+    /// if appropriate) on failure or if the user cancels the "delete existing UE4SS" confirm.</summary>
     private async Task<bool> EnsureLoadManipInstalledAsync(string win64Dir, string paksDir)
     {
-        var zipPath       = LoadManipFilesService.GetZipPath(1);
-        var ue4ssZipPath  = LoadManipFilesService.GetUe4ssZipPath(1);
-        var markerZipPath = LoadManipFilesService.GetPlaytimeMarkerZipPath(1);
+        var chapterNumber = _fullBrightTargetChapter;
+        var zipPath       = LoadManipFilesService.GetZipPath(chapterNumber);
+        var ue4ssZipPath  = LoadManipFilesService.GetUe4ssZipPath(chapterNumber);
+        var markerZipPath = LoadManipFilesService.GetPlaytimeMarkerZipPath(chapterNumber);
 
         if (zipPath is null || !File.Exists(zipPath) || ue4ssZipPath is null || !File.Exists(ue4ssZipPath))
         {
@@ -7527,8 +8018,11 @@ public partial class MainWindow : Window
 
             try
             {
-                var genericUe4ssZip = IOPath.Combine(
-                    ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
+                // Chapter 5 runs a newer engine build than Chapters 1-4, so it needs its
+                // own generic UE4SS build (see Ue4ssCardBtn_Click).
+                var genericUe4ssZip = chapterNumber >= 5
+                    ? IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 5", "Ue4ss.zip")
+                    : IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
                 if (File.Exists(genericUe4ssZip))
                     await Task.Run(() => LoadManipFilesService.UninstallUe4ss(win64Dir, genericUe4ssZip));
             }
@@ -7543,7 +8037,7 @@ public partial class MainWindow : Window
         {
             await Task.Run(() =>
             {
-                LoadManipFilesService.Install(paksDir, zipPath, LoadManipFilesService.GetConfigZipPath(1));
+                LoadManipFilesService.Install(paksDir, zipPath, LoadManipFilesService.GetConfigZipPath(chapterNumber));
                 LoadManipFilesService.InstallUe4ss(win64Dir, ue4ssZipPath, markerZipPath);
             });
             RefreshLoadManipBtnStates();
@@ -7589,7 +8083,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var loadManipZipPath = LoadManipFilesService.GetZipPath(1);
+        var loadManipZipPath = LoadManipFilesService.GetZipPath(_fullBrightTargetChapter);
         bool loadManipInstalled = loadManipZipPath != null && File.Exists(loadManipZipPath)
             && LoadManipFilesService.IsInstalled(loadManipPaksDir, loadManipZipPath);
 
@@ -7618,9 +8112,11 @@ public partial class MainWindow : Window
                 FullBrightFilesService.Install(paksDir, win64Dir, zipPath, ue4ssZipPath, markerZipPath, configZipPath));
             RefreshFullBrightBtnStates();
             RefreshFullBrightKeysUI();
+            RefreshChapter5FullBrightUI();
             RefreshLoadManipBtnStates();
             RefreshUe4ssBtnStates();
             RefreshChapter1UI();
+            RefreshChapter5LoadManipUI();
             ShowFullBrightDialog($"FullBright files installed successfully!\n\n{paksDir}", success: true);
         }
         catch (Exception ex)
@@ -7645,9 +8141,9 @@ public partial class MainWindow : Window
         var ue4ssZipPath  = _fullBrightUe4ssZipPath;
         var markerZipPath = _fullBrightMarkerZipPath;
 
-        var loadManipZipPath      = LoadManipFilesService.GetZipPath(1);
-        var loadManipUe4ssZipPath = LoadManipFilesService.GetUe4ssZipPath(1);
-        var loadManipMarkerZipPath = LoadManipFilesService.GetPlaytimeMarkerZipPath(1);
+        var loadManipZipPath      = LoadManipFilesService.GetZipPath(_fullBrightTargetChapter);
+        var loadManipUe4ssZipPath = LoadManipFilesService.GetUe4ssZipPath(_fullBrightTargetChapter);
+        var loadManipMarkerZipPath = LoadManipFilesService.GetPlaytimeMarkerZipPath(_fullBrightTargetChapter);
 
         try
         {
@@ -7663,15 +8159,17 @@ public partial class MainWindow : Window
                 if (loadManipZipPath != null && File.Exists(loadManipZipPath)
                     && loadManipUe4ssZipPath != null && File.Exists(loadManipUe4ssZipPath))
                 {
-                    LoadManipFilesService.Install(paksDir, loadManipZipPath, LoadManipFilesService.GetConfigZipPath(1));
+                    LoadManipFilesService.Install(paksDir, loadManipZipPath, LoadManipFilesService.GetConfigZipPath(_fullBrightTargetChapter));
                     LoadManipFilesService.InstallUe4ss(win64Dir, loadManipUe4ssZipPath, loadManipMarkerZipPath);
                 }
             });
             RefreshFullBrightBtnStates();
             RefreshFullBrightKeysUI();
+            RefreshChapter5FullBrightUI();
             RefreshLoadManipBtnStates();
             RefreshUe4ssBtnStates();
             RefreshChapter1UI();
+            RefreshChapter5LoadManipUI();
             ShowFullBrightDialog("FullBright files removed and Load Manip restored successfully!", success: true);
         }
         catch (Exception ex)
@@ -7682,25 +8180,26 @@ public partial class MainWindow : Window
 
     private void RefreshFullBrightBtnStates()
     {
-        if (_fullBrightBtn is null) return;
-
-        var chapter = _chapters.FirstOrDefault(c => c.Number == 1);
-        var exePath = chapter != null ? GetActiveExePath(chapter) : null;
-        bool installed = false;
-        if (!string.IsNullOrEmpty(exePath))
+        foreach (var (chapterNumber, btn) in _fullBrightBtns)
         {
-            var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
-            if (win64 != null)
-                installed = FullBrightFilesService.IsInstalled(win64);
+            var chapter = _chapters.FirstOrDefault(c => c.Number == chapterNumber);
+            var exePath = chapter != null ? GetActiveExePath(chapter) : null;
+            bool installed = false;
+            if (!string.IsNullOrEmpty(exePath))
+            {
+                var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+                if (win64 != null)
+                    installed = FullBrightFilesService.IsInstalled(win64);
+            }
+            btn.Opacity = installed ? 1.0 : 0.3;
         }
-        _fullBrightBtn.Opacity = installed ? 1.0 : 0.3;
     }
 
     /// <summary>Resolves the live, already-installed FullBright config.ini for the currently
-    /// active Chapter 1 install, or null if FullBright isn't installed there.</summary>
-    private string? GetActiveFullBrightConfigPath()
+    /// active install of the given chapter, or null if FullBright isn't installed there.</summary>
+    private string? GetActiveFullBrightConfigPath(int chapterNumber = 1)
     {
-        var chapter = _chapters.FirstOrDefault(c => c.Number == 1);
+        var chapter = _chapters.FirstOrDefault(c => c.Number == chapterNumber);
         var exePath = chapter != null ? GetActiveExePath(chapter) : null;
         if (string.IsNullOrEmpty(exePath)) return null;
 
@@ -7739,8 +8238,8 @@ public partial class MainWindow : Window
 
         if (editable)
         {
-            Chapter1FullbrightUnlitText.Text = unlit;
-            Chapter1FullbrightLitText.Text   = lit;
+            Chapter1FullbrightUnlitText.Text = LoadManipKeyDisplayName(unlit!);
+            Chapter1FullbrightLitText.Text   = LoadManipKeyDisplayName(lit!);
         }
     }
 
@@ -7838,9 +8337,9 @@ public partial class MainWindow : Window
     {
         var name = e.ChangedButton switch
         {
-            MouseButton.Middle   => "MiddleMouseButton",
-            MouseButton.XButton1 => "ThumbMouseButton",
-            MouseButton.XButton2 => "ThumbMouseButton2",
+            MouseButton.Middle   => "MIDDLE_MOUSE_BUTTON",
+            MouseButton.XButton1 => "XBUTTON_ONE",
+            MouseButton.XButton2 => "XBUTTON_TWO",
             _ => null,
         };
         if (name is null) return;
@@ -7857,6 +8356,133 @@ public partial class MainWindow : Window
         if (path != null)
             FullBrightFilesService.UpdateConfigKey(path, configKey, value);
         RefreshFullBrightKeysUI();
+    }
+
+    // ── Chapter 5 FullBright key capture (mirrors the block above for Chapter 1) ────────────
+
+    /// <summary>Shows editable Unlit/Lit key rows reading from the live installed config.ini
+    /// when FullBright is installed for the active Chapter 5 exe, or "(fullbright not installed)"
+    /// otherwise. Mirrors <see cref="RefreshFullBrightKeysUI"/>.</summary>
+    private void RefreshChapter5FullBrightUI()
+    {
+        if (_capturingChapter5FullBrightKey) CancelChapter5FullBrightCapture();
+
+        var path = GetActiveFullBrightConfigPath(5);
+        var (unlit, lit) = path != null ? ParseFullBrightConfig(path) : (null, null);
+        bool editable = unlit != null && lit != null;
+
+        Chapter5FullbrightUnlitRow.Visibility         = editable ? Visibility.Visible : Visibility.Collapsed;
+        Chapter5FullbrightLitRow.Visibility           = editable ? Visibility.Visible : Visibility.Collapsed;
+        Chapter5FullbrightNotInstalledText.Visibility = editable ? Visibility.Collapsed : Visibility.Visible;
+        Chapter5FullbrightNotInstalledText.Text       = Loc.Get("chapter5_fullbright_not_installed");
+
+        var normalBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        var normalFg    = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
+        Chapter5FullbrightUnlitBtn.BorderBrush = normalBrush;
+        Chapter5FullbrightLitBtn.BorderBrush   = normalBrush;
+        Chapter5FullbrightUnlitText.Foreground = normalFg;
+        Chapter5FullbrightLitText.Foreground   = normalFg;
+
+        if (editable)
+        {
+            Chapter5FullbrightUnlitText.Text = LoadManipKeyDisplayName(unlit!);
+            Chapter5FullbrightLitText.Text   = LoadManipKeyDisplayName(lit!);
+        }
+    }
+
+    private void Chapter5FullbrightUnlitBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter5FullBrightCapture("KeyUnlit", Chapter5FullbrightUnlitBtn, Chapter5FullbrightUnlitText);
+    private void Chapter5FullbrightLitBtn_Click(object sender, RoutedEventArgs e) =>
+        StartChapter5FullBrightCapture("KeyLit", Chapter5FullbrightLitBtn, Chapter5FullbrightLitText);
+
+    private void StartChapter5FullBrightCapture(string configKey, Button btn, TextBlock text)
+    {
+        if (_capturingChapter5FullBrightKey)
+        {
+            var wasThis = _chapter5FullBrightCaptureTarget == configKey;
+            CancelChapter5FullBrightCapture();
+            RefreshChapter5FullBrightUI();
+            if (wasThis) return;
+        }
+
+        _capturingChapter5FullBrightKey  = true;
+        _chapter5FullBrightCaptureTarget = configKey;
+        text.Text       = Loc.Get("f11_remap_press_input");
+        text.Foreground = new SolidColorBrush(Teal);
+        btn.BorderBrush = new SolidColorBrush(Teal);
+
+        _chapter5FullBrightKeyCapture = CaptureChapter5FullBrightKeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _chapter5FullBrightKeyCapture, true);
+
+        _chapter5FullBrightMouseCapture = CaptureChapter5FullBrightMouseDown;
+        AddHandler(UIElement.PreviewMouseDownEvent, _chapter5FullBrightMouseCapture, true);
+    }
+
+    private void CancelChapter5FullBrightCapture()
+    {
+        _capturingChapter5FullBrightKey = false;
+        if (_chapter5FullBrightKeyCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewKeyDownEvent, _chapter5FullBrightKeyCapture);
+            _chapter5FullBrightKeyCapture = null;
+        }
+        if (_chapter5FullBrightMouseCapture != null)
+        {
+            RemoveHandler(UIElement.PreviewMouseDownEvent, _chapter5FullBrightMouseCapture);
+            _chapter5FullBrightMouseCapture = null;
+        }
+    }
+
+    private void CaptureChapter5FullBrightKeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key is Key.LeftCtrl or Key.RightCtrl
+                or Key.LeftShift or Key.RightShift
+                or Key.LeftAlt or Key.RightAlt
+                or Key.LWin or Key.RWin
+                or Key.None)
+            return;
+
+        var target = _chapter5FullBrightCaptureTarget!;
+        CancelChapter5FullBrightCapture();
+
+        if (key == Key.Escape)
+        {
+            RefreshChapter5FullBrightUI();
+            e.Handled = true;
+            return;
+        }
+
+        var name = WpfKeyToUnrealKeyName(key);
+        if (name != null) ApplyChapter5FullBrightKey(target, name);
+        else RefreshChapter5FullBrightUI();
+        e.Handled = true;
+    }
+
+    private void CaptureChapter5FullBrightMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        var name = e.ChangedButton switch
+        {
+            MouseButton.Middle   => "MIDDLE_MOUSE_BUTTON",
+            MouseButton.XButton1 => "XBUTTON_ONE",
+            MouseButton.XButton2 => "XBUTTON_TWO",
+            _ => null,
+        };
+        if (name is null) return;
+
+        var target = _chapter5FullBrightCaptureTarget!;
+        CancelChapter5FullBrightCapture();
+        ApplyChapter5FullBrightKey(target, name);
+        e.Handled = true;
+    }
+
+    private void ApplyChapter5FullBrightKey(string configKey, string value)
+    {
+        var path = GetActiveFullBrightConfigPath(5);
+        if (path != null)
+            FullBrightFilesService.UpdateConfigKey(path, configKey, value);
+        RefreshChapter5FullBrightUI();
     }
 
     /// <summary>Maps a WPF key to the key-name string FullBright's config.ini (and Unreal's
@@ -7894,5 +8520,728 @@ public partial class MainWindow : Window
 
             _ => null,
         };
+    }
+
+    // ── Hand Mods (per-chapter hand-skin paks fetched live from GitHub) ─────────
+    //
+    // Flow: HandModsMenuButton opens straight to a chapter picker (Screen 0 — HandModsHubScroll),
+    // then pick which installed version to target (Screen 1 — HandModsVersionList), then pick a
+    // mod for that version (Screen 2 — HandModsList, showing real install state plus an info
+    // button for each mod's declared hand color(s)), then a dedicated progress screen
+    // (Screen 3 — HandModsInstallPanel) drives the download/install.
+    private void HandModsChapter1Btn_Click(object sender, RoutedEventArgs e) => OpenHandModsOverlay(1);
+    private void HandModsChapter2Btn_Click(object sender, RoutedEventArgs e) => OpenHandModsOverlay(2);
+    private void HandModsChapter3Btn_Click(object sender, RoutedEventArgs e) => OpenHandModsOverlay(3);
+    private void HandModsChapter4Btn_Click(object sender, RoutedEventArgs e) => OpenHandModsOverlay(4);
+    private void HandModsChapter5Btn_Click(object sender, RoutedEventArgs e) => OpenHandModsOverlay(5);
+
+    private void OpenHandModsHub()
+    {
+        ShowHandModsScreenHub();
+        HandModsOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void OpenHandModsOverlay(int chapterNumber)
+    {
+        _handModsTargetChapter = chapterNumber;
+        _handModsWin64Dir = null;
+        _handModsPaksDir  = null;
+        _handModsList     = null;
+
+        BuildHandModsVersionList();
+        ShowHandModsScreenVersions();
+        HandModsOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void CloseHandModsBtn_Click(object sender, RoutedEventArgs e) =>
+        HandModsOverlay.Visibility = Visibility.Collapsed;
+
+    // Single back button shared by every non-root screen — walks back exactly one step:
+    // the mods list returns to the version picker, the version picker returns to the hub.
+    private void HandModsBackBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (HandModsListScroll.Visibility == Visibility.Visible)
+            ShowHandModsScreenVersions();
+        else
+            ShowHandModsScreenHub();
+    }
+
+    private void HandModsInstallDoneBtn_Click(object sender, RoutedEventArgs e)
+    {
+        BuildHandModsList();
+        ShowHandModsScreenMods();
+    }
+
+    private void ShowHandModsScreenHub()
+    {
+        HandModsBackBtn.Visibility        = Visibility.Collapsed;
+        HandModsHubScroll.Visibility      = Visibility.Visible;
+        HandModsVersionScroll.Visibility  = Visibility.Collapsed;
+        HandModsListScroll.Visibility     = Visibility.Collapsed;
+        HandModsSubmitScroll.Visibility   = Visibility.Collapsed;
+        HandModsInstallPanel.Visibility   = Visibility.Collapsed;
+        HandModsHeader.Text = "✋ Hand Mods";
+    }
+
+    private void ShowHandModsScreenVersions()
+    {
+        HandModsBackBtn.Visibility        = Visibility.Visible;
+        HandModsHubScroll.Visibility      = Visibility.Collapsed;
+        HandModsVersionScroll.Visibility  = Visibility.Visible;
+        HandModsListScroll.Visibility     = Visibility.Collapsed;
+        HandModsSubmitScroll.Visibility   = Visibility.Collapsed;
+        HandModsInstallPanel.Visibility   = Visibility.Collapsed;
+        HandModsHeader.Text = $"✋ Hand Mods — Chapter {_handModsTargetChapter}";
+    }
+
+    private void ShowHandModsScreenMods()
+    {
+        HandModsBackBtn.Visibility        = Visibility.Visible;
+        HandModsHubScroll.Visibility      = Visibility.Collapsed;
+        HandModsVersionScroll.Visibility  = Visibility.Collapsed;
+        HandModsListScroll.Visibility     = Visibility.Visible;
+        HandModsSubmitScroll.Visibility   = Visibility.Collapsed;
+        HandModsInstallPanel.Visibility   = Visibility.Collapsed;
+        HandModsHeader.Text = "✋ Hand Mods — Select a Mod";
+    }
+
+    private void ShowHandModsScreenSubmit()
+    {
+        HandModsBackBtn.Visibility        = Visibility.Visible;
+        HandModsHubScroll.Visibility      = Visibility.Collapsed;
+        HandModsVersionScroll.Visibility  = Visibility.Collapsed;
+        HandModsListScroll.Visibility     = Visibility.Collapsed;
+        HandModsSubmitScroll.Visibility   = Visibility.Visible;
+        HandModsInstallPanel.Visibility   = Visibility.Collapsed;
+        HandModsHeader.Text = Loc.Get("handmods_submit_header");
+    }
+
+    private void ShowHandModsScreenInstalling(string modName)
+    {
+        HandModsBackBtn.Visibility        = Visibility.Collapsed;
+        HandModsHubScroll.Visibility      = Visibility.Collapsed;
+        HandModsVersionScroll.Visibility  = Visibility.Collapsed;
+        HandModsListScroll.Visibility     = Visibility.Collapsed;
+        HandModsSubmitScroll.Visibility   = Visibility.Collapsed;
+        HandModsInstallPanel.Visibility   = Visibility.Visible;
+        HandModsHeader.Text = "✋ Installing…";
+
+        HandModsInstallModName.Text       = modName;
+        HandModsProgressBar.Value         = 0;
+        HandModsProgressText.Text         = "Downloading… 0%";
+        HandModsProgressText.Foreground   = new SolidColorBrush(Color.FromArgb(255, 0, 204, 170));
+        HandModsInstallDoneBtn.Visibility = Visibility.Collapsed;
+    }
+
+    // ── Hand Mods submission (players contribute a new hand mod for review) ─────
+
+    private void HandModsSubmitEntryBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _handModsSubmitChapter = _handModsTargetChapter > 0 ? _handModsTargetChapter : 1;
+        _handModsSubmitColors.Clear();
+        _handModsSubmitFiles.Clear();
+
+        HandModsSubmitNameBox.Text          = "";
+        HandModsSubmitFilesText.Text        = Loc.Get("handmods_submit_no_files");
+        HandModsSubmitStatusText.Visibility = Visibility.Collapsed;
+        HandModsSubmitSendBtn.IsEnabled     = true;
+        HandModsSubmitSendBtnText.Text      = Loc.Get("handmods_submit_send_btn");
+
+        BuildHandModsSubmitChapterChips();
+        BuildHandModsSubmitColorChips();
+
+        ShowHandModsScreenSubmit();
+    }
+
+    private void BuildHandModsSubmitChapterChips()
+    {
+        HandModsSubmitChapterPanel.Children.Clear();
+        _handModsSubmitChapterChips.Clear();
+        for (int n = 1; n <= 5; n++)
+        {
+            var chapterNum = n; // for-loop variables are shared across iterations in C#, unlike foreach — capture a fresh copy per closure
+            var chip = MakeSmallButton($"CH {chapterNum}", Teal);
+            chip.Margin = new Thickness(0, 0, 6, 6);
+            chip.Tag    = chapterNum;
+            chip.Click += (_, _) => { _handModsSubmitChapter = chapterNum; RefreshHandModsSubmitChips(); };
+            _handModsSubmitChapterChips.Add(chip);
+            HandModsSubmitChapterPanel.Children.Add(chip);
+        }
+        RefreshHandModsSubmitChips();
+    }
+
+    private void BuildHandModsSubmitColorChips()
+    {
+        HandModsSubmitColorsPanel.Children.Clear();
+        _handModsSubmitColorChips.Clear();
+        foreach (var color in Services.HandModSubmissionService.Colors)
+        {
+            var chip = MakeSmallButton(color, Teal);
+            chip.Margin = new Thickness(0, 0, 6, 6);
+            chip.Tag    = color;
+            chip.Click += (_, _) =>
+            {
+                if (!_handModsSubmitColors.Remove(color)) _handModsSubmitColors.Add(color);
+                RefreshHandModsSubmitChips();
+            };
+            _handModsSubmitColorChips.Add(chip);
+            HandModsSubmitColorsPanel.Children.Add(chip);
+        }
+        RefreshHandModsSubmitChips();
+    }
+
+    private void RefreshHandModsSubmitChips()
+    {
+        foreach (var chip in _handModsSubmitChapterChips)
+        {
+            var selected     = chip.Tag is int n && n == _handModsSubmitChapter;
+            chip.Background  = new SolidColorBrush(selected ? Color.FromArgb(255, 0, 120, 100) : Color.FromArgb(255, 8, 30, 55));
+            chip.BorderBrush = new SolidColorBrush(selected ? Color.FromArgb(255, 0, 204, 170) : Color.FromArgb(180, 0, 120, 100));
+        }
+        foreach (var chip in _handModsSubmitColorChips)
+        {
+            var selected     = chip.Tag is string c && _handModsSubmitColors.Contains(c);
+            chip.Background  = new SolidColorBrush(selected ? Color.FromArgb(255, 0, 120, 100) : Color.FromArgb(255, 8, 30, 55));
+            chip.BorderBrush = new SolidColorBrush(selected ? Color.FromArgb(255, 0, 204, 170) : Color.FromArgb(180, 0, 120, 100));
+        }
+    }
+
+    private void HandModsSubmitFilesBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new OpenFileDialog
+        {
+            Filter      = "Mod files|*.zip;*.pak;*.ucas;*.utoc",
+            Multiselect = true,
+        };
+        if (picker.ShowDialog() != true) return;
+
+        _handModsSubmitFiles.Clear();
+        _handModsSubmitFiles.AddRange(picker.FileNames);
+        HandModsSubmitFilesText.Text = _handModsSubmitFiles.Count == 0
+            ? Loc.Get("handmods_submit_no_files")
+            : string.Join(", ", _handModsSubmitFiles.Select(IOPath.GetFileName));
+    }
+
+    private async void HandModsSubmitSendBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var name = HandModsSubmitNameBox.Text.Trim();
+
+        if (string.IsNullOrEmpty(name))
+        {
+            ShowHandModsSubmitError(Loc.Get("handmods_submit_err_name"));
+            return;
+        }
+        if (_handModsSubmitFiles.Count == 0)
+        {
+            ShowHandModsSubmitError(Loc.Get("handmods_submit_err_files"));
+            return;
+        }
+
+        HandModsSubmitSendBtn.IsEnabled     = false;
+        HandModsSubmitSendBtnText.Text      = Loc.Get("handmods_submit_sending");
+        HandModsSubmitStatusText.Visibility = Visibility.Collapsed;
+
+        var cached        = Services.DiscordOAuthService.LoadCached();
+        var submitterName = cached is { } u ? $"{u.Username} · ID: {u.Id}" : null;
+
+        var (ok, error) = await Services.HandModSubmissionService.SubmitAsync(
+            name, _handModsSubmitChapter, _handModsSubmitColors, _handModsSubmitFiles, submitterName);
+
+        if (ok)
+        {
+            HandModsSubmitStatusText.Text       = Loc.Get("handmods_submit_success");
+            HandModsSubmitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 200, 140));
+            HandModsSubmitStatusText.Visibility = Visibility.Visible;
+            HandModsSubmitSendBtnText.Text       = Loc.Get("handmods_submit_send_btn");
+            await Task.Delay(2000);
+            ShowHandModsScreenHub();
+        }
+        else
+        {
+            ShowHandModsSubmitError(error ?? Loc.Get("handmods_submit_err_send"));
+            HandModsSubmitSendBtnText.Text  = Loc.Get("handmods_submit_send_btn");
+            HandModsSubmitSendBtn.IsEnabled = true;
+        }
+    }
+
+    private void ShowHandModsSubmitError(string message)
+    {
+        HandModsSubmitStatusText.Text       = message;
+        HandModsSubmitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 200, 60, 60));
+        HandModsSubmitStatusText.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Lists every install of the targeted chapter that actually exists on disk
+    /// (Auto + each custom) so the user picks which one to browse/install hand mods into
+    /// before ever seeing the mod list.</summary>
+    private void BuildHandModsVersionList()
+    {
+        HandModsVersionList.Children.Clear();
+
+        var chapter = _chapters.FirstOrDefault(c => c.Number == _handModsTargetChapter);
+        if (chapter is null) return;
+
+        var autoExe = _epicService.IsEnabled ? _epicService.GetExePath(chapter.Number) : chapter.GameExePath;
+        if (!string.IsNullOrEmpty(autoExe) && File.Exists(autoExe))
+            HandModsVersionList.Children.Add(MakeHandModsVersionRow(Loc.Get("auto_name"), autoExe));
+
+        foreach (var custom in _store.GetCustoms(chapter.Number))
+        {
+            if (!File.Exists(custom.ExePath)) continue;
+            HandModsVersionList.Children.Add(MakeHandModsVersionRow(custom.Name, custom.ExePath));
+        }
+
+        if (HandModsVersionList.Children.Count == 0)
+        {
+            HandModsVersionList.Children.Add(new TextBlock
+            {
+                Text = "No installed version found for this chapter.",
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize = 11, Foreground = new SolidColorBrush(Color.FromArgb(160, 160, 180, 200)),
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 12, 4, 0),
+            });
+        }
+    }
+
+    private Border MakeHandModsVersionRow(string name, string exePath)
+    {
+        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        info.Children.Add(new TextBlock
+        {
+            Text = name, FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 13, FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromArgb(255, 210, 220, 230)),
+        });
+        info.Children.Add(new TextBlock
+        {
+            Text = exePath, FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 10, Foreground = new SolidColorBrush(Color.FromArgb(255, 45, 90, 120)),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+
+        var normalBg = new SolidColorBrush(Color.FromArgb(12, 255, 255, 255));
+        var hoverBg  = new SolidColorBrush(Color.FromArgb(28, 255, 255, 255));
+        var row = new Border
+        {
+            Background   = normalBg,
+            CornerRadius = new CornerRadius(4),
+            Padding      = new Thickness(10, 8, 10, 8),
+            Child        = info,
+            Margin       = new Thickness(0, 0, 0, 2),
+            Cursor       = Cursors.Hand,
+        };
+        row.MouseEnter += (_, _) => row.Background = hoverBg;
+        row.MouseLeave += (_, _) => row.Background = normalBg;
+        row.MouseDown  += (_, _) =>
+        {
+            var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
+            if (win64 is null)
+            {
+                ShowHandModsDialog("No Content\\Paks folder found for this version.");
+                return;
+            }
+            _handModsWin64Dir = win64;
+            _handModsPaksDir  = LoadManipFilesService.GetPaksDir(win64);
+            ShowHandModsScreenMods();
+            _ = LoadHandModsAsync();
+        };
+        return row;
+    }
+
+    /// <summary>Fetches (or reuses this session's cache of) the chapter's mod list and renders
+    /// Screen 2 — each row's install state is checked against the version picked in Screen 1.</summary>
+    private async Task LoadHandModsAsync()
+    {
+        var chapterNumber = _handModsTargetChapter;
+
+        HandModsList.Children.Clear();
+        HandModsList.Children.Add(new TextBlock
+        {
+            Text = "Fetching mods…",
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 11, Foreground = new SolidColorBrush(TealDim), Margin = new Thickness(4, 12, 4, 0),
+        });
+
+        if (!_handModsCache.TryGetValue(chapterNumber, out var mods))
+        {
+            try
+            {
+                mods = await HandModsService.GetModsAsync(chapterNumber);
+                _handModsCache[chapterNumber] = mods;
+            }
+            catch (Exception ex)
+            {
+                if (_handModsTargetChapter != chapterNumber) return; // overlay moved on while awaiting
+                HandModsList.Children.Clear();
+                HandModsList.Children.Add(new TextBlock
+                {
+                    Text = $"Failed to load mods:\n{ex.Message}",
+                    FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize = 11, Foreground = new SolidColorBrush(Color.FromArgb(220, 204, 51, 51)),
+                    TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 12, 4, 0),
+                });
+                return;
+            }
+        }
+
+        if (_handModsTargetChapter != chapterNumber) return; // overlay moved on while awaiting
+        _handModsList = mods;
+        BuildHandModsList();
+    }
+
+    private void BuildHandModsList()
+    {
+        HandModsList.Children.Clear();
+        if (_handModsList is null) return;
+
+        if (_handModsList.Count == 0)
+        {
+            HandModsList.Children.Add(new TextBlock
+            {
+                Text = "No hand mods available for this chapter yet.",
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize = 11, Foreground = new SolidColorBrush(Color.FromArgb(160, 160, 180, 200)),
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 12, 4, 0),
+            });
+            return;
+        }
+
+        foreach (var mod in _handModsList)
+            HandModsList.Children.Add(MakeHandModRow(mod));
+    }
+
+    private Border MakeHandModRow(HandModsService.HandMod mod)
+    {
+        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        info.Children.Add(new TextBlock
+        {
+            Text = mod.Name, FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 13, FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromArgb(255, 210, 220, 230)),
+        });
+        info.Children.Add(new TextBlock
+        {
+            Text = HandModsService.FormatFileSize(mod.Size),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 10, Foreground = new SolidColorBrush(Color.FromArgb(255, 45, 90, 120)),
+        });
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(info, 0);
+        grid.Children.Add(info);
+
+        var paksDir   = _handModsPaksDir;
+        var installed = paksDir != null && HandModsService.IsInstalled(paksDir, mod.BaseName);
+
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0),
+        };
+        Grid.SetColumn(actions, 1);
+        grid.Children.Add(actions);
+
+        var infoBtn = new Button
+        {
+            Width = 26, Height = 26,
+            Background = new SolidColorBrush(Color.FromArgb(40, 100, 130, 160)),
+            BorderThickness = new Thickness(0), Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 6, 0),
+            Content = new TextBlock
+            {
+                FontFamily = new FontFamily("Segoe MDL2 Assets"), Text = "",
+                FontSize = 13, Foreground = new SolidColorBrush(Color.FromArgb(220, 160, 180, 200)),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        ButtonHelper.SetCornerRadius(infoBtn, new CornerRadius(3));
+        infoBtn.Click += async (_, _) => await HandModInfo_Click(mod, infoBtn);
+        actions.Children.Add(infoBtn);
+
+        var previewBtn = new Button
+        {
+            Width = 26, Height = 26,
+            Background = new SolidColorBrush(Color.FromArgb(40, 100, 130, 160)),
+            BorderThickness = new Thickness(0), Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 6, 0),
+            Content = new TextBlock
+            {
+                FontFamily = new FontFamily("Segoe MDL2 Assets"), Text = "",
+                FontSize = 13, Foreground = new SolidColorBrush(Color.FromArgb(220, 160, 180, 200)),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        ButtonHelper.SetCornerRadius(previewBtn, new CornerRadius(3));
+        previewBtn.Click += async (_, _) => await HandModPreview_Click(mod, previewBtn);
+        actions.Children.Add(previewBtn);
+
+        if (installed)
+        {
+            var uninstallBtn = MakeSmallButton("Uninstall", Color.FromArgb(200, 204, 51, 51));
+            uninstallBtn.MinWidth = 90;
+            uninstallBtn.Click += async (_, _) => await HandModUninstall_Click(mod);
+            actions.Children.Add(uninstallBtn);
+        }
+        else if (paksDir is null)
+        {
+            actions.Children.Add(new TextBlock
+            {
+                Text = "unavailable", FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize = 10, Foreground = new SolidColorBrush(Color.FromArgb(140, 160, 180, 200)),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
+        else
+        {
+            var installBtn = MakeSmallButton("Install", Teal);
+            installBtn.MinWidth = 90;
+            var capWin64 = _handModsWin64Dir!; var capPaks = paksDir;
+            installBtn.Click += (_, _) => StartHandModInstall(mod, capWin64, capPaks);
+            actions.Children.Add(installBtn);
+        }
+
+        return new Border
+        {
+            Background   = new SolidColorBrush(installed ? Color.FromArgb(30, 0, 204, 170) : Color.FromArgb(12, 255, 255, 255)),
+            CornerRadius = new CornerRadius(4),
+            Padding      = new Thickness(10, 8, 10, 8),
+            Child        = grid,
+            Margin       = new Thickness(0, 0, 0, 2),
+        };
+    }
+
+    /// <summary>Downloads (or reuses the cached copy of) a mod's zip purely to read its declared
+    /// hand color(s) out of hand.txt and show them — doesn't touch install state.</summary>
+    private async Task HandModInfo_Click(HandModsService.HandMod mod, Button infoBtn)
+    {
+        infoBtn.IsEnabled = false;
+        try
+        {
+            var zipPath = await HandModsService.DownloadModAsync(mod, _handModsTargetChapter);
+            var hands = HandModsService.ReadDeclaredHands(zipPath);
+            ShowHandModsDialog(hands != null
+                ? $"{mod.Name} changes: {string.Join(", ", hands)}"
+                : $"{mod.Name} hasn't declared its hand color yet.");
+        }
+        catch (Exception ex)
+        {
+            ShowHandModsDialog($"Couldn't check {mod.Name}'s info:\n{ex.Message}");
+        }
+        finally
+        {
+            infoBtn.IsEnabled = true;
+        }
+    }
+
+    /// <summary>Downloads (or reuses the cached copy of) a mod's zip purely to read its hand
+    /// preview image(s) — named "{name}_{color}.ext" inside the zip — and show them, or a
+    /// "no preview available" message if it ships none.</summary>
+    private async Task HandModPreview_Click(HandModsService.HandMod mod, Button previewBtn)
+    {
+        previewBtn.IsEnabled = false;
+        try
+        {
+            var zipPath = await HandModsService.DownloadModAsync(mod, _handModsTargetChapter);
+            var images  = HandModsService.ReadHandImages(zipPath);
+            ShowHandModsPreviewDialog(mod.Name, images);
+        }
+        catch (Exception ex)
+        {
+            ShowHandModsDialog($"Couldn't load {mod.Name}'s preview:\n{ex.Message}");
+        }
+        finally
+        {
+            previewBtn.IsEnabled = true;
+        }
+    }
+
+    private void ShowHandModsPreviewDialog(string modName, List<HandModsService.HandImage> images)
+    {
+        UIElement content;
+        if (images.Count == 0)
+        {
+            content = new TextBlock
+            {
+                Text = "No preview available.",
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize = 12, Foreground = new SolidColorBrush(Color.FromArgb(200, 160, 180, 200)),
+                TextWrapping = TextWrapping.Wrap, MaxWidth = 360,
+            };
+        }
+        else
+        {
+            var panel = new StackPanel { Orientation = Orientation.Horizontal };
+            foreach (var image in images)
+            {
+                var bitmap = new BitmapImage();
+                using (var ms = new MemoryStream(image.Data))
+                {
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.StreamSource = ms;
+                    bitmap.EndInit();
+                }
+                bitmap.Freeze();
+
+                var card = new StackPanel { Margin = new Thickness(8, 0, 8, 0) };
+                card.Children.Add(new Border
+                {
+                    Width = 260, Height = 260, CornerRadius = new CornerRadius(6),
+                    Background = new SolidColorBrush(Color.FromArgb(255, 14, 42, 78)),
+                    Child = new Image { Source = bitmap, Stretch = Stretch.UniformToFill },
+                });
+                card.Children.Add(new TextBlock
+                {
+                    Text = image.Color, FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize = 12, Foreground = new SolidColorBrush(Color.FromArgb(200, 160, 180, 200)),
+                    HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 6, 0, 0),
+                });
+                panel.Children.Add(card);
+            }
+            content = panel;
+        }
+
+        WpfDialog.Show(this, $"{modName} preview", content, closeText: "OK");
+    }
+
+    /// <summary>Drives Screen 3: downloads <paramref name="mod"/>, reads which hand color(s) it
+    /// declares (its zip's hand.txt — defaults to a single <see cref="HandModsService.UnknownHand"/>
+    /// entry if the mod predates that convention), warns and auto-removes any other installed mod
+    /// that shares a color, then installs it. Mods declaring entirely *different* colors (e.g. one
+    /// Blue, one Green) are left alone and can coexist.</summary>
+    private async void StartHandModInstall(HandModsService.HandMod mod, string win64Dir, string paksDir)
+    {
+        _handModsWin64Dir = win64Dir;
+        _handModsPaksDir  = paksDir;
+        var mods = _handModsList ?? [];
+
+        ShowHandModsScreenInstalling(mod.Name);
+
+        try
+        {
+            var sw = Stopwatch.StartNew();
+            var progress = new Progress<int>(p =>
+            {
+                HandModsProgressBar.Value = p;
+                HandModsProgressText.Text = $"Downloading… {p}%";
+            });
+            var zipPath = await HandModsService.DownloadModAsync(mod, _handModsTargetChapter, progress);
+
+            // Hand-mod zips are tiny (a few MB) and are often already cached, so the real
+            // download can finish almost instantly — pad the bar up to a floor duration with a
+            // smooth animated fill so this step actually reads as progress instead of flashing by.
+            var downloadFloor = DownloadFloorDuration - sw.Elapsed;
+            await AnimateHandModsProgressAsync(HandModsProgressBar.Value, 100,
+                downloadFloor > TimeSpan.Zero ? downloadFloor : TimeSpan.Zero,
+                p => $"Downloading… {p}%");
+
+            var newHands = HandModsService.ReadDeclaredHands(zipPath) ?? [HandModsService.UnknownHand];
+
+            var conflicting = new List<HandModsService.HandMod>();
+            foreach (var other in mods)
+            {
+                if (other.BaseName == mod.BaseName) continue;
+                if (!HandModsService.IsInstalled(paksDir, other.BaseName)) continue;
+                var otherHands = HandModsService.GetInstalledHands(paksDir, other.BaseName);
+                if (HandModsService.HandsConflict(newHands, otherHands))
+                    conflicting.Add(other);
+            }
+
+            if (conflicting.Count > 0)
+            {
+                var names  = string.Join(", ", conflicting.Select(m => m.Name));
+                var shared = newHands.Where(h => conflicting.Any(c =>
+                        HandModsService.GetInstalledHands(paksDir, c.BaseName)
+                            .Any(oh => oh.Equals(h, StringComparison.OrdinalIgnoreCase))))
+                    .ToList();
+                var affected = shared.Count > 0 ? shared : newHands;
+                var colors   = string.Join(", ", affected);
+                var confirmContent = new TextBlock
+                {
+                    Text = $"⚠ {mod.Name} changes the {colors} hand{(affected.Count == 1 ? "" : "s")}.\n"
+                         + $"{names} will be removed first.",
+                    FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize = 12, Foreground = new SolidColorBrush(Color.FromArgb(200, 160, 180, 200)),
+                    TextWrapping = TextWrapping.Wrap, MaxWidth = 360,
+                };
+                var confirmResult = WpfDialog.Show(this, "Hand Conflict", confirmContent,
+                    primaryText: "Continue", closeText: "Cancel");
+                if (confirmResult != WpfDialogResult.Primary)
+                {
+                    BuildHandModsList();
+                    ShowHandModsScreenMods();
+                    return;
+                }
+
+                await Task.Run(() =>
+                {
+                    foreach (var c in conflicting)
+                        HandModsService.UninstallByBaseName(paksDir, c.BaseName);
+                });
+            }
+
+            HandModsProgressText.Text = "Installing files…";
+            await Task.Run(() => HandModsService.Install(paksDir, zipPath, mod.BaseName));
+            await Task.Delay(InstallHoldDuration); // extraction is near-instant — hold so it's readable
+
+            HandModsProgressBar.Value = 100;
+            HandModsProgressText.Text = $"✔ {mod.Name} installed successfully.";
+            HandModsInstallDoneBtn.Visibility = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            HandModsProgressText.Foreground   = new SolidColorBrush(Color.FromArgb(220, 204, 51, 51));
+            HandModsProgressText.Text         = $"Error installing mod:\n{ex.Message}";
+            HandModsInstallDoneBtn.Visibility = Visibility.Visible;
+        }
+    }
+
+    private static readonly TimeSpan DownloadFloorDuration = TimeSpan.FromMilliseconds(1500);
+    private static readonly TimeSpan InstallHoldDuration    = TimeSpan.FromMilliseconds(700);
+
+    /// <summary>Smoothly steps <see cref="HandModsProgressBar"/> from <paramref name="from"/> to
+    /// <paramref name="to"/> over <paramref name="duration"/>, updating the status text via
+    /// <paramref name="labelFormat"/> along the way — used to pad fast/cached downloads up to a
+    /// minimum visible duration instead of the bar jumping straight to 100%.</summary>
+    private async Task AnimateHandModsProgressAsync(double from, double to, TimeSpan duration, Func<int, string> labelFormat)
+    {
+        const int frameMs = 30;
+        var steps = duration > TimeSpan.Zero ? Math.Max(1, (int)(duration.TotalMilliseconds / frameMs)) : 1;
+        for (int i = 1; i <= steps; i++)
+        {
+            var value = from + (to - from) * i / steps;
+            HandModsProgressBar.Value = value;
+            HandModsProgressText.Text = labelFormat((int)value);
+            if (duration > TimeSpan.Zero) await Task.Delay(frameMs);
+        }
+    }
+
+    private async Task HandModUninstall_Click(HandModsService.HandMod mod)
+    {
+        if (_handModsPaksDir is null) return;
+        var paksDir = _handModsPaksDir;
+
+        try
+        {
+            await Task.Run(() => HandModsService.UninstallByBaseName(paksDir, mod.BaseName));
+            BuildHandModsList();
+        }
+        catch (Exception ex)
+        {
+            ShowHandModsDialog($"Error removing mod:\n{ex.Message}");
+        }
+    }
+
+    private void ShowHandModsDialog(string message)
+    {
+        WpfDialog.Show(this, "Hand Mods", new TextBlock
+        {
+            Text = message,
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 12, Foreground = new SolidColorBrush(Color.FromArgb(200, 160, 180, 200)),
+            TextWrapping = TextWrapping.Wrap, MaxWidth = 360,
+        }, closeText: "OK");
     }
 }

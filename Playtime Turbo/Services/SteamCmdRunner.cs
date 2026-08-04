@@ -67,18 +67,11 @@ public static class SteamCmdRunner
         try
         {
             var content = File.ReadAllText(vdf);
+            var block   = FindMostRecentUserBlock(content);
+            if (block is null) return null;
 
-            // Split into per-user blocks; each block starts with a quoted 64-bit SteamID
-            var blocks = Regex.Split(content, @"""\d{17}""");
-
-            foreach (var block in blocks)
-            {
-                // Look for MostRecent "1" inside this block
-                if (!Regex.IsMatch(block, @"""MostRecent""\s+""1""")) continue;
-
-                var m = Regex.Match(block, @"""AccountName""\s+""([^""]+)""");
-                if (m.Success) return m.Groups[1].Value;
-            }
+            var m = Regex.Match(block, @"""AccountName""\s+""([^""]+)""");
+            if (m.Success) return m.Groups[1].Value;
         }
         catch { }
         return null;
@@ -98,23 +91,58 @@ public static class SteamCmdRunner
             var vdf = Path.Combine(steamDir, "config", "loginusers.vdf");
             if (!File.Exists(vdf)) return null;
 
-            var content = File.ReadAllText(vdf);
+            var content   = File.ReadAllText(vdf);
+            var steamId64 = FindMostRecentSteamId(content, out var block);
+            if (steamId64 is null || block is null) return null;
 
-            // Split on quoted 17-digit SteamIDs → [before, id1, block1, id2, block2, …]
-            var parts = Regex.Split(content, @"""(\d{17})""");
-            for (int i = 1; i + 1 < parts.Length; i += 2)
-            {
-                var block = parts[i + 1];
-                if (!Regex.IsMatch(block, @"""MostRecent""\s+""1""")) continue;
-
-                var steamId64 = parts[i];
-                var persona   = Regex.Match(block, @"""PersonaName""\s+""([^""]+)""");
-                var name      = persona.Success ? persona.Groups[1].Value : steamId64;
-                return new SteamUser(name, steamId64);
-            }
+            var persona = Regex.Match(block, @"""PersonaName""\s+""([^""]+)""");
+            var name    = persona.Success ? persona.Groups[1].Value : steamId64;
+            return new SteamUser(name, steamId64);
         }
         catch { }
         return null;
+    }
+
+    /// <summary>Returns the block of the most-recently-used Steam user in a parsed
+    /// loginusers.vdf, or null if no user record exists. See <see cref="FindMostRecentSteamId"/>.</summary>
+    private static string? FindMostRecentUserBlock(string content) =>
+        FindMostRecentSteamId(content, out var block) is null ? null : block;
+
+    /// <summary>
+    /// Picks the most-recently-used user block out of loginusers.vdf. Prefers a block with
+    /// `MostRecent "1"` (the field Steam historically wrote); if no block has it — newer Steam
+    /// clients stopped writing it — falls back to the block with the highest `Timestamp`.
+    /// </summary>
+    private static string? FindMostRecentSteamId(string content, out string? block)
+    {
+        block = null;
+        string? bestId = null, bestBlock = null;
+        long bestTimestamp = -1;
+
+        // Split on quoted 17-digit SteamIDs → [before, id1, block1, id2, block2, …]
+        var parts = Regex.Split(content, @"""(\d{17})""");
+        for (int i = 1; i + 1 < parts.Length; i += 2)
+        {
+            var candidateBlock = parts[i + 1];
+            var steamId64      = parts[i];
+
+            if (Regex.IsMatch(candidateBlock, @"""MostRecent""\s+""1"""))
+            {
+                block = candidateBlock;
+                return steamId64;
+            }
+
+            var ts = Regex.Match(candidateBlock, @"""Timestamp""\s+""(\d+)""");
+            if (ts.Success && long.TryParse(ts.Groups[1].Value, out var timestamp) && timestamp > bestTimestamp)
+            {
+                bestTimestamp = timestamp;
+                bestId        = steamId64;
+                bestBlock     = candidateBlock;
+            }
+        }
+
+        block = bestBlock;
+        return bestId;
     }
 
     /// <summary>Returns the local avatar cache path for a given SteamID64, or null.</summary>
