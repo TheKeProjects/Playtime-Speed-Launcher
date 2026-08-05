@@ -3516,6 +3516,99 @@
                         </ScrollViewer>
                         <ScrollViewer x:Name="HandModsSubmitScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                             <StackPanel Margin="24,18">
+                                <!-- Discord identity -->
+                                <TextBlock x:Name="HandModsSubmitDiscordLabel"
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="10" FontWeight="Bold" Foreground="#3A6A8A"
+                                           Margin="0,0,0,6"/>
+
+                                <!-- Connect button + info button row -->
+                                <StackPanel x:Name="HandModsSubmitDiscordConnectRow"
+                                            Orientation="Horizontal"
+                                            Margin="0,0,0,16">
+                                    <Button x:Name="HandModsSubmitDiscordConnectBtn"
+                                            Height="34" HorizontalAlignment="Left"
+                                            local:ButtonHelper.CornerRadius="3"
+                                            Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1"
+                                            Padding="14,0"
+                                            Click="HandModsSubmitDiscordConnectBtn_Click">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BD;"
+                                                       FontSize="13" Foreground="#3A6A8A"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="HandModsSubmitDiscordConnectBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold" Foreground="#3A6A8A"
+                                                       VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button x:Name="HandModsSubmitDiscordInfoBtn"
+                                            Width="26" Height="26"
+                                            Margin="8,0,0,0"
+                                            VerticalAlignment="Center"
+                                            local:ButtonHelper.CornerRadius="13"
+                                            Background="Transparent" BorderBrush="#0D2535" BorderThickness="1"
+                                            Click="HandModsSubmitDiscordInfoBtn_Click">
+                                        <TextBlock Text="?"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Button>
+                                </StackPanel>
+
+                                <!-- Waiting for browser authorization -->
+                                <StackPanel x:Name="HandModsSubmitDiscordWaiting"
+                                            Visibility="Collapsed"
+                                            Margin="0,0,0,16">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="HandModsSubmitDiscordWaitingText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="HandModsSubmitDiscordCancelAuthBtn"
+                                                Height="20"
+                                                local:ButtonHelper.CornerRadius="2"
+                                                Background="Transparent" BorderBrush="#0D2535" BorderThickness="1"
+                                                Padding="8,0" Margin="10,0,0,0"
+                                                Click="HandModsSubmitDiscordCancelAuthBtn_Click">
+                                            <TextBlock x:Name="HandModsSubmitDiscordCancelAuthBtnText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="9" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Connected state: username only + × to disconnect -->
+                                <Border x:Name="HandModsSubmitDiscordConnected"
+                                        Visibility="Collapsed"
+                                        Background="#061408"
+                                        BorderBrush="#1A3A1A" BorderThickness="1"
+                                        CornerRadius="3"
+                                        Padding="10,8"
+                                        Margin="0,0,0,16">
+                                    <Grid>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BD;"
+                                                       FontSize="14" Foreground="#00CC88"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="HandModsSubmitDiscordUsername"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#00CC88"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        </StackPanel>
+                                        <Button x:Name="HandModsSubmitDiscordDisconnectBtn"
+                                                Width="22" Height="22"
+                                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                local:ButtonHelper.CornerRadius="11"
+                                                Background="Transparent" BorderBrush="#2A4A2A" BorderThickness="1"
+                                                Click="HandModsSubmitDiscordDisconnectBtn_Click">
+                                            <TextBlock Text="✕"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="9" Foreground="#336633"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+
                                 <TextBlock x:Name="HandModsSubmitChapterLabel"
                                            FontFamily="Cascadia Code, Consolas, Courier New"
                                            FontSize="10" FontWeight="Bold" Foreground="#3A6A8A"

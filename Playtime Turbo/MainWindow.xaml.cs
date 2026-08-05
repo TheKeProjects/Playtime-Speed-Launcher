@@ -122,6 +122,7 @@ public partial class MainWindow : Window
     // ── Game watcher ──────────────────────────────────────────────────────────
     private readonly bool[] _gameWasRunning;
     private readonly int[]  _runningChapterPid; // cached PID per chapter, refreshed every 2s by GameWatcherTick
+    private readonly Dictionary<string, string?> _shippingExeNameCache = []; // exe path -> resolved shipping binary name (see ResolveShippingExeName)
     private bool             _gameWatcherInitialized;
     private Window?          _gameToast;
     private Window?          _tutorialToast;
@@ -250,7 +251,7 @@ public partial class MainWindow : Window
         ["Edwin"] = "460391445690449922",
         ["Technight"] = "257300997322440704",
         ["AdrianPG77"] = "752207247769206795",
-        ["ᴢᴀᴇᴇ2"] = "807763566849163264",
+        ["ᴢᴀᴇᴇ"] = "807763566849163264",
     };
 
     // ── Palette ───────────────────────────────────────────────────────────────
@@ -455,6 +456,10 @@ public partial class MainWindow : Window
         HandModsChapter4BtnText.Text     = Loc.Get("chapter4_section");
         HandModsChapter5BtnText.Text     = Loc.Get("chapter5_section");
         HandModsSubmitEntryBtnText.Text  = Loc.Get("handmods_submit_entry_btn");
+        HandModsSubmitDiscordLabel.Text  = Loc.Get("handmods_submit_discord_label");
+        HandModsSubmitDiscordConnectBtnText.Text    = Loc.Get("bug_report_discord_connect_btn");
+        HandModsSubmitDiscordWaitingText.Text       = Loc.Get("bug_report_discord_waiting");
+        HandModsSubmitDiscordCancelAuthBtnText.Text = Loc.Get("bug_report_discord_cancel");
         HandModsSubmitChapterLabel.Text  = Loc.Get("handmods_submit_chapter_label");
         HandModsSubmitNameLabel.Text     = Loc.Get("handmods_submit_name_label");
         HandModsSubmitColorsLabel.Text   = Loc.Get("handmods_submit_colors_label");
@@ -3077,7 +3082,13 @@ public partial class MainWindow : Window
                 // resident as a parent process alongside the real renderer it spawns
                 // ("ch5_pro-Win64-Shipping.exe"). The stub never presents a frame, so FPS tracking
                 // must target the shipping process's PID when one is present, not the stub's.
-                var shippingProcs = Process.GetProcessesByName(exeName + "-Win64-Shipping");
+                // The shipping binary's name doesn't always match the stub's own filename though
+                // (e.g. Chapter 4's stub is "Playtime_Chapter4.exe" but its shipping binary is
+                // "ch4_pro-Win64-Shipping.exe"), so it's resolved from disk instead of guessed.
+                var shippingExeName = ResolveShippingExeName(path);
+                var shippingProcs = shippingExeName != null
+                    ? Process.GetProcessesByName(shippingExeName)
+                    : [];
                 var trackedProcs = shippingProcs.Length > 0 ? shippingProcs : procs;
 
                 running = procs.Length > 0 || shippingProcs.Length > 0;
@@ -6930,11 +6941,86 @@ public partial class MainWindow : Window
         BugDiscordConnectRow.Visibility = Visibility.Visible;
     }
 
-    private void BugDiscordInfoBtn_Click(object sender, RoutedEventArgs e) =>
+    private void BugDiscordInfoBtn_Click(object sender, RoutedEventArgs e)
+    {
+        DiscordInfoWhyText.Text       = Loc.Get("bug_report_discord_info_why_text");
         DiscordInfoOverlay.Visibility = Visibility.Visible;
+    }
 
     private void DiscordInfoCloseBtn_Click(object sender, RoutedEventArgs e) =>
         DiscordInfoOverlay.Visibility = Visibility.Collapsed;
+
+    /// <summary>Shows the "Discord required" explainer dialog — why it's needed (per-caller
+    /// <paramref name="introTextKey"/>), the identify-only permission it requests, and what it
+    /// can't see — used to gate any Discord-required Send flow, and starts the OAuth flow via
+    /// <paramref name="onConnect"/> if the user chooses to continue. Shared by the bug-report and
+    /// hand-mod-submission Send flows, which only differ in their intro line.</summary>
+    private async Task ShowDiscordRequiredDialogAsync(string introTextKey, Action onConnect)
+    {
+        var content = new StackPanel();
+        content.Children.Add(new TextBlock
+        {
+            Text         = Loc.Get(introTextKey),
+            TextWrapping = TextWrapping.Wrap,
+            FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize     = 12,
+            Foreground   = new SolidColorBrush(Color.FromArgb(255, 160, 180, 200)),
+            Margin       = new Thickness(0, 0, 0, 16),
+        });
+        content.Children.Add(new TextBlock
+        {
+            Text       = Loc.Get("bug_report_discord_info_perms_title"),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize   = 10, FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x44, 0xCC)),
+            Margin     = new Thickness(0, 0, 0, 8),
+        });
+
+        var permRow = new Border
+        {
+            Background      = new SolidColorBrush(Color.FromArgb(40, 119, 85, 204)),
+            BorderBrush     = new SolidColorBrush(Color.FromArgb(90, 119, 85, 204)),
+            BorderThickness = new Thickness(1),
+            CornerRadius    = new CornerRadius(4),
+            Padding         = new Thickness(10, 8, 10, 8),
+            Margin          = new Thickness(0, 0, 0, 10),
+        };
+        var permStack = new StackPanel();
+        permStack.Children.Add(new TextBlock
+        {
+            Text       = Loc.Get("bug_report_discord_info_perm_name"),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize   = 10, FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Color.FromRgb(119, 85, 204)),
+        });
+        permStack.Children.Add(new TextBlock
+        {
+            Text         = Loc.Get("bug_report_discord_info_perm_desc"),
+            FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize     = 9,
+            Foreground   = new SolidColorBrush(Color.FromRgb(74, 90, 122)),
+            TextWrapping = TextWrapping.Wrap,
+            Margin       = new Thickness(0, 3, 0, 0),
+        });
+        permRow.Child = permStack;
+        content.Children.Add(permRow);
+
+        content.Children.Add(new TextBlock
+        {
+            Text         = Loc.Get("bug_report_discord_info_no_access"),
+            FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize     = 9,
+            Foreground   = new SolidColorBrush(Color.FromRgb(51, 68, 68)),
+            TextWrapping = TextWrapping.Wrap,
+        });
+
+        var discordResult = await WpfDialog.ShowAsync(this,
+            Loc.Get("bug_report_discord_required_title"), content,
+            primaryText: Loc.Get("bug_report_discord_connect_btn"),
+            closeText:   Loc.Get("back"));
+
+        if (discordResult == WpfDialogResult.Primary) onConnect();
+    }
 
     private async void SendBugReportBtn_Click(object sender, RoutedEventArgs e)
     {
@@ -6951,70 +7037,8 @@ public partial class MainWindow : Window
 
         if (_bugReportDiscordUser is null)
         {
-            var content = new StackPanel();
-            content.Children.Add(new TextBlock
-            {
-                Text         = Loc.Get("bug_report_err_discord_required"),
-                TextWrapping = TextWrapping.Wrap,
-                FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
-                FontSize     = 12,
-                Foreground   = new SolidColorBrush(Color.FromArgb(255, 160, 180, 200)),
-                Margin       = new Thickness(0, 0, 0, 16),
-            });
-            content.Children.Add(new TextBlock
-            {
-                Text       = Loc.Get("bug_report_discord_info_perms_title"),
-                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
-                FontSize   = 10, FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x44, 0xCC)),
-                Margin     = new Thickness(0, 0, 0, 8),
-            });
-
-            var permRow = new Border
-            {
-                Background      = new SolidColorBrush(Color.FromArgb(40, 119, 85, 204)),
-                BorderBrush     = new SolidColorBrush(Color.FromArgb(90, 119, 85, 204)),
-                BorderThickness = new Thickness(1),
-                CornerRadius    = new CornerRadius(4),
-                Padding         = new Thickness(10, 8, 10, 8),
-                Margin          = new Thickness(0, 0, 0, 10),
-            };
-            var permStack = new StackPanel();
-            permStack.Children.Add(new TextBlock
-            {
-                Text       = Loc.Get("bug_report_discord_info_perm_name"),
-                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
-                FontSize   = 10, FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(Color.FromRgb(119, 85, 204)),
-            });
-            permStack.Children.Add(new TextBlock
-            {
-                Text         = Loc.Get("bug_report_discord_info_perm_desc"),
-                FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
-                FontSize     = 9,
-                Foreground   = new SolidColorBrush(Color.FromRgb(74, 90, 122)),
-                TextWrapping = TextWrapping.Wrap,
-                Margin       = new Thickness(0, 3, 0, 0),
-            });
-            permRow.Child = permStack;
-            content.Children.Add(permRow);
-
-            content.Children.Add(new TextBlock
-            {
-                Text         = Loc.Get("bug_report_discord_info_no_access"),
-                FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
-                FontSize     = 9,
-                Foreground   = new SolidColorBrush(Color.FromRgb(51, 68, 68)),
-                TextWrapping = TextWrapping.Wrap,
-            });
-
-            var discordResult = await WpfDialog.ShowAsync(this,
-                Loc.Get("bug_report_discord_required_title"), content,
-                primaryText: Loc.Get("bug_report_discord_connect_btn"),
-                closeText:   Loc.Get("back"));
-
-            if (discordResult == WpfDialogResult.Primary)
-                BugDiscordConnectBtn_Click(sender, e);
+            await ShowDiscordRequiredDialogAsync("bug_report_err_discord_required",
+                () => BugDiscordConnectBtn_Click(sender, e));
             return;
         }
 
@@ -7341,6 +7365,35 @@ public partial class MainWindow : Window
                 .FirstOrDefault(d => IOPath.GetFileName(d).Equals("Win64", StringComparison.OrdinalIgnoreCase));
         }
         catch { return null; }
+    }
+
+    /// <summary>Resolves a chapter's real shipping-binary process name from disk (cached per exe
+    /// path, since it requires a one-time directory walk via <see cref="FindWin64Dir"/>) — needed
+    /// because a chapter's launcher-facing stub exe doesn't always share a name with the UE
+    /// project it launches (e.g. Chapter 4's stub is "Playtime_Chapter4.exe" but its shipping
+    /// binary is "ch4_pro-Win64-Shipping.exe"), so guessing "{stubName}-Win64-Shipping" only
+    /// happens to work for chapters where the two names coincide. Returns null if no
+    /// "*-Win64-Shipping.exe" is found (or the install layout doesn't have a Win64 folder at all).</summary>
+    private string? ResolveShippingExeName(string exePath)
+    {
+        if (_shippingExeNameCache.TryGetValue(exePath, out var cached)) return cached;
+
+        string? name = null;
+        try
+        {
+            var exeDir = IOPath.GetDirectoryName(exePath);
+            var win64  = exeDir != null ? FindWin64Dir(exeDir) : null;
+            if (win64 != null)
+            {
+                name = Directory.EnumerateFiles(win64, "*-Win64-Shipping.exe")
+                    .Select(IOPath.GetFileNameWithoutExtension)
+                    .FirstOrDefault();
+            }
+        }
+        catch { }
+
+        _shippingExeNameCache[exePath] = name;
+        return name;
     }
 
     private static bool IsUe4ssInstalled(string win64Dir) =>
@@ -8647,6 +8700,20 @@ public partial class MainWindow : Window
         HandModsSubmitSendBtn.IsEnabled     = true;
         HandModsSubmitSendBtnText.Text      = Loc.Get("handmods_submit_send_btn");
 
+        HandModsSubmitDiscordWaiting.Visibility = Visibility.Collapsed;
+        var cachedDiscord = Services.DiscordOAuthService.LoadCached();
+        if (cachedDiscord.HasValue)
+        {
+            HandModsSubmitDiscordUsername.Text         = cachedDiscord.Value.Username;
+            HandModsSubmitDiscordConnected.Visibility  = Visibility.Visible;
+            HandModsSubmitDiscordConnectRow.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            HandModsSubmitDiscordConnected.Visibility  = Visibility.Collapsed;
+            HandModsSubmitDiscordConnectRow.Visibility = Visibility.Visible;
+        }
+
         BuildHandModsSubmitChapterChips();
         BuildHandModsSubmitColorChips();
 
@@ -8722,6 +8789,50 @@ public partial class MainWindow : Window
             : string.Join(", ", _handModsSubmitFiles.Select(IOPath.GetFileName));
     }
 
+    private async void HandModsSubmitDiscordConnectBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _discordAuthCts?.Cancel();
+        _discordAuthCts = new CancellationTokenSource();
+
+        HandModsSubmitDiscordConnectRow.Visibility = Visibility.Collapsed;
+        HandModsSubmitDiscordWaiting.Visibility    = Visibility.Visible;
+
+        var user = await Services.DiscordOAuthService.AuthenticateAsync(_discordAuthCts.Token);
+
+        HandModsSubmitDiscordWaiting.Visibility = Visibility.Collapsed;
+
+        if (user.HasValue)
+        {
+            HandModsSubmitDiscordUsername.Text        = user.Value.Username;
+            HandModsSubmitDiscordConnected.Visibility = Visibility.Visible;
+            Services.DiscordOAuthService.SaveCached(user.Value.Id, user.Value.Username);
+        }
+        else
+        {
+            HandModsSubmitDiscordConnectRow.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void HandModsSubmitDiscordCancelAuthBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _discordAuthCts?.Cancel();
+        HandModsSubmitDiscordWaiting.Visibility    = Visibility.Collapsed;
+        HandModsSubmitDiscordConnectRow.Visibility = Visibility.Visible;
+    }
+
+    private void HandModsSubmitDiscordDisconnectBtn_Click(object sender, RoutedEventArgs e)
+    {
+        Services.DiscordOAuthService.ClearCached();
+        HandModsSubmitDiscordConnected.Visibility  = Visibility.Collapsed;
+        HandModsSubmitDiscordConnectRow.Visibility = Visibility.Visible;
+    }
+
+    private void HandModsSubmitDiscordInfoBtn_Click(object sender, RoutedEventArgs e)
+    {
+        DiscordInfoWhyText.Text       = Loc.Get("handmods_submit_discord_info_why_text");
+        DiscordInfoOverlay.Visibility = Visibility.Visible;
+    }
+
     private async void HandModsSubmitSendBtn_Click(object sender, RoutedEventArgs e)
     {
         var name = HandModsSubmitNameBox.Text.Trim();
@@ -8736,6 +8847,12 @@ public partial class MainWindow : Window
             ShowHandModsSubmitError(Loc.Get("handmods_submit_err_files"));
             return;
         }
+        if (Services.DiscordOAuthService.LoadCached() is null)
+        {
+            await ShowDiscordRequiredDialogAsync("handmods_submit_err_discord_required",
+                () => HandModsSubmitDiscordConnectBtn_Click(sender, e));
+            return;
+        }
 
         HandModsSubmitSendBtn.IsEnabled     = false;
         HandModsSubmitSendBtnText.Text      = Loc.Get("handmods_submit_sending");
@@ -8743,9 +8860,10 @@ public partial class MainWindow : Window
 
         var cached        = Services.DiscordOAuthService.LoadCached();
         var submitterName = cached is { } u ? $"{u.Username} · ID: {u.Id}" : null;
+        var submitterId   = cached?.Id;
 
         var (ok, error) = await Services.HandModSubmissionService.SubmitAsync(
-            name, _handModsSubmitChapter, _handModsSubmitColors, _handModsSubmitFiles, submitterName);
+            name, _handModsSubmitChapter, _handModsSubmitColors, _handModsSubmitFiles, submitterName, submitterId);
 
         if (ok)
         {
@@ -8977,6 +9095,23 @@ public partial class MainWindow : Window
         previewBtn.Click += async (_, _) => await HandModPreview_Click(mod, previewBtn);
         actions.Children.Add(previewBtn);
 
+        var extrasBtn = new Button
+        {
+            Width = 26, Height = 26,
+            Background = new SolidColorBrush(Color.FromArgb(40, 100, 130, 160)),
+            BorderThickness = new Thickness(0), Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 6, 0),
+            Content = new TextBlock
+            {
+                FontFamily = new FontFamily("Segoe MDL2 Assets"), Text = "",
+                FontSize = 13, Foreground = new SolidColorBrush(Color.FromArgb(220, 160, 180, 200)),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        ButtonHelper.SetCornerRadius(extrasBtn, new CornerRadius(3));
+        extrasBtn.Click += async (_, _) => await HandModExtras_Click(mod, extrasBtn);
+        actions.Children.Add(extrasBtn);
+
         if (installed)
         {
             var uninstallBtn = MakeSmallButton("Uninstall", Color.FromArgb(200, 204, 51, 51));
@@ -9106,6 +9241,230 @@ public partial class MainWindow : Window
         WpfDialog.Show(this, $"{modName} preview", content, closeText: "OK");
     }
 
+    /// <summary>Downloads (or reuses the cached copy of) a mod's zip purely to check whether it
+    /// ships an "Extras" folder of individually-installable per-color variants, and if so opens
+    /// <see cref="ShowHandModsExtrasDialog"/> to browse and install them one at a time.</summary>
+    private async Task HandModExtras_Click(HandModsService.HandMod mod, Button extrasBtn)
+    {
+        extrasBtn.IsEnabled = false;
+        try
+        {
+            var zipPath = await HandModsService.DownloadModAsync(mod, _handModsTargetChapter);
+            var extras  = HandModsService.ReadExtras(zipPath);
+            if (extras.Count == 0)
+            {
+                ShowHandModsDialog($"{mod.Name} doesn't ship any individual hand options.");
+                return;
+            }
+
+            var images = HandModsService.ReadHandImages(zipPath);
+            ShowHandModsExtrasDialog(mod, zipPath, extras, images);
+        }
+        catch (Exception ex)
+        {
+            ShowHandModsDialog($"Couldn't load {mod.Name}'s extras:\n{ex.Message}");
+        }
+        finally
+        {
+            extrasBtn.IsEnabled = true;
+        }
+    }
+
+    private void ShowHandModsExtrasDialog(HandModsService.HandMod mod, string zipPath,
+        List<HandModsService.HandModExtra> extras, List<HandModsService.HandImage> images)
+    {
+        var panel = new StackPanel { Width = 380 };
+        RefreshHandModsExtrasPanel(panel, mod, zipPath, extras, images);
+
+        var scroll = new ScrollViewer
+        {
+            Content = panel, MaxHeight = 420,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+        };
+        WpfDialog.Show(this, $"{mod.Name} — Individual Hands", scroll, closeText: "Close");
+    }
+
+    /// <summary>Rebuilds every row of the extras dialog from scratch — same pattern as
+    /// <see cref="BuildHandModsList"/> for the main list — so an install/uninstall inside the
+    /// dialog (which can evict a sibling extra or the parent mod itself) is immediately
+    /// reflected across every row, not just the one that was clicked.</summary>
+    private void RefreshHandModsExtrasPanel(StackPanel panel, HandModsService.HandMod mod, string zipPath,
+        List<HandModsService.HandModExtra> extras, List<HandModsService.HandImage> images)
+    {
+        panel.Children.Clear();
+        foreach (var extra in extras)
+            panel.Children.Add(MakeHandModExtraRow(panel, mod, zipPath, extra, extras, images));
+    }
+
+    private Border MakeHandModExtraRow(StackPanel panel, HandModsService.HandMod mod, string zipPath,
+        HandModsService.HandModExtra extra, List<HandModsService.HandModExtra> extras,
+        List<HandModsService.HandImage> images)
+    {
+        var paksDir = _handModsPaksDir;
+        var installed = paksDir != null && HandModsService.IsInstalled(paksDir, extra.BaseName);
+
+        var thumb = new Border
+        {
+            Width = 44, Height = 44, CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(Color.FromArgb(255, 14, 42, 78)),
+            Margin = new Thickness(0, 0, 10, 0),
+        };
+        var image = images.FirstOrDefault(i => i.Color.Equals(extra.Color, StringComparison.OrdinalIgnoreCase));
+        if (image != null)
+        {
+            var bitmap = new BitmapImage();
+            using (var ms = new MemoryStream(image.Data))
+            {
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = ms;
+                bitmap.EndInit();
+            }
+            bitmap.Freeze();
+            thumb.Child = new Image { Source = bitmap, Stretch = Stretch.UniformToFill };
+        }
+
+        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        info.Children.Add(new TextBlock
+        {
+            Text = extra.Color, FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 13, FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromArgb(255, 210, 220, 230)),
+        });
+        info.Children.Add(new TextBlock
+        {
+            Text = HandModsService.FormatFileSize(extra.Size),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontSize = 10, Foreground = new SolidColorBrush(Color.FromArgb(255, 45, 90, 120)),
+        });
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(thumb, 0); grid.Children.Add(thumb);
+        Grid.SetColumn(info, 1);  grid.Children.Add(info);
+
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0),
+        };
+        Grid.SetColumn(actions, 2);
+        grid.Children.Add(actions);
+
+        if (installed)
+        {
+            var uninstallBtn = MakeSmallButton("Uninstall", Color.FromArgb(200, 204, 51, 51));
+            uninstallBtn.MinWidth = 90;
+            uninstallBtn.Click += async (_, _) => await HandModExtraUninstall_Click(
+                paksDir!, extra, panel, mod, zipPath, extras, images);
+            actions.Children.Add(uninstallBtn);
+        }
+        else if (paksDir is null)
+        {
+            actions.Children.Add(new TextBlock
+            {
+                Text = "unavailable", FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                FontSize = 10, Foreground = new SolidColorBrush(Color.FromArgb(140, 160, 180, 200)),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
+        else
+        {
+            var installBtn = MakeSmallButton("Install", Teal);
+            installBtn.MinWidth = 90;
+            installBtn.Click += async (_, _) => await HandModExtraInstall_Click(
+                paksDir, extra, panel, mod, zipPath, extras, images);
+            actions.Children.Add(installBtn);
+        }
+
+        return new Border
+        {
+            Background   = new SolidColorBrush(installed ? Color.FromArgb(30, 0, 204, 170) : Color.FromArgb(12, 255, 255, 255)),
+            CornerRadius = new CornerRadius(4),
+            Padding      = new Thickness(10, 8, 10, 8),
+            Child        = grid,
+            Margin       = new Thickness(0, 0, 0, 6),
+        };
+    }
+
+    /// <summary>Installs one of <paramref name="mod"/>'s Extras per-color variants — extracts the
+    /// nested zip out of the already-downloaded parent zip, resolves conflicts the same way
+    /// <see cref="StartHandModInstall"/> does for a normal mod (except scanning every installed
+    /// mod's hand marker directly via <see cref="HandModsService.GetAllInstalledHandMarkers"/>,
+    /// since a variant's base name isn't part of any chapter's known mod list — it could conflict
+    /// with its own parent mod, a sibling variant, or an unrelated mod, all the same way), then
+    /// installs it with its color as the declared hand — the nested zip carries no hand.txt of
+    /// its own.</summary>
+    private async Task HandModExtraInstall_Click(string paksDir, HandModsService.HandModExtra extra,
+        StackPanel panel, HandModsService.HandMod mod, string zipPath,
+        List<HandModsService.HandModExtra> extras, List<HandModsService.HandImage> images)
+    {
+        try
+        {
+            var extraZipPath = await Task.Run(() =>
+                HandModsService.ExtractExtra(zipPath, extra, _handModsTargetChapter));
+            var newHands = new List<string> { extra.Color };
+
+            var conflicting = HandModsService.GetAllInstalledHandMarkers(paksDir)
+                .Where(m => !m.BaseName.Equals(extra.BaseName, StringComparison.OrdinalIgnoreCase))
+                .Where(m => HandModsService.HandsConflict(newHands, m.Hands))
+                .ToList();
+
+            if (conflicting.Count > 0)
+            {
+                var names = string.Join(", ", conflicting.Select(m => m.BaseName));
+                var confirmContent = new TextBlock
+                {
+                    Text = $"⚠ {extra.Color} changes the {extra.Color} hand.\n{names} will be removed first.",
+                    FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
+                    FontSize = 12, Foreground = new SolidColorBrush(Color.FromArgb(200, 160, 180, 200)),
+                    TextWrapping = TextWrapping.Wrap, MaxWidth = 360,
+                };
+                var confirmResult = WpfDialog.Show(this, "Hand Conflict", confirmContent,
+                    primaryText: "Continue", closeText: "Cancel");
+                if (confirmResult != WpfDialogResult.Primary) return;
+
+                await Task.Run(() =>
+                {
+                    foreach (var c in conflicting)
+                        HandModsService.UninstallByBaseName(paksDir, c.BaseName);
+                });
+            }
+
+            await Task.Run(() => HandModsService.Install(paksDir, extraZipPath, extra.BaseName, newHands));
+        }
+        catch (Exception ex)
+        {
+            ShowHandModsDialog($"Error installing {extra.Color}:\n{ex.Message}");
+        }
+        finally
+        {
+            RefreshHandModsExtrasPanel(panel, mod, zipPath, extras, images);
+            BuildHandModsList();
+        }
+    }
+
+    private async Task HandModExtraUninstall_Click(string paksDir, HandModsService.HandModExtra extra,
+        StackPanel panel, HandModsService.HandMod mod, string zipPath,
+        List<HandModsService.HandModExtra> extras, List<HandModsService.HandImage> images)
+    {
+        try
+        {
+            await Task.Run(() => HandModsService.UninstallByBaseName(paksDir, extra.BaseName));
+        }
+        catch (Exception ex)
+        {
+            ShowHandModsDialog($"Error removing {extra.Color}:\n{ex.Message}");
+        }
+        finally
+        {
+            RefreshHandModsExtrasPanel(panel, mod, zipPath, extras, images);
+            BuildHandModsList();
+        }
+    }
+
     /// <summary>Drives Screen 3: downloads <paramref name="mod"/>, reads which hand color(s) it
     /// declares (its zip's hand.txt — defaults to a single <see cref="HandModsService.UnknownHand"/>
     /// entry if the mod predates that convention), warns and auto-removes any other installed mod
@@ -9115,7 +9474,6 @@ public partial class MainWindow : Window
     {
         _handModsWin64Dir = win64Dir;
         _handModsPaksDir  = paksDir;
-        var mods = _handModsList ?? [];
 
         ShowHandModsScreenInstalling(mod.Name);
 
@@ -9139,22 +9497,20 @@ public partial class MainWindow : Window
 
             var newHands = HandModsService.ReadDeclaredHands(zipPath) ?? [HandModsService.UnknownHand];
 
-            var conflicting = new List<HandModsService.HandMod>();
-            foreach (var other in mods)
-            {
-                if (other.BaseName == mod.BaseName) continue;
-                if (!HandModsService.IsInstalled(paksDir, other.BaseName)) continue;
-                var otherHands = HandModsService.GetInstalledHands(paksDir, other.BaseName);
-                if (HandModsService.HandsConflict(newHands, otherHands))
-                    conflicting.Add(other);
-            }
+            // Scans every installed mod's hand marker on disk rather than just this chapter's
+            // known mod list, so this also catches conflicts against an installed Extras variant
+            // (e.g. "Popiass11_Green") — its base name lives only inside its parent's zip, not
+            // in any manifest, so it would otherwise be invisible to this check.
+            var conflicting = HandModsService.GetAllInstalledHandMarkers(paksDir)
+                .Where(m => !m.BaseName.Equals(mod.BaseName, StringComparison.OrdinalIgnoreCase))
+                .Where(m => HandModsService.HandsConflict(newHands, m.Hands))
+                .ToList();
 
             if (conflicting.Count > 0)
             {
-                var names  = string.Join(", ", conflicting.Select(m => m.Name));
+                var names  = string.Join(", ", conflicting.Select(m => m.BaseName));
                 var shared = newHands.Where(h => conflicting.Any(c =>
-                        HandModsService.GetInstalledHands(paksDir, c.BaseName)
-                            .Any(oh => oh.Equals(h, StringComparison.OrdinalIgnoreCase))))
+                        c.Hands.Any(oh => oh.Equals(h, StringComparison.OrdinalIgnoreCase))))
                     .ToList();
                 var affected = shared.Count > 0 ? shared : newHands;
                 var colors   = string.Join(", ", affected);

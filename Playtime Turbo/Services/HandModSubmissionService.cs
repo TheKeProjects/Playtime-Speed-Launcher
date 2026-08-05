@@ -25,7 +25,7 @@ public static class HandModSubmissionService
 
     public static async Task<(bool Success, string? Error)> SubmitAsync(
         string modName, int chapterNumber, IReadOnlyCollection<string> colors,
-        IReadOnlyList<string> filePaths, string? submitterName)
+        IReadOnlyList<string> filePaths, string? submitterName, string? submitterId = null)
     {
         if (!IsConfigured) return (false, "Submissions aren't configured yet. Try again later.");
         if (filePaths.Count == 0) return (false, "Attach at least one mod file first.");
@@ -42,8 +42,11 @@ public static class HandModSubmissionService
             if (!string.IsNullOrEmpty(submitterName))
                 fields.Add(new { name = "Submitted By", value = submitterName, inline = true });
 
+            // Pings the submitter above the embed — same pattern SendDiscordBugReportAsync uses
+            // in MainWindow.xaml.cs — so reviewers can follow up with them directly from Discord.
             var payload = new
             {
+                content = string.IsNullOrEmpty(submitterId) ? null : $"<@{submitterId}>",
                 embeds = new[]
                 {
                     new

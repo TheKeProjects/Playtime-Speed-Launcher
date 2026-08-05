@@ -257,9 +257,11 @@ public static class HandModsService
     /// hand.txt entry, since extracting it verbatim would leave a bare, mod-agnostic "hand.txt"
     /// sitting in Paks that every later install/uninstall would silently clobber or orphan —
     /// and records which hand color(s) this mod affects under a per-mod marker name instead
-    /// (from the zip's hand.txt, defaulting to <see cref="UnknownHand"/>), so later installs can
-    /// detect conflicts without needing this zip on disk.</summary>
-    public static void Install(string paksDir, string zipPath, string baseName)
+    /// (from the zip's hand.txt, defaulting to <see cref="UnknownHand"/>, unless
+    /// <paramref name="declaredHands"/> already supplies them — used for an Extras variant,
+    /// whose own zip carries no hand.txt), so later installs can detect conflicts without
+    /// needing this zip on disk.</summary>
+    public static void Install(string paksDir, string zipPath, string baseName, List<string>? declaredHands = null)
     {
         Directory.CreateDirectory(paksDir);
 
@@ -270,6 +272,7 @@ public static class HandModsService
                 if (string.IsNullOrEmpty(entry.Name)) continue; // directory entry
                 if (entry.Name.Equals(HandDeclarationEntry, StringComparison.OrdinalIgnoreCase)) continue;
                 if (IsImageEntry(entry.Name)) continue; // preview image, not a pak asset
+                if (entry.FullName.Contains(ExtrasFolderMarker, StringComparison.OrdinalIgnoreCase)) continue; // nested per-color variants, not this mod's own assets
 
                 var target = IOPath.Combine(paksDir, entry.FullName.Replace('/', IOPath.DirectorySeparatorChar));
                 Directory.CreateDirectory(IOPath.GetDirectoryName(target)!);
@@ -277,10 +280,98 @@ public static class HandModsService
             }
         }
 
-        var hands = ReadDeclaredHands(zipPath) ?? [UnknownHand];
+        var hands = declaredHands ?? ReadDeclaredHands(zipPath) ?? [UnknownHand];
         File.WriteAllText(GetHandMarkerPath(paksDir, baseName), string.Join(", ", hands));
 
         RemoveStrayHandDeclaration(paksDir);
+    }
+
+    /// <summary>Substring identifying a mod's "Extras" folder (e.g. "Popiass11_Extras/") — a
+    /// zip may ship one holding individually-installable per-color variants as nested zips,
+    /// each named "{variantBaseName}_{Color}.zip", for mods whose main pak reskins several
+    /// hands at once but also wants to offer installing just one.</summary>
+    private const string ExtrasFolderMarker = "_extras";
+
+    public sealed class HandModExtra
+    {
+        public required string EntryName { get; init; }
+        public required string BaseName  { get; init; }
+        public required string Color     { get; init; }
+        public long            Size      { get; init; }
+    }
+
+    /// <summary>Lists the individually-installable per-color variants a mod's zip ships inside
+    /// its "{baseName}_Extras" folder — one nested zip per option, named
+    /// "{variantBaseName}_{Color}.zip" — or an empty list if the mod doesn't ship one.</summary>
+    public static List<HandModExtra> ReadExtras(string zipPath)
+    {
+        var extras = new List<HandModExtra>();
+        using var zip = ZipFile.OpenRead(zipPath);
+        foreach (var entry in zip.Entries)
+        {
+            if (string.IsNullOrEmpty(entry.Name)) continue; // directory entry
+            if (!entry.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var slash = entry.FullName.IndexOf('/');
+            if (slash < 0) continue; // not inside a subfolder
+            if (entry.FullName.IndexOf('/', slash + 1) >= 0) continue; // nested deeper than one folder
+            if (!entry.FullName[..slash].Contains(ExtrasFolderMarker, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var baseName = IOPath.GetFileNameWithoutExtension(entry.Name);
+            var underscoreIndex = baseName.LastIndexOf('_');
+            var color = underscoreIndex >= 0 && underscoreIndex < baseName.Length - 1
+                ? baseName[(underscoreIndex + 1)..]
+                : baseName;
+
+            extras.Add(new HandModExtra
+            {
+                EntryName = entry.FullName,
+                BaseName  = baseName,
+                Color     = color,
+                Size      = entry.Length,
+            });
+        }
+        return extras;
+    }
+
+    /// <summary>Pulls one of <see cref="ReadExtras"/>'s entries out of the parent zip into its
+    /// own cached zip (skipping the copy if an identically-sized one is already there), so it
+    /// can be installed through the normal <see cref="Install"/>/<see cref="UninstallByBaseName"/>
+    /// flow using the extra's own <see cref="HandModExtra.BaseName"/>.</summary>
+    public static string ExtractExtra(string parentZipPath, HandModExtra extra, int chapterNumber)
+    {
+        var cacheDir = GetCacheDir(chapterNumber);
+        Directory.CreateDirectory(cacheDir);
+        var zipPath = IOPath.Combine(cacheDir, $"{extra.BaseName}.zip");
+
+        if (File.Exists(zipPath) && new FileInfo(zipPath).Length == extra.Size)
+            return zipPath;
+
+        using var zip = ZipFile.OpenRead(parentZipPath);
+        var entry = zip.GetEntry(extra.EntryName)
+            ?? throw new InvalidOperationException($"{extra.EntryName} not found in {parentZipPath}.");
+        entry.ExtractToFile(zipPath, overwrite: true);
+        return zipPath;
+    }
+
+    /// <summary>Scans <paramref name="paksDir"/> for every "*.hand.txt" marker <see cref="Install"/>
+    /// leaves behind, pairing each installed mod's base name with the hand color(s) it declared.
+    /// Unlike <see cref="GetInstalledHands"/> (which needs a specific base name already in hand),
+    /// this finds every installed mod regardless of whether it's part of any chapter's known mod
+    /// list — needed to detect conflicts against an Extras variant, whose base name lives only
+    /// inside its parent's zip.</summary>
+    public static List<(string BaseName, List<string> Hands)> GetAllInstalledHandMarkers(string paksDir)
+    {
+        var result = new List<(string, List<string>)>();
+        if (!Directory.Exists(paksDir)) return result;
+
+        foreach (var path in Directory.EnumerateFiles(paksDir, "*.hand.txt"))
+        {
+            var baseName = IOPath.GetFileName(path)[..^".hand.txt".Length];
+            var colors   = ParseHandColors(File.ReadAllText(path));
+            result.Add((baseName, colors.Count > 0 ? colors : [UnknownHand]));
+        }
+        return result;
     }
 
     public static void UninstallByBaseName(string paksDir, string baseName)

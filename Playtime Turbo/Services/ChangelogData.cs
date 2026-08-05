@@ -7,6 +7,16 @@ public static class ChangelogData
     // Add new versions at the TOP of this array (newest first).
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.1.0", "05/08/2026",
+        [
+            "## Additions",
+            "Added the option to install the hand mods individually (Still working on the mods)",
+            "Discord is now required for submitting new Hand Mods",
+
+            "## Bug Fixes",
+            "Fixed the FPS counter not working in Chapter 4",
+            "Fixed hand mod conflict detection not accounting for individually installed hands",
+        ]),
         new("2.0.11", "04/08/2026",
         [
             "## Additions",
