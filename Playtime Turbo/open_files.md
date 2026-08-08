@@ -3,3 +3,4 @@
 - [Services/DiscordOAuthService.cs](Services/DiscordOAuthService.cs),
 - [Services/DiscordPresenceService.cs](Services/DiscordPresenceService.cs),
 - [Services/SkipReportService.cs](Services/SkipReportService.cs),
+- [Services/OnlineUsers/OnlineUsersService.cs](Services/OnlineUsers/OnlineUsersService.cs)

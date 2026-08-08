@@ -40,6 +40,16 @@
                        FontSize="10" Foreground="#00CC66"
                        VerticalAlignment="Center"
                        Margin="6,0,0,0"/>
+            <Ellipse x:Name="OnlineUsersDot"
+                     Width="6" Height="6" Fill="#00CCAA"
+                     VerticalAlignment="Center"
+                     Margin="14,0,0,0"/>
+            <TextBlock x:Name="OnlineUsersText"
+                       Text=""
+                       FontFamily="Cascadia Code, Consolas, Courier New"
+                       FontSize="10" Foreground="#2A5A7A"
+                       VerticalAlignment="Center"
+                       Margin="6,0,0,0"/>
         </StackPanel>
         <StackPanel Grid.Row="0"
                     Orientation="Horizontal"
@@ -844,6 +854,29 @@
                                                FontFamily="Cascadia Code, Consolas, Courier New"
                                                FontSize="9" Foreground="#3A6A8A"
                                                TextWrapping="Wrap" Margin="0,0,0,0"/>
+
+                                    <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
+
+                                    <!-- Online users counter -->
+                                    <TextBlock x:Name="OnlineUsersSectionLabel"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="9" FontWeight="Bold"
+                                               Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <TextBlock x:Name="OnlineUsersShowLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="12" Foreground="#8AAABB"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="OnlineUsersShowBtn"
+                                                Height="26" MinWidth="60" HorizontalAlignment="Right"
+                                                local:ButtonHelper.CornerRadius="3"
+                                                Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
+                                                Padding="10,0" Click="OnlineUsersShowBtn_Click">
+                                            <TextBlock x:Name="OnlineUsersShowText"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       FontSize="10" FontWeight="Bold"/>
+                                        </Button>
+                                    </Grid>
                                 </StackPanel>
                             </ScrollViewer>
 

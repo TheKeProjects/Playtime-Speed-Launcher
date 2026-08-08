@@ -1,8 +1,6 @@
-2.1.0
+2.1.1
 ## Additions
-- Added the option to install the hand mods individually (Still working on the mods)
-- Discord is now required for submitting new Hand Mods
+- Added a live online users counter
 
 ## Bug Fixes
-- Fixed the FPS counter not working in Chapter 4
-- Fixed hand mod conflict detection not accounting for individually installed hands
+- Fixed the chapter cards getting cut off on screens with different resolutions

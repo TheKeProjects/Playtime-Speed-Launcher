@@ -14,6 +14,7 @@ using PixelFormat = System.Windows.Media.PixelFormats;
 using SpeedrunLauncher.Models;
 using SpeedrunLauncher.Services;
 using SpeedrunLauncher.Services.Fps;
+using SpeedrunLauncher.Services.OnlineUsers;
 using IOPath = System.IO.Path;
 using Loc = SpeedrunLauncher.Services.LocalizationService;
 
@@ -318,6 +319,10 @@ public partial class MainWindow : Window
             });
         StartLiveSplitPoller();
         Services.VideoTutorialService.Initialize();
+        OnlineUsersService.OnlineCountUpdated += count =>
+            Dispatcher.BeginInvoke(() => OnlineUsersText.Text = $"{count} online");
+        ApplyOnlineUsersVisibility();
+        OnlineUsersService.Start();
         LoadSteamUser();
         _discordPresence.ApplySettings(
             _discordSettings.ShowActivity,
@@ -398,6 +403,9 @@ public partial class MainWindow : Window
         WindowModeWindowedBtnText.Text = Loc.Get("window_mode_windowed");
         WindowModeHintText.Text      = Loc.Get("window_mode_hint");
         RefreshWindowModeButtons();
+        OnlineUsersSectionLabel.Text = Loc.Get("online_users_section");
+        OnlineUsersShowLabel.Text    = Loc.Get("online_users_show_label");
+        RefreshOnlineUsersToggle();
         ControlsSectionLabel.Text  = Loc.Get("controls_section");
         CheckpointHotkeyLabel.Text = Loc.Get("checkpoint_hotkey_label");
         TutorialHotkeyLabel.Text   = Loc.Get("tutorial_hotkey_label");
@@ -821,6 +829,7 @@ public partial class MainWindow : Window
         _ue4ssRemapToast?.Close();
         _liveSplitPollCts?.Cancel();
         _liveSplitClient.Dispose();
+        OnlineUsersService.Stop();
         _discordPresence.Dispose();
         _f11Remap.Dispose();
         _fpsOverlay?.Close();
@@ -6546,6 +6555,28 @@ public partial class MainWindow : Window
 
         if (_discordSettings.ShowLiveSplit)
             ShowLiveSplitTcpNotice();
+    }
+
+    // ── Online users counter (visual toggle only — heartbeat keeps running) ────
+
+    private void RefreshOnlineUsersToggle()
+    {
+        SetToggle(OnlineUsersShowText, HeartbeatSettings.Current.ShowCounter);
+    }
+
+    private void ApplyOnlineUsersVisibility()
+    {
+        var visibility = HeartbeatSettings.Current.ShowCounter ? Visibility.Visible : Visibility.Collapsed;
+        OnlineUsersDot.Visibility  = visibility;
+        OnlineUsersText.Visibility = visibility;
+    }
+
+    private void OnlineUsersShowBtn_Click(object sender, RoutedEventArgs e)
+    {
+        HeartbeatSettings.Current.ShowCounter = !HeartbeatSettings.Current.ShowCounter;
+        HeartbeatSettings.Current.Save();
+        ApplyOnlineUsersVisibility();
+        RefreshOnlineUsersToggle();
     }
 
     private void ApplyIconTheme()

@@ -21,7 +21,7 @@
     <DefineConstants Condition="'$(ChristmasMode)' == 'true'">$(DefineConstants);CHRISTMAS_MODE</DefineConstants>
     <AssemblyName>PlaytimeSpeedLauncher</AssemblyName>
     <RootNamespace>SpeedrunLauncher</RootNamespace>
-    <Version>2.1.0</Version>
+    <Version>2.1.1</Version>
     <Authors>An Average Developer</Authors>
     <Product>PlaytimeSpeedLauncher</Product>
     <Description>A Launcher for Speedruners of Poppy Playtime</Description>
