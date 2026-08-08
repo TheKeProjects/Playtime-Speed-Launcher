@@ -1,0 +1,5 @@
+- [MainWindow.xaml.cs](MainWindow.xaml.cs),
+- [Services/HandModSubmissionService.cs](Services/HandModSubmissionService.cs),
+- [Services/DiscordOAuthService.cs](Services/DiscordOAuthService.cs),
+- [Services/DiscordPresenceService.cs](Services/DiscordPresenceService.cs),
+- [Services/SkipReportService.cs](Services/SkipReportService.cs),
