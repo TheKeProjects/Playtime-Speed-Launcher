@@ -11,8 +11,8 @@ namespace SpeedrunLauncher.Services.OnlineUsers;
 public static class OnlineUsersService
 {
     // TODO: replace with your real Supabase project URL and anon public key before shipping.
-    private const string SupabaseUrl     = "SupabaseUrl";
-    private const string SupabaseAnonKey = "SupabaseAnonKey";
+    private const string SupabaseUrl     = "https://twyhnoxcmbxfmwoijehx.supabase.co";
+    private const string SupabaseAnonKey = "sb_publishable_YX_NJvxEPSTfseQQL693Lw_KO7IBIkV";
 
     private static readonly HttpClient _http = new();
 

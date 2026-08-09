@@ -1,6 +1,3 @@
-2.1.1
-## Additions
-- Added a live online users counter
-
+2.1.2
 ## Bug Fixes
-- Fixed the chapter cards getting cut off on screens with different resolutions
+- Fixed Chapter 5 hand mods failing to install after being moved to Git LFS

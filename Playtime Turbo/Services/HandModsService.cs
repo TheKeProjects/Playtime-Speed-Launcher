@@ -50,6 +50,13 @@ public static class HandModsService
     private static string GetChapterRawUrl(int chapterNumber, string fileName) =>
         $"https://raw.githubusercontent.com/{Owner}/{Repo}/{Branch}/Chapter%20{chapterNumber}/{Uri.EscapeDataString(fileName)}";
 
+    /// <summary>Same layout as <see cref="GetChapterRawUrl"/> but through GitHub's LFS-resolving
+    /// media host — needed for the mod zips themselves, since some chapters (e.g. Chapter 5) now
+    /// track `*.zip` via Git LFS and plain raw.githubusercontent.com only ever serves the small
+    /// LFS pointer text file (not the actual binary) for those.</summary>
+    private static string GetChapterLfsUrl(int chapterNumber, string fileName) =>
+        $"https://media.githubusercontent.com/media/{Owner}/{Repo}/{Branch}/Chapter%20{chapterNumber}/{Uri.EscapeDataString(fileName)}";
+
     /// <summary>Fetches the chapter's `mods.txt` manifest and resolves each listed zip into a
     /// <see cref="HandMod"/> (with a best-effort HEAD-request size lookup, same trick
     /// <see cref="UpdateService"/> uses for its own download size). Never throws — a missing
@@ -90,6 +97,27 @@ public static class HandModsService
                     size = res.Content.Headers.ContentLength.Value;
             }
             catch { }
+
+            // Only some chapters track their zips via Git LFS. Where they do,
+            // raw.githubusercontent.com serves the tiny LFS pointer text instead of the
+            // actual binary (it never resolves LFS objects) — a real mod zip is always
+            // far bigger than that, so a suspiciously small size here means we just hit
+            // a pointer. Re-point at GitHub's LFS-resolving media host and re-check the
+            // size there instead (media.githubusercontent.com 404s for non-LFS paths, so
+            // it's only ever used once a pointer's been detected).
+            if (size > 0 && size < 1024)
+            {
+                downloadUrl = GetChapterLfsUrl(chapterNumber, fileName);
+                size = 0;
+                try
+                {
+                    using var head = new HttpRequestMessage(HttpMethod.Head, downloadUrl);
+                    using var res  = await Http.SendAsync(head);
+                    if (res.IsSuccessStatusCode && res.Content.Headers.ContentLength.HasValue)
+                        size = res.Content.Headers.ContentLength.Value;
+                }
+                catch { }
+            }
 
             mods.Add(new HandMod
             {
