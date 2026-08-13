@@ -572,6 +572,23 @@
                                                    VerticalAlignment="Center"/>
                                     </Border>
                                 </Button>
+                                <Button x:Name="SettingsTabCoresBtn"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0" Height="36"
+                                        Click="SettingsTabCores_Click">
+                                    <Border x:Name="SettingsTabCoresBorder"
+                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
+                                            Padding="14,0,0,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
+                                        <TextBlock x:Name="SettingsTabCoresText"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
                                 <Button x:Name="SettingsTabSteamBtn"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Left"
@@ -658,23 +675,6 @@
                                             HorizontalAlignment="Stretch"
                                             VerticalAlignment="Stretch">
                                         <TextBlock x:Name="SettingsTabLiveSplitText"
-                                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
-                                                   VerticalAlignment="Center"/>
-                                    </Border>
-                                </Button>
-                                <Button x:Name="SettingsTabCoresBtn"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Left"
-                                        Background="Transparent" BorderThickness="0"
-                                        Padding="0" Height="36"
-                                        Click="SettingsTabCores_Click">
-                                    <Border x:Name="SettingsTabCoresBorder"
-                                            BorderBrush="Transparent" BorderThickness="3,0,0,0"
-                                            Padding="14,0,0,0"
-                                            HorizontalAlignment="Stretch"
-                                            VerticalAlignment="Stretch">
-                                        <TextBlock x:Name="SettingsTabCoresText"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
                                                    FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
                                                    VerticalAlignment="Center"/>
@@ -1929,15 +1929,6 @@
                             <!-- ═══ CORES TAB ═══ -->
                             <ScrollViewer x:Name="SettingsCoresScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                                 <StackPanel Margin="24,18">
-                                    <!-- Warning banner -->
-                                    <Border Background="#1A0A00" BorderBrush="#CC4422" BorderThickness="1"
-                                            CornerRadius="4" Padding="12,8" Margin="0,0,0,16">
-                                        <TextBlock x:Name="CoresWarningText"
-                                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                                   FontSize="10" Foreground="#CC4422"
-                                                   TextWrapping="Wrap"/>
-                                    </Border>
-
                                     <!-- Enable toggle -->
                                     <Grid Margin="0,0,0,16">
                                         <TextBlock x:Name="CoresEnableLabel"
@@ -1958,53 +1949,57 @@
                                     <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
 
                                     <!-- Hotkey bindings -->
-                                    <TextBlock x:Name="LoadManipSectionLabel"
+                                    <TextBlock x:Name="CoresSectionLabel"
                                                FontFamily="Cascadia Code, Consolas, Courier New"
                                                FontSize="9" FontWeight="Bold"
                                                Foreground="#00CCAA" Margin="0,0,0,10"/>
+                                    <TextBlock x:Name="CoresWarningText"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="10" FontWeight="Bold" Foreground="#E8A000"
+                                               TextWrapping="Wrap" Margin="0,0,0,10"/>
                                     <Grid>
-                                        <TextBlock x:Name="LoadManipFreezeLabel"
+                                        <TextBlock x:Name="CoresFreezeLabel"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
                                                    FontSize="12" Foreground="#8AAABB"
                                                    VerticalAlignment="Center"/>
-                                        <Button x:Name="LoadManipFreezeBtn"
+                                        <Button x:Name="CoresFreezeBtn"
                                                 Height="30" MinWidth="130" HorizontalAlignment="Right"
                                                 local:ButtonHelper.CornerRadius="4"
                                                 Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0,10,0" Click="LoadManipFreezeBtn_Click">
-                                            <TextBlock x:Name="LoadManipFreezeText"
+                                                Padding="10,0,10,0" Click="CoresFreezeBtn_Click">
+                                            <TextBlock x:Name="CoresFreezeText"
                                                        FontFamily="Cascadia Code, Consolas, Courier New"
                                                        FontSize="10" Foreground="#8AAABB"
                                                        VerticalAlignment="Center"/>
                                         </Button>
                                     </Grid>
                                     <Grid Margin="0,8,0,0">
-                                        <TextBlock x:Name="LoadManipSlowerLabel"
+                                        <TextBlock x:Name="CoresSlowerLabel"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
                                                    FontSize="12" Foreground="#8AAABB"
                                                    VerticalAlignment="Center"/>
-                                        <Button x:Name="LoadManipSlowerBtn"
+                                        <Button x:Name="CoresSlowerBtn"
                                                 Height="30" MinWidth="130" HorizontalAlignment="Right"
                                                 local:ButtonHelper.CornerRadius="4"
                                                 Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0,10,0" Click="LoadManipSlowerBtn_Click">
-                                            <TextBlock x:Name="LoadManipSlowerText"
+                                                Padding="10,0,10,0" Click="CoresSlowerBtn_Click">
+                                            <TextBlock x:Name="CoresSlowerText"
                                                        FontFamily="Cascadia Code, Consolas, Courier New"
                                                        FontSize="10" Foreground="#8AAABB"
                                                        VerticalAlignment="Center"/>
                                         </Button>
                                     </Grid>
                                     <Grid Margin="0,8,0,0">
-                                        <TextBlock x:Name="LoadManipNormalLabel"
+                                        <TextBlock x:Name="CoresNormalLabel"
                                                    FontFamily="Cascadia Code, Consolas, Courier New"
                                                    FontSize="12" Foreground="#8AAABB"
                                                    VerticalAlignment="Center"/>
-                                        <Button x:Name="LoadManipNormalBtn"
+                                        <Button x:Name="CoresNormalBtn"
                                                 Height="30" MinWidth="130" HorizontalAlignment="Right"
                                                 local:ButtonHelper.CornerRadius="4"
                                                 Background="#0A1825" BorderBrush="#1A3A55" BorderThickness="1"
-                                                Padding="10,0,10,0" Click="LoadManipNormalBtn_Click">
-                                            <TextBlock x:Name="LoadManipNormalText"
+                                                Padding="10,0,10,0" Click="CoresNormalBtn_Click">
+                                            <TextBlock x:Name="CoresNormalText"
                                                        FontFamily="Cascadia Code, Consolas, Courier New"
                                                        FontSize="10" Foreground="#8AAABB"
                                                        VerticalAlignment="Center"/>

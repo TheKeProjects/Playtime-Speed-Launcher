@@ -6,7 +6,7 @@ namespace SpeedrunLauncher.Services;
 public static class SkipReportService
 {
     // TODO: replace with the real Discord webhook URL for skip submissions before shipping.
-    private const string WebhookUrl = "https://canary.discord.com/api/webhooks/1522343295265669282/pp1KTDerhujSDg2k1xSuA67gQG7TX7fi6NolRPxj98FVDXIzRjruYn1NPwlIeltJywqm";
+    private const string WebhookUrl = "WebhookUrl";
 
     private static readonly HttpClient _http = new();
 

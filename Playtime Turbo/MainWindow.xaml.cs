@@ -157,12 +157,12 @@ public partial class MainWindow : Window
     private LiveSplitInfo? _liveSplitInfo         = null;
     private bool           _isLiveSplitDownloading = false;
 
-    // ── Load Manipulator ─────────────────────────────────────────────────────
-    private readonly LoadManipService _loadManip = new();
-    private uint _loadManipFreezeVk   = 0x49; // I
-    private uint _loadManipSlowerVk   = 0x4F; // O
-    private uint _loadManipNormalVk   = 0x50; // P
-    private Window? _loadManipToast;
+    // ── Cores ─────────────────────────────────────────────────────────────────
+    private readonly CoresService _cores = new();
+    private uint _coresFreezeVk   = 0x42; // B
+    private uint _coresSlowerVk   = 0x4E; // N
+    private uint _coresNormalVk   = 0x4D; // M
+    private Window? _coresToast;
 
     private bool _coresEnabled;
 
@@ -230,7 +230,7 @@ public partial class MainWindow : Window
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "fps_overlay_font.cfg");
 
-    private static readonly string LoadManipHotkeyFile =
+    private static readonly string CoresHotkeyFile =
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "loadmanip_hotkeys.cfg");
 
@@ -415,11 +415,12 @@ public partial class MainWindow : Window
         F11RemapEnableLabel.Text   = Loc.Get("f11_remap_enable_label");
         F11RemapHintText.Text      = Loc.Get("f11_remap_hint");
         RefreshF11RemapUI();
-        LoadManipSectionLabel.Text = Loc.Get("loadmanip_section");
-        LoadManipFreezeLabel.Text  = Loc.Get("loadmanip_freeze_label");
-        LoadManipSlowerLabel.Text  = Loc.Get("loadmanip_slower_label");
-        LoadManipNormalLabel.Text  = Loc.Get("loadmanip_normal_label");
-        RefreshLoadManipButtons();
+        CoresSectionLabel.Text = Loc.Get("cores_section");
+        CoresWarningText.Text  = Loc.Get("cores_warning");
+        CoresFreezeLabel.Text  = Loc.Get("cores_freeze_label");
+        CoresSlowerLabel.Text  = Loc.Get("cores_slower_label");
+        CoresNormalLabel.Text  = Loc.Get("cores_normal_label");
+        RefreshCoresButtons();
         SettingsTabGeneralText.Text      = Loc.Get("settings_tab_general");
         SettingsTabControlsText.Text     = Loc.Get("settings_tab_controls");
         SettingsTabSteamText.Text        = Loc.Get("settings_tab_steam");
@@ -483,7 +484,6 @@ public partial class MainWindow : Window
         IconThemeSummerBtnText.Text      = Loc.Get("icontheme_summer");
         IconThemeHalloweenBtnText.Text   = Loc.Get("icontheme_halloween");
         IconThemeChristmasBtnText.Text   = Loc.Get("icontheme_christmas");
-        CoresWarningText.Text            = Loc.Get("cores_warning");
         CoresEnableLabel.Text            = Loc.Get("cores_enable_label");
         LoadManipControlsSectionLabel.Text = Loc.Get("loadmanip_controls_section");
         LoadManipChapter1NavBtnText.Text = Loc.Get("chapter1_section");
@@ -793,9 +793,9 @@ public partial class MainWindow : Window
         RegisterHotKey(helper.Handle, HOTKEY_ID, _hotkeyModifiers, _hotkeyVk);
         RegisterHotKey(helper.Handle, TUTORIAL_HOTKEY_ID, _tutorialHotkeyModifiers, _tutorialHotkeyVk);
         RefreshHotkeyButton();
-        LoadLoadManipHotkeys();
+        LoadCoresHotkeys();
         LoadCoresEnabled();
-        if (_coresEnabled) InstallLoadManipHook();
+        if (_coresEnabled) InstallCoresHook();
         LoadChapter4RemapHotkeys();
         LoadChapter4RemapEnabled();
         if (_chapter4RemapEnabled) InstallChapter4RemapHook();
@@ -813,11 +813,11 @@ public partial class MainWindow : Window
             _controllerOverlay.Closed -= OverlayWindow_Closed;
             _controllerOverlay.Close();
         }
-        _loadManip.RestoreIfActive();
+        _cores.RestoreIfActive();
         var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
         UnregisterHotKey(hwnd, HOTKEY_ID);
         UnregisterHotKey(hwnd, TUTORIAL_HOTKEY_ID);
-        UninstallLoadManipHook();
+        UninstallCoresHook();
         UninstallChapter4RemapHook();
         _hotkeyOverlay?.Close();
         _tutorialOverlay?.Close();
@@ -825,7 +825,7 @@ public partial class MainWindow : Window
         _leaderboardOverlay?.Close();
         _gameToast?.Close();
         _tutorialToast?.Close();
-        _loadManipToast?.Close();
+        _coresToast?.Close();
         _ue4ssRemapToast?.Close();
         _liveSplitPollCts?.Cancel();
         _liveSplitClient.Dispose();
@@ -1177,12 +1177,12 @@ public partial class MainWindow : Window
     private void SettingsTabGeneral_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(0);
     private void SettingsTabControls_Click(object sender, RoutedEventArgs e)     => SelectSettingsTab(1);
     private void SettingsTabLoadManip_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(2);
-    private void SettingsTabSteam_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(3);
-    private void SettingsTabController_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(4);
-    private void SettingsTabDiscord_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(5);
-    private void SettingsTabUpdates_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(6);
-    private void SettingsTabLiveSplit_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(7);
-    private void SettingsTabCores_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(8);
+    private void SettingsTabCores_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(3);
+    private void SettingsTabSteam_Click(object sender, RoutedEventArgs e)        => SelectSettingsTab(4);
+    private void SettingsTabController_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(5);
+    private void SettingsTabDiscord_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(6);
+    private void SettingsTabUpdates_Click(object sender, RoutedEventArgs e)      => SelectSettingsTab(7);
+    private void SettingsTabLiveSplit_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(8);
     private void SettingsTabOverlays_Click(object sender, RoutedEventArgs e)    => SelectSettingsTab(9);
     private void SettingsTabIconTheme_Click(object sender, RoutedEventArgs e)   => SelectSettingsTab(10);
 
@@ -1193,12 +1193,12 @@ public partial class MainWindow : Window
         SettingsGeneralScroll.Visibility      = index == 0 ? Visibility.Visible : Visibility.Collapsed;
         SettingsControlsScroll.Visibility     = index == 1 ? Visibility.Visible : Visibility.Collapsed;
         SettingsLoadManipScroll.Visibility    = index == 2 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsSteamScroll.Visibility        = index == 3 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsControllerScroll.Visibility   = index == 4 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsDiscordScroll.Visibility      = index == 5 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsUpdatesScroll.Visibility      = index == 6 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsLiveSplitScroll.Visibility    = index == 7 ? Visibility.Visible : Visibility.Collapsed;
-        SettingsCoresScroll.Visibility        = index == 8 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsCoresScroll.Visibility        = index == 3 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsSteamScroll.Visibility        = index == 4 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsControllerScroll.Visibility   = index == 5 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsDiscordScroll.Visibility      = index == 6 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsUpdatesScroll.Visibility      = index == 7 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsLiveSplitScroll.Visibility    = index == 8 ? Visibility.Visible : Visibility.Collapsed;
         SettingsOverlaysScroll.Visibility     = index == 9 ? Visibility.Visible : Visibility.Collapsed;
         SettingsIconThemeScroll.Visibility    = index == 10 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -1210,8 +1210,8 @@ public partial class MainWindow : Window
             RefreshFullBrightKeysUI();
             RefreshChapter4UI();
         }
-        if (index == 5) RefreshDiscordToggles();
-        if (index == 8) RefreshCoresToggle();
+        if (index == 3) RefreshCoresToggle();
+        if (index == 6) RefreshDiscordToggles();
         if (index == 9) RefreshOverlaysTab();
         if (index == 10) RefreshIconThemeButtons();
 
@@ -1220,12 +1220,12 @@ public partial class MainWindow : Window
             (SettingsTabGeneralBorder,      SettingsTabGeneralText),
             (SettingsTabControlsBorder,     SettingsTabControlsText),
             (SettingsTabLoadManipBorder,    SettingsTabLoadManipText),
+            (SettingsTabCoresBorder,        SettingsTabCoresText),
             (SettingsTabSteamBorder,        SettingsTabSteamText),
             (SettingsTabControllerBorder,   SettingsTabControllerText),
             (SettingsTabDiscordBorder,      SettingsTabDiscordText),
             (SettingsTabUpdatesBorder,      SettingsTabUpdatesText),
             (SettingsTabLiveSplitBorder,    SettingsTabLiveSplitText),
-            (SettingsTabCoresBorder,        SettingsTabCoresText),
             (SettingsTabOverlaysBorder,     SettingsTabOverlaysText),
             (SettingsTabIconThemeBorder,    SettingsTabIconThemeText),
         };
@@ -1239,7 +1239,7 @@ public partial class MainWindow : Window
         for (int i = 0; i < tabs.Length; i++)
         {
             var (border, text) = tabs[i];
-            bool isUpdatesTab = i == 6 && _updateAlertActive && i != index;
+            bool isUpdatesTab = i == 7 && _updateAlertActive && i != index;
             border.BorderBrush = i == index ? tealBrush : transBrush;
             text.Foreground    = i == index ? tealBrush : isUpdatesTab ? redBrush : dimBrush;
         }
@@ -1264,15 +1264,15 @@ public partial class MainWindow : Window
         LoadManipChapter5Panel.Visibility = page == 3 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    // ── Load Manipulator hotkeys ─────────────────────────────────────────────
+    // ── Cores hotkeys ─────────────────────────────────────────────────────────
 
-    private bool             _capturingLoadManipHotkey;
-    private int              _loadManipCaptureTarget; // 0=freeze, 1=slower, 2=normal
-    private KeyEventHandler? _loadManipHotkeyCapture;
+    private bool             _capturingCoresHotkey;
+    private int              _coresCaptureTarget; // 0=freeze, 1=slower, 2=normal
+    private KeyEventHandler? _coresHotkeyCapture;
 
-    // Low-level keyboard hook for load manip (only fires when game is foreground)
-    private nint _loadManipKeyboardHook;
-    private LowLevelKeyboardProc? _loadManipKeyboardProc;
+    // Low-level keyboard hook for cores (only fires when game is foreground)
+    private nint _coresKeyboardHook;
+    private LowLevelKeyboardProc? _coresKeyboardProc;
     private delegate nint LowLevelKeyboardProc(int nCode, nint wParam, nint lParam);
 
     // ── Chapter 4 Freeze/Slow/Normal loads hotkeys ───────────────────────────
@@ -1409,24 +1409,24 @@ public partial class MainWindow : Window
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(nint hWnd, out uint processId);
 
-    private void InstallLoadManipHook()
+    private void InstallCoresHook()
     {
-        UninstallLoadManipHook();
+        UninstallCoresHook();
         using var curProcess = System.Diagnostics.Process.GetCurrentProcess();
         using var curModule  = curProcess.MainModule!;
         var hMod = GetModuleHandle(curModule.ModuleName);
-        _loadManipKeyboardProc = LoadManipKeyboardHookProc;
-        _loadManipKeyboardHook = SetWindowsHookEx(13, _loadManipKeyboardProc, hMod, 0);
+        _coresKeyboardProc = CoresKeyboardHookProc;
+        _coresKeyboardHook = SetWindowsHookEx(13, _coresKeyboardProc, hMod, 0);
     }
 
-    private void UninstallLoadManipHook()
+    private void UninstallCoresHook()
     {
-        if (_loadManipKeyboardHook != 0)
+        if (_coresKeyboardHook != 0)
         {
-            UnhookWindowsHookEx(_loadManipKeyboardHook);
-            _loadManipKeyboardHook = 0;
+            UnhookWindowsHookEx(_coresKeyboardHook);
+            _coresKeyboardHook = 0;
         }
-        _loadManipKeyboardProc = null;
+        _coresKeyboardProc = null;
     }
 
     private bool IsGameForeground()
@@ -1442,20 +1442,20 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private nint LoadManipKeyboardHookProc(int nCode, nint wParam, nint lParam)
+    private nint CoresKeyboardHookProc(int nCode, nint wParam, nint lParam)
     {
         if (nCode >= 0 && (int)wParam == 0x0100) // WM_KEYDOWN
         {
             var vkCode = (uint)System.Runtime.InteropServices.Marshal.ReadInt32(lParam);
-            if ((vkCode == _loadManipFreezeVk || vkCode == _loadManipSlowerVk || vkCode == _loadManipNormalVk) && IsGameForeground())
+            if ((vkCode == _coresFreezeVk || vkCode == _coresSlowerVk || vkCode == _coresNormalVk) && IsGameForeground())
             {
-                var mode = vkCode == _loadManipFreezeVk ? LoadManipMode.Freeze
-                         : vkCode == _loadManipSlowerVk ? LoadManipMode.Slower
-                         : LoadManipMode.Normal;
-                Dispatcher.BeginInvoke(() => HandleLoadManipHotkey(mode));
+                var mode = vkCode == _coresFreezeVk ? CoresMode.Freeze
+                         : vkCode == _coresSlowerVk ? CoresMode.Slower
+                         : CoresMode.Normal;
+                Dispatcher.BeginInvoke(() => HandleCoresHotkey(mode));
             }
         }
-        return CallNextHookEx(_loadManipKeyboardHook, nCode, wParam, lParam);
+        return CallNextHookEx(_coresKeyboardHook, nCode, wParam, lParam);
     }
 
     private void InstallChapter4RemapHook()
@@ -1571,50 +1571,50 @@ public partial class MainWindow : Window
         return CallNextHookEx(_chapter4MouseHook, nCode, wParam, lParam);
     }
 
-    private void LoadLoadManipHotkeys()
+    private void LoadCoresHotkeys()
     {
         try
         {
-            if (!File.Exists(LoadManipHotkeyFile)) return;
-            var lines = File.ReadAllLines(LoadManipHotkeyFile);
+            if (!File.Exists(CoresHotkeyFile)) return;
+            var lines = File.ReadAllLines(CoresHotkeyFile);
             if (lines.Length >= 3)
             {
-                if (uint.TryParse(lines[0].Trim().Split(',').Last(), out var nVk)) _loadManipNormalVk = nVk;
-                if (uint.TryParse(lines[1].Trim().Split(',').Last(), out var sVk)) _loadManipSlowerVk = sVk;
-                if (uint.TryParse(lines[2].Trim().Split(',').Last(), out var fVk)) _loadManipFreezeVk = fVk;
+                if (uint.TryParse(lines[0].Trim().Split(',').Last(), out var nVk)) _coresNormalVk = nVk;
+                if (uint.TryParse(lines[1].Trim().Split(',').Last(), out var sVk)) _coresSlowerVk = sVk;
+                if (uint.TryParse(lines[2].Trim().Split(',').Last(), out var fVk)) _coresFreezeVk = fVk;
             }
         }
         catch { }
     }
 
-    private void SaveLoadManipHotkeys()
+    private void SaveCoresHotkeys()
     {
         try
         {
-            var dir = IOPath.GetDirectoryName(LoadManipHotkeyFile)!;
+            var dir = IOPath.GetDirectoryName(CoresHotkeyFile)!;
             Directory.CreateDirectory(dir);
-            File.WriteAllText(LoadManipHotkeyFile,
-                $"0,{_loadManipNormalVk}\n" +
-                $"0,{_loadManipSlowerVk}\n" +
-                $"0,{_loadManipFreezeVk}");
+            File.WriteAllText(CoresHotkeyFile,
+                $"0,{_coresNormalVk}\n" +
+                $"0,{_coresSlowerVk}\n" +
+                $"0,{_coresFreezeVk}");
         }
         catch { }
     }
 
-    private void RefreshLoadManipButtons()
+    private void RefreshCoresButtons()
     {
-        LoadManipFreezeText.Text = FormatKeyName(_loadManipFreezeVk);
-        LoadManipSlowerText.Text = FormatKeyName(_loadManipSlowerVk);
-        LoadManipNormalText.Text = FormatKeyName(_loadManipNormalVk);
+        CoresFreezeText.Text = FormatKeyName(_coresFreezeVk);
+        CoresSlowerText.Text = FormatKeyName(_coresSlowerVk);
+        CoresNormalText.Text = FormatKeyName(_coresNormalVk);
 
         var normalBrush = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
         var normalFg    = new SolidColorBrush(Color.FromArgb(255, 138, 170, 187));
-        LoadManipFreezeBtn.BorderBrush = normalBrush;
-        LoadManipFreezeText.Foreground = normalFg;
-        LoadManipSlowerBtn.BorderBrush = normalBrush;
-        LoadManipSlowerText.Foreground = normalFg;
-        LoadManipNormalBtn.BorderBrush = normalBrush;
-        LoadManipNormalText.Foreground = normalFg;
+        CoresFreezeBtn.BorderBrush = normalBrush;
+        CoresFreezeText.Foreground = normalFg;
+        CoresSlowerBtn.BorderBrush = normalBrush;
+        CoresSlowerText.Foreground = normalFg;
+        CoresNormalBtn.BorderBrush = normalBrush;
+        CoresNormalText.Foreground = normalFg;
     }
 
     private void LoadCoresEnabled()
@@ -1650,9 +1650,9 @@ public partial class MainWindow : Window
         RefreshCoresToggle();
 
         if (_coresEnabled)
-            InstallLoadManipHook();
+            InstallCoresHook();
         else
-            UninstallLoadManipHook();
+            UninstallCoresHook();
     }
 
     // ── Chapter 1 Freeze/Normal loads (Controls tab) ─────────────────────────
@@ -2579,44 +2579,44 @@ public partial class MainWindow : Window
         return key.ToString().ToUpperInvariant();
     }
 
-    private void LoadManipFreezeBtn_Click(object sender, RoutedEventArgs e) =>
-        StartLoadManipCapture(0, LoadManipFreezeBtn, LoadManipFreezeText);
-    private void LoadManipSlowerBtn_Click(object sender, RoutedEventArgs e) =>
-        StartLoadManipCapture(1, LoadManipSlowerBtn, LoadManipSlowerText);
-    private void LoadManipNormalBtn_Click(object sender, RoutedEventArgs e) =>
-        StartLoadManipCapture(2, LoadManipNormalBtn, LoadManipNormalText);
+    private void CoresFreezeBtn_Click(object sender, RoutedEventArgs e) =>
+        StartCoresCapture(0, CoresFreezeBtn, CoresFreezeText);
+    private void CoresSlowerBtn_Click(object sender, RoutedEventArgs e) =>
+        StartCoresCapture(1, CoresSlowerBtn, CoresSlowerText);
+    private void CoresNormalBtn_Click(object sender, RoutedEventArgs e) =>
+        StartCoresCapture(2, CoresNormalBtn, CoresNormalText);
 
-    private void StartLoadManipCapture(int target, Button btn, TextBlock text)
+    private void StartCoresCapture(int target, Button btn, TextBlock text)
     {
-        if (_capturingLoadManipHotkey)
+        if (_capturingCoresHotkey)
         {
-            var wasThis = _loadManipCaptureTarget == target;
-            CancelLoadManipCapture();
-            RefreshLoadManipButtons();
+            var wasThis = _coresCaptureTarget == target;
+            CancelCoresCapture();
+            RefreshCoresButtons();
             if (wasThis) return;
         }
 
-        _capturingLoadManipHotkey = true;
-        _loadManipCaptureTarget   = target;
+        _capturingCoresHotkey = true;
+        _coresCaptureTarget   = target;
         text.Text       = Loc.Get("hotkey_press_keys");
         text.Foreground = new SolidColorBrush(Teal);
         btn.BorderBrush = new SolidColorBrush(Teal);
 
-        _loadManipHotkeyCapture = CaptureLoadManipKeyDown;
-        AddHandler(UIElement.PreviewKeyDownEvent, _loadManipHotkeyCapture, true);
+        _coresHotkeyCapture = CaptureCoresKeyDown;
+        AddHandler(UIElement.PreviewKeyDownEvent, _coresHotkeyCapture, true);
     }
 
-    private void CancelLoadManipCapture()
+    private void CancelCoresCapture()
     {
-        _capturingLoadManipHotkey = false;
-        if (_loadManipHotkeyCapture != null)
+        _capturingCoresHotkey = false;
+        if (_coresHotkeyCapture != null)
         {
-            RemoveHandler(UIElement.PreviewKeyDownEvent, _loadManipHotkeyCapture);
-            _loadManipHotkeyCapture = null;
+            RemoveHandler(UIElement.PreviewKeyDownEvent, _coresHotkeyCapture);
+            _coresHotkeyCapture = null;
         }
     }
 
-    private void CaptureLoadManipKeyDown(object sender, KeyEventArgs e)
+    private void CaptureCoresKeyDown(object sender, KeyEventArgs e)
     {
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
@@ -2627,12 +2627,12 @@ public partial class MainWindow : Window
                 or Key.None)
             return;
 
-        var target = _loadManipCaptureTarget;
-        CancelLoadManipCapture();
+        var target = _coresCaptureTarget;
+        CancelCoresCapture();
 
         if (key == Key.Escape)
         {
-            RefreshLoadManipButtons();
+            RefreshCoresButtons();
             e.Handled = true;
             return;
         }
@@ -2641,45 +2641,45 @@ public partial class MainWindow : Window
 
         switch (target)
         {
-            case 0: _loadManipFreezeVk = vk; break;
-            case 1: _loadManipSlowerVk = vk; break;
-            case 2: _loadManipNormalVk = vk; break;
+            case 0: _coresFreezeVk = vk; break;
+            case 1: _coresSlowerVk = vk; break;
+            case 2: _coresNormalVk = vk; break;
         }
 
-        SaveLoadManipHotkeys();
-        RefreshLoadManipButtons();
-        if (_coresEnabled) InstallLoadManipHook();
+        SaveCoresHotkeys();
+        RefreshCoresButtons();
+        if (_coresEnabled) InstallCoresHook();
         e.Handled = true;
     }
 
-    private void HandleLoadManipHotkey(LoadManipMode mode)
+    private void HandleCoresHotkey(CoresMode mode)
     {
-        var (proc, _) = _loadManip.FindGameProcess(_chapters);
-        if (proc == null && _loadManip.CurrentMode == LoadManipMode.Normal) return;
+        var (proc, _) = _cores.FindGameProcess(_chapters);
+        if (proc == null && _cores.CurrentMode == CoresMode.Normal) return;
         proc?.Dispose();
 
-        var processName = _loadManip.ApplyMode(mode, _chapters);
+        var processName = _cores.ApplyMode(mode, _chapters);
         if (processName == null) return;
-        ShowLoadManipToast(mode, processName, _loadManip.DetectedChapter);
+        ShowCoresToast(mode, processName, _cores.DetectedChapter);
     }
 
-    private void ShowLoadManipToast(LoadManipMode mode, string? processName, int chapter)
+    private void ShowCoresToast(CoresMode mode, string? processName, int chapter)
     {
-        _loadManipToast?.Close();
+        _coresToast?.Close();
 
         const double W        = 340;
         const double Duration = 5;
 
         var modeLabel = mode switch
         {
-            LoadManipMode.Slower => "SLOWER",
-            LoadManipMode.Freeze => "FREEZE",
-            _ => "NORMAL",
+            CoresMode.Slower => "1 CORE",
+            CoresMode.Freeze => "0 CORES",
+            _ => "ALL CORES",
         };
         var modeColor = mode switch
         {
-            LoadManipMode.Slower => Color.FromArgb(255, 230, 180, 40),
-            LoadManipMode.Freeze => Color.FromArgb(255, 220, 60,  60),
+            CoresMode.Slower => Color.FromArgb(255, 230, 180, 40),
+            CoresMode.Freeze => Color.FromArgb(255, 220, 60,  60),
             _ => Color.FromArgb(255, 0, 204, 170),
         };
 
@@ -2777,8 +2777,8 @@ public partial class MainWindow : Window
             closeTimer.Start();
         };
 
-        _loadManipToast = toast;
-        toast.Closed += (_, _) => { if (ReferenceEquals(_loadManipToast, toast)) _loadManipToast = null; };
+        _coresToast = toast;
+        toast.Closed += (_, _) => { if (ReferenceEquals(_coresToast, toast)) _coresToast = null; };
         toast.Show();
     }
 
@@ -5438,7 +5438,7 @@ public partial class MainWindow : Window
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
         SelectSettingsTab(0);
-        RefreshLoadManipButtons();
+        RefreshCoresButtons();
         SettingsOverlay.Visibility = Visibility.Visible;
     }
 
@@ -7102,7 +7102,7 @@ public partial class MainWindow : Window
         (string Id, string Username) discordUser, string title, string description, string? imagePath)
     {
         const string WebhookUrl =
-            "https://canary.discord.com/api/webhooks/1517559033182031933/2TUnuPdTos1nftUFUHDl7UsTpKOX6q_Q0Y0DgXiSgQMewyDjL3kL7msbF40LtII9KRlI";
+            "WebhookUrl";
 
         try
         {

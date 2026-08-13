@@ -5,8 +5,21 @@ public record ChangelogEntry(string Version, string Date, string[] Changes);
 public static class ChangelogData
 {
     // Add new versions at the TOP of this array (newest first).
+
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.1.3", "13/08/2026",
+        [
+            "## Bug Fixes",
+            "Fixed Cores priority not re-applying after switching modes several times, previously requiring a game restart to fix",
+            "Fixed Cores priority not changing for Chapter 2 even though the core count changed correctly",
+
+            "## Other",
+            "Renamed the Cores tab's 'Freeze/Slower/Normal loads' options to '0 cores', '1 core', and 'All cores'",
+            "Changed the default Cores hotkeys to B (0 cores), N (1 core), and M (all cores)",
+            "Removed the 'not allowed in official runs' warning from the Cores tab",
+            "Moved the Cores tab to appear right after Load Manip in settings",
+        ]),
         new("2.1.2", "09/08/2026",
         [
             "## Bug Fixes",

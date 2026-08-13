@@ -12,7 +12,7 @@ public static class HandModSubmissionService
 {
     // TODO: replace with the real Discord webhook URL for hand mod submissions before shipping.
     private const string WebhookUrl =
-        "https://canary.discord.com/api/webhooks/1534166703469101136/pmZCSBuTxM7OrpMMnmOIkX91ZZg_bHttNiYbCneuKvBb5gXLR_dElQIDLD8WtQ8ryfoD";
+        "WebhookUrl";
 
     /// <summary>Fixed palette of hand colors a submitted mod can be tagged as reskinning —
     /// matches the in-game hand colors, same idea as <c>HandModsService</c>'s hand.txt convention.</summary>
