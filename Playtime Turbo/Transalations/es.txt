@@ -163,6 +163,17 @@ updates_download_btn = DESCARGAR Y ACTUALIZAR
 updates_cancel_btn = CANCELAR
 updates_downloading = Descargando...  {0}%
 updates_close = VOLVER
+updates_manual_link = ¿La app no se actualiza? Haz clic aquí para actualizar manualmente
+
+# Ventana de actualización manual
+manual_update_header = ACTUALIZACIÓN MANUAL
+manual_update_intro = Si la app no detecta ni instala actualizaciones automáticamente, puedes forzar aquí la descarga e instalación manual de la última versión.
+manual_update_checking = Buscando la última versión...
+manual_update_error = No se pudo conectar con el servidor de actualizaciones. Inténtalo más tarde o abre la página de descarga en tu navegador.
+manual_update_ready = La versión {0} está lista para descargar e instalar.
+manual_update_download_btn = DESCARGAR Y REEMPLAZAR EL LAUNCHER
+manual_update_browser_btn = ABRIR PÁGINA DE DESCARGA EN EL NAVEGADOR
+manual_update_close = CERRAR
 
 # Steam
 steam_launch_btn = ABRIR LAUNCHER CON STEAM
@@ -385,6 +396,10 @@ cores_section           = CORES
 cores_freeze_label      = 0 núcleos
 cores_slower_label      = 1 núcleo
 cores_normal_label      = Todos los núcleos
+cores_priority_section  = PRIORIDAD PARA 0 NÚCLEOS
+cores_priority_label    = Prioridad
+cores_priority_high     = Alta
+cores_priority_low      = Baja
 
 # Reporte de errores
 bug_report_btn                   = REPORTAR ERROR

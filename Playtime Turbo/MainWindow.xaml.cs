@@ -165,6 +165,7 @@ public partial class MainWindow : Window
     private Window? _coresToast;
 
     private bool _coresEnabled;
+    private bool _coresPriorityHigh = true; // default: High
 
     // ── Chapter 1 Freeze/Normal loads (Controls tab) ─────────────────────────
     // Reads/writes LoadManip_Config.ini directly — the Load Manip mod itself reads this
@@ -237,6 +238,10 @@ public partial class MainWindow : Window
     private static readonly string CoresEnabledFile =
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "cores_enabled.cfg");
+
+    private static readonly string CoresPriorityFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "cores_priority.cfg");
 
     private static readonly string Chapter4RemapHotkeyFile =
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -421,6 +426,11 @@ public partial class MainWindow : Window
         CoresSlowerLabel.Text  = Loc.Get("cores_slower_label");
         CoresNormalLabel.Text  = Loc.Get("cores_normal_label");
         RefreshCoresButtons();
+        CoresPrioritySectionLabel.Text = Loc.Get("cores_priority_section");
+        CoresPriorityLabel.Text        = Loc.Get("cores_priority_label");
+        CoresPriorityHighItem.Content  = Loc.Get("cores_priority_high");
+        CoresPriorityLowItem.Content   = Loc.Get("cores_priority_low");
+        RefreshCoresPriorityUI();
         SettingsTabGeneralText.Text      = Loc.Get("settings_tab_general");
         SettingsTabControlsText.Text     = Loc.Get("settings_tab_controls");
         SettingsTabSteamText.Text        = Loc.Get("settings_tab_steam");
@@ -548,6 +558,7 @@ public partial class MainWindow : Window
         AcceptInstallBtnText.Text      = Loc.Get("updates_download_btn");
         CancelInstallBtnText.Text      = Loc.Get("updates_cancel_btn");
         CloseUpdatesBtnText.Text       = Loc.Get("updates_close");
+        ManualUpdateLinkText.Text      = Loc.Get("updates_manual_link");
 
         DiscordShowActivityLabel.Text    = Loc.Get("discord_show_activity");
         DiscordShowVersionLabel.Text     = Loc.Get("discord_show_version");
@@ -795,6 +806,7 @@ public partial class MainWindow : Window
         RefreshHotkeyButton();
         LoadCoresHotkeys();
         LoadCoresEnabled();
+        LoadCoresPriority();
         if (_coresEnabled) InstallCoresHook();
         LoadChapter4RemapHotkeys();
         LoadChapter4RemapEnabled();
@@ -1641,6 +1653,40 @@ public partial class MainWindow : Window
     private void RefreshCoresToggle()
     {
         SetToggle(CoresEnableText, _coresEnabled);
+    }
+
+    private void LoadCoresPriority()
+    {
+        try
+        {
+            if (File.Exists(CoresPriorityFile))
+                _coresPriorityHigh = File.ReadAllText(CoresPriorityFile).Trim() != "low";
+        }
+        catch { }
+    }
+
+    private void SaveCoresPriority()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(CoresPriorityFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(CoresPriorityFile, _coresPriorityHigh ? "high" : "low");
+        }
+        catch { }
+    }
+
+    private void RefreshCoresPriorityUI()
+    {
+        CoresPriorityCombo.SelectionChanged -= CoresPriorityCombo_SelectionChanged;
+        CoresPriorityCombo.SelectedIndex = _coresPriorityHigh ? 0 : 1;
+        CoresPriorityCombo.SelectionChanged += CoresPriorityCombo_SelectionChanged;
+    }
+
+    private void CoresPriorityCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _coresPriorityHigh = CoresPriorityCombo.SelectedIndex == 0;
+        SaveCoresPriority();
     }
 
     private void CoresEnableBtn_Click(object sender, RoutedEventArgs e)
@@ -2658,7 +2704,8 @@ public partial class MainWindow : Window
         if (proc == null && _cores.CurrentMode == CoresMode.Normal) return;
         proc?.Dispose();
 
-        var processName = _cores.ApplyMode(mode, _chapters);
+        var freezePriority = _coresPriorityHigh ? ProcessPriorityClass.High : ProcessPriorityClass.Idle;
+        var processName = _cores.ApplyMode(mode, _chapters, freezePriority);
         if (processName == null) return;
         ShowCoresToast(mode, processName, _cores.DetectedChapter);
     }
@@ -5439,6 +5486,7 @@ public partial class MainWindow : Window
     {
         SelectSettingsTab(0);
         RefreshCoresButtons();
+        RefreshCoresPriorityUI();
         SettingsOverlay.Visibility = Visibility.Visible;
     }
 
@@ -6337,6 +6385,12 @@ public partial class MainWindow : Window
     {
         UpdatesOverlay.Visibility = Visibility.Collapsed;
         if (_showingInstallView) ShowUpdateCheckView();
+    }
+
+    private void ManualUpdateLink_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new ManualUpdateWindow(_updateService) { Owner = this };
+        window.ShowDialog();
     }
 
     // ── LiveSplit ──────────────────────────────────────────────────────────────

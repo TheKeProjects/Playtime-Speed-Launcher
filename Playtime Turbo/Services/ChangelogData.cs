@@ -8,6 +8,12 @@ public static class ChangelogData
 
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.2.0", "14/08/2026",
+        [
+            "## Additions",
+            "Added a Manual Update option that downloads the latest version and replaces the launcher automatically if the update fails",
+            "Added a Priority for 0 cores setting in the Cores tab, letting you choose between High (default) and Low priority",
+        ]),
         new("2.1.3", "13/08/2026",
         [
             "## Bug Fixes",

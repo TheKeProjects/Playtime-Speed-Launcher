@@ -76,23 +76,7 @@ public class UpdateService : IDisposable
             catch { }
 
             if (updateInfo.IsUpdateAvailable)
-            {
-                var fileName    = $"PSLauncherv{latestVersion.Replace(".", "-")}.zip";
-                var downloadUrl = $"https://github.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/releases/latest/download/{fileName}";
-
-                updateInfo.DownloadUrl = downloadUrl;
-                updateInfo.FileName    = fileName;
-                updateInfo.ReleaseUrl  = $"https://github.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/releases/latest";
-
-                try
-                {
-                    using var head = new HttpRequestMessage(HttpMethod.Head, downloadUrl);
-                    using var res  = await _httpClient.SendAsync(head);
-                    if (res.IsSuccessStatusCode && res.Content.Headers.ContentLength.HasValue)
-                        updateInfo.FileSize = res.Content.Headers.ContentLength.Value;
-                }
-                catch { }
-            }
+                await PopulateDownloadFieldsAsync(updateInfo, latestVersion);
         }
         catch (Exception ex)
         {
@@ -100,6 +84,61 @@ public class UpdateService : IDisposable
         }
 
         return updateInfo;
+    }
+
+    // Manual fallback for when the automatic update path fails or misreports the
+    // installed version as current — always returns the download info for the
+    // latest published release, regardless of the local version comparison.
+    public async Task<UpdateInfo> GetLatestReleaseInfoAsync()
+    {
+        var info = new UpdateInfo { LatestVersion = AppVersion.CURRENT_VERSION };
+
+        try
+        {
+            var versionUrl    = $"https://raw.githubusercontent.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/{AppVersion.GITHUB_BRANCH}/version.txt";
+            var latestVersion = (await _httpClient.GetStringAsync(versionUrl))
+                                    .Replace("\r", "").Replace("\n", "").Replace("\t", "").Trim();
+
+            if (string.IsNullOrWhiteSpace(latestVersion))
+                throw new Exception("version.txt is empty or invalid");
+
+            info.LatestVersion     = latestVersion;
+            info.IsUpdateAvailable = true;
+
+            try
+            {
+                var changelogUrl = $"https://raw.githubusercontent.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/{AppVersion.GITHUB_BRANCH}/changelog.txt";
+                info.Changelog   = (await _httpClient.GetStringAsync(changelogUrl)).Trim();
+            }
+            catch { }
+
+            await PopulateDownloadFieldsAsync(info, latestVersion);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[UpdateService] Manual release lookup failed: {ex.Message}");
+        }
+
+        return info;
+    }
+
+    private async Task PopulateDownloadFieldsAsync(UpdateInfo updateInfo, string latestVersion)
+    {
+        var fileName    = $"PSLauncherv{latestVersion.Replace(".", "-")}.zip";
+        var downloadUrl = $"https://github.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/releases/latest/download/{fileName}";
+
+        updateInfo.DownloadUrl = downloadUrl;
+        updateInfo.FileName    = fileName;
+        updateInfo.ReleaseUrl  = $"https://github.com/{AppVersion.GITHUB_OWNER}/{AppVersion.GITHUB_REPO}/releases/latest";
+
+        try
+        {
+            using var head = new HttpRequestMessage(HttpMethod.Head, downloadUrl);
+            using var res  = await _httpClient.SendAsync(head);
+            if (res.IsSuccessStatusCode && res.Content.Headers.ContentLength.HasValue)
+                updateInfo.FileSize = res.Content.Headers.ContentLength.Value;
+        }
+        catch { }
     }
 
     public async Task<GbUpdateInfo> CheckGameBananaUpdateAsync()
@@ -148,6 +187,94 @@ public class UpdateService : IDisposable
         }
 
         return info;
+    }
+
+    // Used only by the manual-update fallback window: downloads the launcher .exe
+    // straight from the GitHub release into the folder the app is currently running
+    // from, then closes the app, replaces the old exe with the new one, and relaunches.
+    public async Task<bool> DownloadAndInstallLauncherExeAsync(IProgress<int>? progress = null)
+    {
+        const string downloadUrl = "https://github.com/TheKeProjects/Playtime-Speed-Launcher/releases/latest/download/PlaytimeSpeedLauncher.exe";
+
+        string? tempDir     = null;
+        string? stagingPath = null;
+
+        try
+        {
+            // AppContext.BaseDirectory always points at this app's own folder, unlike
+            // Environment.ProcessPath, which resolves to dotnet.exe (not our exe) when
+            // running without an apphost — that mismatch previously sent the update to
+            // the wrong file and left the app unable to relaunch.
+            var currentDir      = AppContext.BaseDirectory;
+            var currentExePath  = Path.Combine(currentDir, "PlaytimeSpeedLauncher.exe");
+            stagingPath = Path.Combine(currentDir, "PlaytimeSpeedLauncher.update.exe");
+
+            using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
+            {
+                response.EnsureSuccessStatusCode();
+                var totalBytes = response.Content.Headers.ContentLength ?? 0;
+                var buffer     = new byte[8192];
+                var bytesRead  = 0L;
+
+                using var contentStream = await response.Content.ReadAsStreamAsync();
+                using var fileStream    = new FileStream(stagingPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+
+                int read;
+                while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer, 0, read);
+                    bytesRead += read;
+                    if (totalBytes > 0)
+                        progress?.Report((int)((bytesRead * 100) / totalBytes));
+                }
+            }
+
+            tempDir = Path.Combine(Path.GetTempPath(), "PlaytimeSpeedLauncher_Update");
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+            Directory.CreateDirectory(tempDir);
+
+            var batchPath    = Path.Combine(tempDir, "update.bat");
+            var batchContent = $@"@echo off
+chcp 65001 >nul
+timeout /t 2 /nobreak >nul
+set RETRIES=10
+:retry
+move /y ""{stagingPath}"" ""{currentExePath}"" >nul 2>&1
+if exist ""{stagingPath}"" (
+    set /a RETRIES-=1
+    if %RETRIES% GTR 0 (
+        timeout /t 1 /nobreak >nul
+        goto retry
+    )
+)
+start """" ""{currentExePath}""
+rd /s /q ""{tempDir}""
+exit";
+
+            await File.WriteAllTextAsync(batchPath, batchContent);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName        = "cmd.exe",
+                Arguments       = $"/c \"{batchPath}\"",
+                UseShellExecute = true,
+                WindowStyle     = ProcessWindowStyle.Hidden
+            });
+
+            await Task.Delay(1000);
+            Environment.Exit(0);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[UpdateService] Manual exe install failed: {ex.Message}");
+            try
+            {
+                if (stagingPath != null && File.Exists(stagingPath)) File.Delete(stagingPath);
+                if (tempDir != null && Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+            }
+            catch { }
+            return false;
+        }
     }
 
     public async Task<bool> DownloadAndInstallUpdateAsync(UpdateInfo updateInfo, IProgress<int>? progress = null)
@@ -201,7 +328,7 @@ public class UpdateService : IDisposable
 chcp 65001 >nul
 timeout /t 2 /nobreak >nul
 xcopy ""{extractedExeDir}\*"" ""{currentDir}"" /E /Y /I /Q
-if %ERRORLEVEL% NEQ 0 (pause & exit /b 1)
+if %ERRORLEVEL% NEQ 0 exit /b 1
 start """" ""{currentExePath}""
 rd /s /q ""{tempDir}""
 exit";

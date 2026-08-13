@@ -40,7 +40,8 @@ public sealed class CoresService
         return (null, 0);
     }
 
-    public string? ApplyMode(CoresMode mode, IReadOnlyList<ChapterInfo> chapters)
+    public string? ApplyMode(CoresMode mode, IReadOnlyList<ChapterInfo> chapters,
+        ProcessPriorityClass freezePriority = ProcessPriorityClass.High)
     {
         // Always restore-then-reapply, even if `mode` already matches `_currentMode` — this makes
         // every hotkey press self-healing if a previous affinity/priority change silently failed
@@ -83,7 +84,7 @@ public sealed class CoresService
                     break;
                 case CoresMode.Freeze:
                     SetSingleCoreAffinity(proc);
-                    SetProcessPriority(proc.Id, ProcessPriorityClass.High);
+                    SetProcessPriority(proc.Id, freezePriority);
                     break;
             }
 
