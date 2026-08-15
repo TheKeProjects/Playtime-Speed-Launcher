@@ -39,6 +39,8 @@ public partial class BeginnerTutorialOverlay : Window
         InitializeComponent();
 
         Player.Volume = VolumeSlider.Value;
+        Player.PlaybackError    += Player_PlaybackError;
+        Player.PlayStateChanged += Player_PlayStateChanged;
 
         _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         _progressTimer.Tick += ProgressTimer_Tick;
@@ -49,7 +51,7 @@ public partial class BeginnerTutorialOverlay : Window
         ProgressSlider.AddHandler(Thumb.DragCompletedEvent,
             new DragCompletedEventHandler((_, _) => { _isDragging = false; SeekToSlider(); }));
 
-        Closed += (_, _) => { Player.Stop(); _progressTimer.Stop(); };
+        Closed += (_, _) => { Player.Stop(); Player.Dispose(); _progressTimer.Stop(); };
     }
 
     // ── View switching ────────────────────────────────────────────────────────
@@ -57,7 +59,7 @@ public partial class BeginnerTutorialOverlay : Window
     private void ShowCards()
     {
         Player.Stop();
-        Player.Source            = null;
+        Player.Visibility        = Visibility.Collapsed;
         _currentVideo            = null;
         _isPlaying               = false;
         PlayPauseBtn.IsEnabled   = false;
@@ -79,11 +81,16 @@ public partial class BeginnerTutorialOverlay : Window
         HeaderTitle.Text       = video.Title;
 
         EmptyState.Visibility      = Visibility.Visible;
+        // Visible immediately, not Collapsed: WebView2's underlying window is effectively
+        // hidden while Collapsed, and Chromium throttles/pauses JS timers on hidden content
+        // — including the polling loop that detects the video is ready — so staying
+        // Collapsed through the load can prevent it from ever finishing.
+        Player.Visibility          = Visibility.Visible;
         EmptyStateLabel.Text       = "LOADING, PLEASE WAIT";
         EmptyStateLabel.Foreground = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170));
         LoadingBarTrack.Visibility = Visibility.Visible;
 
-        _ = FetchAndPlayAsync(video);
+        FetchAndPlayAsync(video);
     }
 
     // ── Card interactions ─────────────────────────────────────────────────────
@@ -108,37 +115,45 @@ public partial class BeginnerTutorialOverlay : Window
 
     // ── Stream fetch + playback ───────────────────────────────────────────────
 
-    private async Task FetchAndPlayAsync(TutorialVideo video)
+    private void FetchAndPlayAsync(TutorialVideo video)
     {
-        var (url, error) = await VideoTutorialService.GetStreamUrlAsync(video);
+        var videoId = VideoTutorialService.ExtractVideoId(video.Url);
 
+        if (videoId == null)
+        {
+            Player_PlaybackError(this, "Could not read this video's URL.");
+            return;
+        }
+
+        _currentVideo = video;
+        Player.LoadVideo(videoId);
+    }
+
+    private void Player_PlaybackError(object? sender, string message)
+    {
+        _currentVideo = null;
         LoadingBarTrack.Visibility = Visibility.Collapsed;
+        Player.Visibility          = Visibility.Collapsed;
+        EmptyState.Visibility      = Visibility.Visible;
+        EmptyStateLabel.Text       = message;
+        EmptyStateLabel.Foreground = new SolidColorBrush(Color.FromArgb(200, 200, 80, 60));
+        PlayPauseBtn.IsEnabled     = false;
+        ProgressSlider.IsEnabled   = false;
+    }
 
-        if (url != null)
-        {
-            _currentVideo            = video;
-            Player.Source            = new Uri(url);
-            Player.Play();
-            _isPlaying               = true;
-            PlayPauseIcon.Text       = IconPause;
-            PlayPauseBtn.IsEnabled   = true;
-            ProgressSlider.IsEnabled = true;
-            EmptyState.Visibility    = Visibility.Collapsed;
-        }
-        else
-        {
-            EmptyStateLabel.Text       = error ?? "Could not load video.";
-            EmptyStateLabel.Foreground = new SolidColorBrush(Color.FromArgb(200, 200, 80, 60));
-        }
+    private void Player_PlayStateChanged(object? sender, bool playing)
+    {
+        _isPlaying = playing;
+        PlayPauseIcon.Text = playing ? IconPause : IconPlay;
     }
 
     // ── Player controls ───────────────────────────────────────────────────────
 
     private void ProgressTimer_Tick(object? sender, EventArgs e)
     {
-        if (_isDragging || _currentVideo == null || !Player.NaturalDuration.HasTimeSpan) return;
+        if (_isDragging || _currentVideo == null || !Player.HasDuration) return;
         var pos   = Player.Position;
-        var total = Player.NaturalDuration.TimeSpan;
+        var total = Player.Duration;
         if (total.TotalSeconds <= 0) return;
         _updatingSlider = true;
         ProgressSlider.Value = pos.TotalSeconds / total.TotalSeconds * 100.0;
@@ -151,20 +166,27 @@ public partial class BeginnerTutorialOverlay : Window
 
     private void SeekToSlider()
     {
-        if (!Player.NaturalDuration.HasTimeSpan) return;
-        Player.Position = TimeSpan.FromSeconds(ProgressSlider.Value / 100.0 * Player.NaturalDuration.TimeSpan.TotalSeconds);
+        if (!Player.HasDuration) return;
+        Player.Position = TimeSpan.FromSeconds(ProgressSlider.Value / 100.0 * Player.Duration.TotalSeconds);
     }
 
-    private void Player_MediaOpened(object sender, RoutedEventArgs e)
+    private void Player_MediaOpened(object? sender, EventArgs e)
     {
+        LoadingBarTrack.Visibility = Visibility.Collapsed;
+        EmptyState.Visibility      = Visibility.Collapsed;
+        Player.Visibility          = Visibility.Visible;
+        PlayPauseBtn.IsEnabled     = true;
+        ProgressSlider.IsEnabled   = true;
+        PlayPauseIcon.Text         = IconPause;
+        _isPlaying                 = true;
+
         _updatingSlider = true;
         ProgressSlider.Value = 0;
         _updatingSlider = false;
-        if (Player.NaturalDuration.HasTimeSpan)
-            TimeLabel.Text = $"0:00 / {FormatTime(Player.NaturalDuration.TimeSpan)}";
+        TimeLabel.Text = $"0:00 / {FormatTime(Player.Duration)}";
     }
 
-    private void Player_MediaEnded(object sender, RoutedEventArgs e)
+    private void Player_MediaEnded(object? sender, EventArgs e)
     {
         _updatingSlider = true;
         ProgressSlider.Value = 0;

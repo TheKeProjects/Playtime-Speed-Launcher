@@ -50,6 +50,8 @@ public partial class VideoTutorialOverlay : Window
         InitializeComponent();
 
         Player.Volume = VolumeSlider.Value;
+        Player.PlaybackError    += Player_PlaybackError;
+        Player.PlayStateChanged += Player_PlayStateChanged;
 
         _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         _progressTimer.Tick += ProgressTimer_Tick;
@@ -63,7 +65,7 @@ public partial class VideoTutorialOverlay : Window
         _scrollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         _scrollTimer.Tick += ScrollTimer_Tick;
 
-        Closed += (_, _) => { Player.Stop(); _progressTimer.Stop(); _scrollTimer.Stop(); };
+        Closed += (_, _) => { Player.Stop(); Player.Dispose(); _progressTimer.Stop(); _scrollTimer.Stop(); };
 
         BuildFilters();
         BuildVideoList();
@@ -302,8 +304,6 @@ public partial class VideoTutorialOverlay : Window
                                   v.Category.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                                   v.Description.Contains(search, StringComparison.OrdinalIgnoreCase))))
             .ToList();
-
-        VideoTutorialService.PrefetchAsync(filtered);
 
         if (filtered.Count == 0)
         {
@@ -548,15 +548,19 @@ public partial class VideoTutorialOverlay : Window
             VideoDescription.Text   = video.Description;
         }
 
-        _ = FetchAndPlayAsync(video);
+        PlayVideo(video);
     }
 
-    private async Task FetchAndPlayAsync(TutorialVideo video)
+    private void PlayVideo(TutorialVideo video)
     {
+        var videoId = VideoTutorialService.ExtractVideoId(video.Url);
+
         _loadingVideo = video;
 
-        Player.Stop();
-        Player.Source            = null;
+        // Not calling Player.Stop() here: YouTube's stopVideo() followed immediately by
+        // loadVideoById() can leave the embedded player stuck (no further state/time
+        // updates ever arrive, so the UI hangs on "LOADING, PLEASE WAIT" forever).
+        // loadVideoById() already replaces whatever is currently loaded on its own.
         _isPlaying               = false;
         _currentVideo            = null;
         PlayPauseBtn.IsEnabled   = false;
@@ -568,38 +572,31 @@ public partial class VideoTutorialOverlay : Window
 
         BuildVideoList();
 
-        var (url, error) = await VideoTutorialService.GetStreamUrlAsync(video);
-
-        _loadingVideo              = null;
-        LoadingBarTrack.Visibility = Visibility.Collapsed;
-        EmptyStateLabel.Foreground = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
-        BuildVideoList();
-
-        if (url != null)
+        if (videoId == null)
         {
-            _currentVideo            = video;
-            Player.Source            = new Uri(url);
-            Player.Play();
-            _isPlaying               = true;
-            PlayPauseIcon.Text       = IconPause;
-            PlayPauseBtn.IsEnabled   = true;
-            ProgressSlider.IsEnabled = true;
-            EmptyState.Visibility    = Visibility.Collapsed;
-            _discord?.SetWatchingTutorial(video.Title, video.Chapter);
+            Player_PlaybackError(this, "Could not read this video's URL.");
+            return;
         }
-        else
-        {
-            EmptyStateLabel.Text = error ?? "Could not load video.";
-        }
+
+        _currentVideo = video;
+        // Visible as soon as loading starts, not only once MediaOpened fires: WebView2's
+        // underlying window is effectively hidden while Collapsed, and Chromium throttles/
+        // pauses JS timers on hidden content — including the polling loop that detects the
+        // video is ready — so staying Collapsed through the whole load can prevent it from
+        // ever finishing (video hangs on "LOADING, PLEASE WAIT" forever). The trade-off is
+        // seeing YouTube's own brief buffering frame instead of our loading text/bar.
+        Player.Visibility = Visibility.Visible;
+        Player.LoadVideo(videoId);
+        _discord?.SetWatchingTutorial(video.Title, video.Chapter);
     }
 
     // ── Player ────────────────────────────────────────────────────────────────
 
     private void ProgressTimer_Tick(object? sender, EventArgs e)
     {
-        if (_isDragging || _currentVideo == null || !Player.NaturalDuration.HasTimeSpan) return;
+        if (_isDragging || _currentVideo == null || !Player.HasDuration) return;
         var pos = Player.Position;
-        var total = Player.NaturalDuration.TimeSpan;
+        var total = Player.Duration;
         if (total.TotalSeconds <= 0) return;
         _updatingSlider = true;
         ProgressSlider.Value = pos.TotalSeconds / total.TotalSeconds * 100.0;
@@ -612,20 +609,30 @@ public partial class VideoTutorialOverlay : Window
 
     private void SeekToSlider()
     {
-        if (!Player.NaturalDuration.HasTimeSpan) return;
-        Player.Position = TimeSpan.FromSeconds(ProgressSlider.Value / 100.0 * Player.NaturalDuration.TimeSpan.TotalSeconds);
+        if (!Player.HasDuration) return;
+        Player.Position = TimeSpan.FromSeconds(ProgressSlider.Value / 100.0 * Player.Duration.TotalSeconds);
     }
 
-    private void Player_MediaOpened(object sender, RoutedEventArgs e)
+    private void Player_MediaOpened(object? sender, EventArgs e)
     {
+        _loadingVideo              = null;
+        LoadingBarTrack.Visibility = Visibility.Collapsed;
+        EmptyState.Visibility      = Visibility.Collapsed;
+        Player.Visibility          = Visibility.Visible;
+        PlayPauseBtn.IsEnabled     = true;
+        ProgressSlider.IsEnabled   = true;
+        PlayPauseIcon.Text         = IconPause;
+        _isPlaying                 = true;
+
         _updatingSlider = true;
         ProgressSlider.Value = 0;
         _updatingSlider = false;
-        if (Player.NaturalDuration.HasTimeSpan)
-            TimeLabel.Text = $"0:00 / {FormatTime(Player.NaturalDuration.TimeSpan)}";
+        TimeLabel.Text = $"0:00 / {FormatTime(Player.Duration)}";
+
+        BuildVideoList();
     }
 
-    private void Player_MediaEnded(object sender, RoutedEventArgs e)
+    private void Player_MediaEnded(object? sender, EventArgs e)
     {
         _updatingSlider = true;
         ProgressSlider.Value = 0;
@@ -634,6 +641,26 @@ public partial class VideoTutorialOverlay : Window
         Player.Play();
         _isPlaying = true;
         PlayPauseIcon.Text = IconPause;
+    }
+
+    private void Player_PlaybackError(object? sender, string message)
+    {
+        _loadingVideo              = null;
+        _currentVideo              = null;
+        LoadingBarTrack.Visibility = Visibility.Collapsed;
+        Player.Visibility          = Visibility.Collapsed;
+        EmptyStateLabel.Foreground = new SolidColorBrush(Color.FromArgb(255, 26, 58, 85));
+        EmptyStateLabel.Text       = message;
+        EmptyState.Visibility      = Visibility.Visible;
+        PlayPauseBtn.IsEnabled     = false;
+        ProgressSlider.IsEnabled   = false;
+        BuildVideoList();
+    }
+
+    private void Player_PlayStateChanged(object? sender, bool playing)
+    {
+        _isPlaying = playing;
+        PlayPauseIcon.Text = playing ? IconPause : IconPlay;
     }
 
     private void PlayPause_Click(object sender, RoutedEventArgs e)

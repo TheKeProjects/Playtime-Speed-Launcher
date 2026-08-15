@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="SpeedrunLauncher.YouTubePlayerControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf">
+    <Grid Background="#000000">
+        <wv2:WebView2 x:Name="WebView" DefaultBackgroundColor="Black"/>
+    </Grid>
+</UserControl>

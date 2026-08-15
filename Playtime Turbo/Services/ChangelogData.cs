@@ -8,6 +8,14 @@ public static class ChangelogData
 
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.2.1", "15/08/2026",
+        [
+            "## Additions",
+            "Added new skips for chapter 5",
+
+            "## Bug Fixes",
+            "Fixed Skips and Glitches tutorial videos failing to load or getting stuck when switching between videos (Reported by @lumpydesk_yt)",
+        ]),
         new("2.2.0", "14/08/2026",
         [
             "## Additions",

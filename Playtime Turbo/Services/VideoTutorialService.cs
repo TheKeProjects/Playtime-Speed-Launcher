@@ -1,6 +1,4 @@
 using System.Text.RegularExpressions;
-using YoutubeExplode;
-using YoutubeExplode.Videos.Streams;
 
 namespace SpeedrunLauncher.Services;
 
@@ -134,7 +132,8 @@ public static class VideoTutorialService
             new() { Id = "mewCAtO8Ag5", Title = "The Hour of Joy Skip w/Canister", Version = "Old Patch", Author = "RayRay",           RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://youtu.be/A9nayw_9mXo",                OpenInBrowser = true },
             new() { Id = "mewCAtO8Ag6", Title = "Catnap Skip",                     Version = "Old Patch", Author = "Mushy, Technight", RunCategories = ["Any%"],         Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=FIZG7mrM31U", OpenInBrowser = true },
             new() { Id = "mewCAtO8Ag7", Title = "Hampter Skip",                    Version = "Old Patch", Author = "Hampter",          RunCategories = ["Any%", "100%"], Routes = ["Inbounds"],                                    Restrictions = "", Cores = false, Url = "https://youtu.be/x2I8bnHUOS0",                OpenInBrowser = true },
-            new() { Id = "mewCAtO8Ag8", Title = "Cable Skip",                      Version = "Old Patch", Author = "Technight",        RunCategories = ["100%"],         Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=nD4H7m-xYgc", OpenInBrowser = true }
+            new() { Id = "mewCAtO8Ag8", Title = "Cable Skip",                      Version = "Old Patch", Author = "Technight",        RunCategories = ["100%"],         Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=nD4H7m-xYgc", OpenInBrowser = true },
+            new() { Id = "mewCAtO8Ag9", Title = "Bridge Boost",                    Version = "Old Patch", Author = "AdrianPG77",       RunCategories = ["100%"],         Routes = ["Out of Bounds", "Inbounds", "All Stages"],     Restrictions = "", Cores = false, Url = "https://youtu.be/0HrCE3YtuGU",                OpenInBrowser = true }
         ),
 
         // ─── CHAPTER 4 ────────────────────────────────────────────────────────
@@ -187,144 +186,58 @@ public static class VideoTutorialService
 
         // ─── CHAPTER 5 ────────────────────────────────────────────────────────
         ..InChapter("Chapter 5",
-            new() { Id = "ch5_lower_taper_fade_skip",       Title = "Lower Taper Fade Skip",                 Version = "Patch 1, Patch 2", Author = "Arkham",                RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/0zp2M5Q3mF4",                OpenInBrowser = true },
-            new() { Id = "ch5_fire_f11_skip",               Title = "Fire F11 Skip",                         Version = "Patch 1, Patch 2", Author = "Arkham",                RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/8pzFFrPFGVY",                OpenInBrowser = true },
-            new() { Id = "ch5_elevator_skip",               Title = "Elevator Skip",                         Version = "Patch 1, Patch 2", Author = "Weet",                  RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=6bthrB9OhEg", OpenInBrowser = true },
-            new() { Id = "ch5_outimals_oob_skip",           Title = "Outimals OOB Skip",                     Version = "Patch 1, Patch 2", Author = "Ontrigger",             RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/bT2YVHkzYzg",                OpenInBrowser = true },
-            new() { Id = "ch5_early_grabpack",              Title = "Early Grabpack",                        Version = "Patch 1, Patch 2", Author = "Technight",             RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/yBTanZRCbYA",                OpenInBrowser = true },
-            new() { Id = "ch5_zero_gravity_67_skip",        Title = "0 Gravity (67 Skip)",                   Version = "Patch 1",          Author = "Sango",                 RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/gkBFN_3WmHk",                OpenInBrowser = true },
-            new() { Id = "ch5_zero_gravity_updated",        Title = "0 Gravity (67 Skip) Updated Route",     Version = "Patch 1, Patch 2", Author = "Keirahela",             RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=38M1-1PXDs4", OpenInBrowser = true },
-            new() { Id = "ch5_zero_gravity_oob",            Title = "0 Gravity (67 Skip) Updated Route OOB", Version = "Patch 1, Patch 2", Author = "Technight",             RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/jEuUNBPD8mo",                OpenInBrowser = true },
-            new() { Id = "ch5_gilbert_skip",                Title = "Gilbert Skip",                          Version = "Patch 1, Patch 2", Author = "Davidbaron",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=DxtDrdUn4QA", OpenInBrowser = true },
-            new() { Id = "ch5_magnet_cuff_box_skip",        Title = "Magnet Cuff Room Box Skip",             Version = "Patch 1, Patch 2", Author = "LA, Rayray & Bwoomz",   RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=m7nfM0Oa-IA", OpenInBrowser = true },
-            new() { Id = "ch5_huggy_memories_inbounds",     Title = "Huggy's Memories Skip (Inbounds)",      Version = "Patch 1, Patch 2", Author = "realturhun, Technight", RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=yzuKwJAlzQg", OpenInBrowser = true },
-            new() { Id = "ch5_huggy_memories_oob",          Title = "Huggy's Memories Skip (OOB)",           Version = "Patch 1, Patch 2", Author = "MushyMeow",             RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/iPBlDBxYls4",                OpenInBrowser = true },
-            new() { Id = "ch5_huggy_memories_unrestricted", Title = "Huggy's Memories Skip (Unrestricted)",  Version = "Patch 1, Patch 2", Author = "Mushymeow",             RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/0KYxlmu9bLM",                OpenInBrowser = true },
-            new() { Id = "ch5_fent_skip",                   Title = "Fent Skip",                             Version = "Patch 1, Patch 2", Author = "Broomz",                RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://youtu.be/dMttzMp0bZ4",                OpenInBrowser = true },
-            new() { Id = "ch5_sid_skip",                    Title = "SID Skip",                              Version = "Patch 1, Patch 2", Author = "MushyMeow",             RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/5qqmLbt5zDA",                OpenInBrowser = true },
-            new() { Id = "ch5_sid_skip_no_f11",             Title = "SID Skip (No F11)",                     Version = "Patch 1, Patch 2", Author = "Technight, Nia",        RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=Rx7y9Dzqe7o", OpenInBrowser = true },
-            new() { Id = "ch5_megabonk_skip",               Title = "Megabonk Skip",                         Version = "Patch 1, Patch 2", Author = "Nia",                   RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/lhJRbSbKlZw",                OpenInBrowser = true },
-            new() { Id = "ch5_dollhouse_key_oob",           Title = "Dollhouse Key OOB",                     Version = "Patch 1, Patch 2", Author = "Technight",             RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/lhJRbSbKlZw",                OpenInBrowser = true },
-            new() { Id = "ch5_dollhouse_key_oob_faster",    Title = "Dollhouse Key OOB but Faster",          Version = "Patch 1, Patch 2", Author = "Proac",                 RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=Z2g7l9GVz2Y", OpenInBrowser = true },
-            new() { Id = "ch5_lily_chase_skip",             Title = "Lily Chase Skip",                       Version = "Patch 1, Patch 2", Author = "Clowntech2",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://youtu.be/M5_f3a5yWzw",                OpenInBrowser = true },
-            new() { Id = "ch5_peaks_of_yore_skip",          Title = "Peaks of Yore Skip",                    Version = "Patch 1, Patch 2", Author = "Clowntech2",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://youtu.be/OJl497Iq57w",                OpenInBrowser = true },
-            new() { Id = "ch5_reanimation_skip",            Title = "Reanimation Skip",                      Version = "Patch 1, Patch 2", Author = "Hawkz",                 RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/8yn9rA5LI0Q",                OpenInBrowser = true },
-            new() { Id = "ch5_clanker_skip",                Title = "Clanker Skip",                          Version = "Patch 1, Patch 2", Author = "AdrianPG77",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/loEGTZXmedU",                OpenInBrowser = true },
-            new() { Id = "ch5_computer_skip",               Title = "Computer Skip",                         Version = "Patch 1, Patch 2", Author = "Ontrigger",             RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/zIVch4Q4eq4",                OpenInBrowser = true },
-            new() { Id = "ch5_lily_chase_skip_skip",        Title = "Lily Chase Skip Skip",                  Version = "Patch 1, Patch 2", Author = "AdrianPG77",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "Unrestricted"],   Restrictions = "", Cores = false, Url = "https://youtu.be/AgA2YO742bI",                OpenInBrowser = true },
-            new() { Id = "ch5_small_intro_timesave",        Title = "Small Intro Timesave",                  Version = "Patch 1, Patch 2", Author = "LA",                    RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/8hR_j6f27Rg",                OpenInBrowser = true },
-            new() { Id = "ch5_first_scanner_gate_jump",     Title = "First Scanner Gate Jump",               Version = "Patch 1, Patch 2", Author = "AdrianPG77",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/gbzaSQoIM7Q",                OpenInBrowser = true },
-            new() { Id = "ch5_fast_1st_elevator_shaft",     Title = "Fast 1st Elevator Shaft",               Version = "Patch 1, Patch 2", Author = "None",                  RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/uzQPYh3quYI",                OpenInBrowser = true },
-            new() { Id = "ch5_spiderman_grapples",          Title = "Spiderman Grapples",                    Version = "Patch 1, Patch 2", Author = "None",                  RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/srSg14GaCWg",                OpenInBrowser = true },
-            new() { Id = "ch5_huggy_bossfight_route",       Title = "Huggy Bossfight Route (Any%)",          Version = "Patch 1, Patch 2", Author = "Arkham",                RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/4uPKfRPgljc",                OpenInBrowser = true },
-            new() { Id = "ch5_sweet_street_last_section",   Title = "Sweet Street Last Section Fast",        Version = "Patch 1, Patch 2", Author = "LA",                    RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/QdrPRI-MH3M",                OpenInBrowser = true },
-            new() { Id = "ch5_finding_friends_route",       Title = "Finding Friends Route",                 Version = "Patch 1, Patch 2", Author = "Sky",                   RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/SXvcGmZBJkA",                OpenInBrowser = true },
-            new() { Id = "ch5_2_cycle_lily_rlgl",           Title = "2 Cycle Lily Red Light/Green Light",    Version = "Patch 1, Patch 2", Author = "Clown",                 RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/AGNZiN8qejc",                OpenInBrowser = true },
-            new() { Id = "ch5_small_last_huggy_chase_skip", Title = "Small Last Huggy Chase Skip",           Version = "Patch 1, Patch 2", Author = "AdrianPG77",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/77cx0gpCvLQ",                OpenInBrowser = true },
-            new() { Id = "ch5_dollhouse_early_lights_out",  Title = "Dollhouse Early Lights Out",            Version = "Patch 1, Patch 2", Author = "Icewolf",               RunCategories = ["NG+"],          Routes = ["Out of Bounds", "Inbounds", "Unrestricted"],   Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=htVnk7Uuw-c", OpenInBrowser = true }
+            new() { Id = "ch5_lower_taper_fade_skip",       Title = "Lower Taper Fade Skip",                 Version = "Patch 1, Patch 2", Author = "Arkham",                RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/0zp2M5Q3mF4",                     OpenInBrowser = true },
+            new() { Id = "ch5_fire_f11_skip",               Title = "Fire F11 Skip",                         Version = "Patch 1, Patch 2", Author = "Arkham",                RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/8pzFFrPFGVY",                     OpenInBrowser = true },
+            new() { Id = "ch5_elevator_skip",               Title = "Elevator Skip",                         Version = "Patch 1, Patch 2", Author = "Weet",                  RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=6bthrB9OhEg",      OpenInBrowser = true },
+            new() { Id = "ch5_outimals_oob_skip",           Title = "Outimals OOB Skip",                     Version = "Patch 1, Patch 2", Author = "Ontrigger",             RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/bT2YVHkzYzg",                     OpenInBrowser = true },
+            new() { Id = "ch5_early_grabpack",              Title = "Early Grabpack",                        Version = "Patch 1, Patch 2", Author = "Technight",             RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/yBTanZRCbYA",                     OpenInBrowser = true },
+            new() { Id = "ch5_zero_gravity_67_skip",        Title = "0 Gravity (67 Skip)",                   Version = "Patch 1",          Author = "Sango",                 RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/gkBFN_3WmHk",                     OpenInBrowser = true },
+            new() { Id = "ch5_zero_gravity_updated",        Title = "0 Gravity (67 Skip) Updated Route",     Version = "Patch 1, Patch 2", Author = "Keirahela",             RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=38M1-1PXDs4",      OpenInBrowser = true },
+            new() { Id = "ch5_zero_gravity_oob",            Title = "0 Gravity (67 Skip) Updated Route OOB", Version = "Patch 1, Patch 2", Author = "Technight",             RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/jEuUNBPD8mo",                     OpenInBrowser = true },
+            new() { Id = "ch5_gilbert_skip",                Title = "Gilbert Skip",                          Version = "Patch 1, Patch 2", Author = "Davidbaron",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=DxtDrdUn4QA",      OpenInBrowser = true },
+            new() { Id = "ch5_magnet_cuff_box_skip",        Title = "Magnet Cuff Room Box Skip",             Version = "Patch 1, Patch 2", Author = "LA, Rayray & Bwoomz",   RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=m7nfM0Oa-IA",      OpenInBrowser = true },
+            new() { Id = "ch5_huggy_memories_inbounds",     Title = "Huggy's Memories Skip (Inbounds)",      Version = "Patch 1, Patch 2", Author = "realturhun, Technight", RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=yzuKwJAlzQg",      OpenInBrowser = true },
+            new() { Id = "ch5_huggy_memories_oob",          Title = "Huggy's Memories Skip (OOB)",           Version = "Patch 1, Patch 2", Author = "MushyMeow",             RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/iPBlDBxYls4",                     OpenInBrowser = true },
+            new() { Id = "ch5_huggy_memories_unrestricted", Title = "Huggy's Memories Skip (Unrestricted)",  Version = "Patch 1, Patch 2", Author = "Mushymeow",             RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/0KYxlmu9bLM",                     OpenInBrowser = true },
+            new() { Id = "ch5_fent_skip",                   Title = "Fent Skip",                             Version = "Patch 1, Patch 2", Author = "Broomz",                RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://youtu.be/dMttzMp0bZ4",                     OpenInBrowser = true },
+            new() { Id = "ch5_sid_skip",                    Title = "SID Skip",                              Version = "Patch 1, Patch 2", Author = "MushyMeow",             RunCategories = ["Any%", "100%"], Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/5qqmLbt5zDA",                     OpenInBrowser = true },
+            new() { Id = "ch5_sid_skip_no_f11",             Title = "SID Skip (No F11)",                     Version = "Patch 1, Patch 2", Author = "Technight, Nia",        RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=Rx7y9Dzqe7o",      OpenInBrowser = true },
+            new() { Id = "ch5_megabonk_skip",               Title = "Megabonk Skip",                         Version = "Patch 1, Patch 2", Author = "Nia",                   RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/lhJRbSbKlZw",                     OpenInBrowser = true },
+            new() { Id = "ch5_dollhouse_key_oob",           Title = "Dollhouse Key OOB",                     Version = "Patch 1, Patch 2", Author = "Technight",             RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/lhJRbSbKlZw",                     OpenInBrowser = true },
+            new() { Id = "ch5_dollhouse_key_oob_faster",    Title = "Dollhouse Key OOB but Faster",          Version = "Patch 1, Patch 2", Author = "Proac",                 RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=Z2g7l9GVz2Y",      OpenInBrowser = true },
+            new() { Id = "ch5_lily_chase_skip",             Title = "Lily Chase Skip",                       Version = "Patch 1, Patch 2", Author = "Clowntech2",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://youtu.be/M5_f3a5yWzw",                     OpenInBrowser = true },
+            new() { Id = "ch5_peaks_of_yore_skip",          Title = "Peaks of Yore Skip",                    Version = "Patch 1, Patch 2", Author = "Clowntech2",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds"],                   Restrictions = "", Cores = false, Url = "https://youtu.be/OJl497Iq57w",                     OpenInBrowser = true },
+            new() { Id = "ch5_reanimation_skip",            Title = "Reanimation Skip",                      Version = "Patch 1, Patch 2", Author = "Hawkz",                 RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/8yn9rA5LI0Q",                     OpenInBrowser = true },
+            new() { Id = "ch5_clanker_skip",                Title = "Clanker Skip",                          Version = "Patch 1, Patch 2", Author = "AdrianPG77",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds"],                               Restrictions = "", Cores = false, Url = "https://youtu.be/loEGTZXmedU",                     OpenInBrowser = true },
+            new() { Id = "ch5_computer_skip",               Title = "Computer Skip",                         Version = "Patch 1, Patch 2", Author = "Ontrigger",             RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/zIVch4Q4eq4",                     OpenInBrowser = true },
+            new() { Id = "ch5_lily_chase_skip_skip",        Title = "Lily Chase Skip Skip",                  Version = "Patch 1, Patch 2", Author = "AdrianPG77",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "Unrestricted"],   Restrictions = "", Cores = false, Url = "https://youtu.be/AgA2YO742bI",                     OpenInBrowser = true },
+            new() { Id = "ch5_small_intro_timesave",        Title = "Small Intro Timesave",                  Version = "Patch 1, Patch 2", Author = "LA",                    RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/8hR_j6f27Rg",                     OpenInBrowser = true },
+            new() { Id = "ch5_first_scanner_gate_jump",     Title = "First Scanner Gate Jump",               Version = "Patch 1, Patch 2", Author = "AdrianPG77",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/gbzaSQoIM7Q",                     OpenInBrowser = true },
+            new() { Id = "ch5_fast_1st_elevator_shaft",     Title = "Fast 1st Elevator Shaft",               Version = "Patch 1, Patch 2", Author = "None",                  RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/uzQPYh3quYI",                     OpenInBrowser = true },
+            new() { Id = "ch5_spiderman_grapples",          Title = "Spiderman Grapples",                    Version = "Patch 1, Patch 2", Author = "None",                  RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/srSg14GaCWg",                     OpenInBrowser = true },
+            new() { Id = "ch5_huggy_bossfight_route",       Title = "Huggy Bossfight Route (Any%)",          Version = "Patch 1, Patch 2", Author = "Arkham",                RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/4uPKfRPgljc",                     OpenInBrowser = true },
+            new() { Id = "ch5_sweet_street_last_section",   Title = "Sweet Street Last Section Fast",        Version = "Patch 1, Patch 2", Author = "LA",                    RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/QdrPRI-MH3M",                     OpenInBrowser = true },
+            new() { Id = "ch5_finding_friends_route",       Title = "Finding Friends Route",                 Version = "Patch 1, Patch 2", Author = "Sky",                   RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/SXvcGmZBJkA",                     OpenInBrowser = true },
+            new() { Id = "ch5_2_cycle_lily_rlgl",           Title = "2 Cycle Lily Red Light/Green Light",    Version = "Patch 1, Patch 2", Author = "Clown",                 RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/AGNZiN8qejc",                     OpenInBrowser = true },
+            new() { Id = "ch5_small_last_huggy_chase_skip", Title = "Small Last Huggy Chase Skip",           Version = "Patch 1, Patch 2", Author = "AdrianPG77",            RunCategories = ["Any%", "100%"], Routes = ["Out of Bounds", "Inbounds", "No Major Skips"], Restrictions = "", Cores = false, Url = "https://youtu.be/77cx0gpCvLQ",                     OpenInBrowser = true },
+            new() { Id = "ch5_dollhouse_early_lights_out",  Title = "Dollhouse Early Lights Out",            Version = "Patch 1, Patch 2", Author = "Icewolf",               RunCategories = ["NG+"],          Routes = ["Out of Bounds", "Inbounds", "Unrestricted"],   Restrictions = "", Cores = false, Url = "https://www.youtube.com/watch?v=htVnk7Uuw-c",      OpenInBrowser = true },
+            new() { Id = "ch5_skip_of_it",                  Title = "Skip of it",                            Version = "Patch 1, Patch 2", Author = "Technight, Edwin",      RunCategories = ["Any%"],         Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/a-xLNaOCQmc?si=3CYntQI0rsRvrp15", OpenInBrowser = true },
+            new() { Id = "ch5_skip_of_it_easy_version",     Title = "Skip of it (Easy Version)",             Version = "Patch 1, Patch 2", Author = "Technight, Edwin",      RunCategories = ["Any%"],         Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/wzVE3ojwGa4",                     OpenInBrowser = true },
+            new() { Id = "ch5_early_61",                    Title = "Early 61",                              Version = "Patch 1, Patch 2", Author = "Technight, Edwin",      RunCategories = ["Any%"],         Routes = ["Unrestricted"],                                Restrictions = "", Cores = false, Url = "https://youtu.be/TfaOaipgHHA",                     OpenInBrowser = true }
         ),
     ];
 
     public static void Initialize() { }
 
-    private static readonly YoutubeClient _yt = new();
-    private static readonly Dictionary<string, string> _cache = new();
-    private static readonly Dictionary<string, (string Video, string Audio)> _adaptiveCache = new();
-
-    // Returns (url, errorMessage) — url is null on failure
-    public static async Task<(string? Url, string? Error)> GetStreamUrlAsync(TutorialVideo video)
+    // Playback no longer scrapes YouTube for a raw CDN stream URL (that's what "cipher manifest"
+    // extraction was — fragile and rate-limited by YouTube). Instead the video ID is embedded
+    // directly via YouTube's own IFrame player (see YouTubePlayerControl), so this is just a
+    // regex pull of the ID out of the configured URL.
+    public static string? ExtractVideoId(string url)
     {
-        try
-        {
-            var m = Regex.Match(video.Url, @"youtu\.be/([A-Za-z0-9_-]+)");
-            if (!m.Success) m = Regex.Match(video.Url, @"[?&]v=([A-Za-z0-9_-]+)");
-            if (!m.Success) return (null, "Could not extract video ID from URL");
-
-            var videoId = m.Groups[1].Value;
-
-            if (_cache.TryGetValue(videoId, out var cached))
-                return (cached, null);
-
-            var manifest = await _yt.Videos.Streams.GetManifestAsync(videoId);
-
-            var stream = manifest.GetMuxedStreams()
-                             .OrderByDescending(s => s.VideoQuality.MaxHeight)
-                             .FirstOrDefault();
-
-            if (stream != null)
-            {
-                _cache[videoId] = stream.Url;
-                return (stream.Url, null);
-            }
-
-            return (null, manifest.GetMuxedStreams().Any()
-                ? "No stream found"
-                : "No playable stream (DASH-only video)");
-        }
-        catch (Exception ex)
-        {
-            return (null, ex.Message);
-        }
-    }
-
-    // Returns separate high-quality video + audio stream URLs.
-    // Prefers mp4 adaptive streams (up to 1080p+); falls back to muxed.
-    // audioUrl is null when falling back to a muxed stream.
-    public static async Task<(string? VideoUrl, string? AudioUrl, string? Error)> GetAdaptiveStreamsAsync(TutorialVideo video)
-    {
-        try
-        {
-            var m = Regex.Match(video.Url, @"youtu\.be/([A-Za-z0-9_-]+)");
-            if (!m.Success) m = Regex.Match(video.Url, @"[?&]v=([A-Za-z0-9_-]+)");
-            if (!m.Success) return (null, null, "Could not extract video ID from URL");
-
-            var videoId = m.Groups[1].Value;
-
-            if (_adaptiveCache.TryGetValue(videoId, out var ac))
-                return (ac.Video, ac.Audio, null);
-
-            var manifest = await _yt.Videos.Streams.GetManifestAsync(videoId);
-
-            var bestVideo = manifest.GetVideoOnlyStreams()
-                .Where(s => s.Container.Name == "mp4")
-                .OrderByDescending(s => s.VideoQuality.MaxHeight)
-                .FirstOrDefault();
-
-            var bestAudio = manifest.GetAudioOnlyStreams()
-                .Where(s => s.Container.Name == "mp4")
-                .OrderByDescending(s => s.Bitrate)
-                .FirstOrDefault();
-
-            if (bestVideo != null && bestAudio != null)
-            {
-                _adaptiveCache[videoId] = (bestVideo.Url, bestAudio.Url);
-                return (bestVideo.Url, bestAudio.Url, null);
-            }
-
-            // Fallback: best muxed stream
-            var muxed = manifest.GetMuxedStreams()
-                .OrderByDescending(s => s.VideoQuality.MaxHeight)
-                .FirstOrDefault();
-
-            if (muxed != null)
-            {
-                _adaptiveCache[videoId] = (muxed.Url, string.Empty);
-                return (muxed.Url, null, null);
-            }
-
-            return (null, null, "No playable stream found");
-        }
-        catch (Exception ex)
-        {
-            return (null, null, ex.Message);
-        }
-    }
-
-    // Pre-fetches stream URLs for a batch of videos in the background
-    public static void PrefetchAsync(IEnumerable<TutorialVideo> videos)
-    {
-        foreach (var video in videos)
-            _ = Task.Run(() => GetStreamUrlAsync(video));
+        var m = Regex.Match(url, @"youtu\.be/([A-Za-z0-9_-]+)");
+        if (!m.Success) m = Regex.Match(url, @"[?&]v=([A-Za-z0-9_-]+)");
+        return m.Success ? m.Groups[1].Value : null;
     }
 
     private static TutorialVideo[] InChapter(string chapter, params TutorialVideo[] videos)

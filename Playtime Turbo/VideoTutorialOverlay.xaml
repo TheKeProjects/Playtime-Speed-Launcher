@@ -305,12 +305,10 @@
 
                         <!-- Video -->
                         <Grid Grid.Row="0" Background="#000000">
-                            <MediaElement x:Name="Player"
-                                          LoadedBehavior="Manual"
-                                          UnloadedBehavior="Stop"
-                                          Stretch="Uniform"
-                                          MediaOpened="Player_MediaOpened"
-                                          MediaEnded="Player_MediaEnded"/>
+                            <local:YouTubePlayerControl x:Name="Player"
+                                                         Visibility="Collapsed"
+                                                         MediaOpened="Player_MediaOpened"
+                                                         MediaEnded="Player_MediaEnded"/>
                             <StackPanel x:Name="EmptyState"
                                         VerticalAlignment="Center"
                                         HorizontalAlignment="Center">
