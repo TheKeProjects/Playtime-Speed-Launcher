@@ -3143,6 +3143,27 @@
                        Margin="0,0,16,12"/>
         </Grid>
 
+        <!-- ── EASTER EGG VIDEO OVERLAY ── -->
+        <Grid x:Name="EasterEggOverlay"
+              Grid.RowSpan="6"
+              Visibility="Collapsed"
+              Background="#CC000000"
+              MouseDown="EasterEggOverlay_MouseDown">
+            <Border Width="960" Height="570"
+                    Background="#090C1E"
+                    BorderBrush="#2A1050" BorderThickness="1"
+                    CornerRadius="4"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+                <MediaElement x:Name="EasterEggPlayer"
+                              LoadedBehavior="Manual"
+                              UnloadedBehavior="Stop"
+                              Stretch="Uniform"
+                              MediaEnded="EasterEggPlayer_MediaEnded"
+                              MediaFailed="EasterEggPlayer_MediaFailed"/>
+            </Border>
+        </Grid>
+
         <!-- ── UE4SS OVERLAY ── -->
         <Grid x:Name="Ue4ssOverlay"
               Grid.RowSpan="6"

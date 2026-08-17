@@ -69,7 +69,17 @@ public partial class YouTubePlayerControl : UserControl, IDisposable
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "PlaytimeSpeedLauncher");
             var userDataFolder = Path.Combine(appDataDir, "WebView2");
-            var env = await CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder);
+
+            // Without this, the YouTube video renders through a hardware DirectComposition
+            // overlay plane instead of the normal compositor surface. That overlay is invisible
+            // to most window-specific screen capture (Discord/Zoom/Teams "share this window",
+            // many OBS window-capture modes) — only full desktop capture picks it up, since that
+            // reads the final composited screen rather than the window's own surface.
+            var options = new CoreWebView2EnvironmentOptions
+            {
+                AdditionalBrowserArguments = "--disable-features=DirectCompositionVideoOverlays"
+            };
+            var env = await CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder, options: options);
             await WebView.EnsureCoreWebView2Async(env);
 
             // YouTube's IFrame API validates the embedding page's origin and rejects the
