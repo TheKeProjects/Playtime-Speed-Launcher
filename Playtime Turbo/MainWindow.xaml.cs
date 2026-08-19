@@ -90,13 +90,8 @@ public partial class MainWindow : Window
     private KeyEventHandler?         _chapter5FullBrightKeyCapture;
     private MouseButtonEventHandler? _chapter5FullBrightMouseCapture;
 
-    // ── Konami code easter egg ────────────────────────────────────────────────
-    private static readonly Key[] KonamiSequence =
-    [
-        Key.Up, Key.Up, Key.Down, Key.Down, Key.Left, Key.Right, Key.Left, Key.Right, Key.B, Key.A, Key.Enter,
-    ];
-    private readonly List<Key> _konamiBuffer = [];
-    private bool               _easterEggPlaying;
+    // ── Easter eggs (Konami code, "gane", ...) ──────────────────────────────────
+    private EasterEggService? _easterEggService;
 
     // ── UE4SS temp hotkey remap ───────────────────────────────────────────────
     private bool    _ue4ssTempRemap    = false;
@@ -315,7 +310,8 @@ public partial class MainWindow : Window
         InitLangSelector();
         ApplyLanguage();
         SetupWindow();
-        AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler(CaptureKonamiKeyDown), true);
+        _easterEggService = new EasterEggService(EasterEggPlayer, EasterEggOverlay);
+        AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler((_, e) => _easterEggService.HandleKeyDown(e)), true);
         CardsScrollViewer.PreviewMouseWheel += (s, e) =>
         {
             if (CardsScrollViewer.ScrollableWidth <= 0) return;
@@ -5925,57 +5921,11 @@ public partial class MainWindow : Window
         }, closeText: "OK");
     }
 
-    private void CaptureKonamiKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Escape && _easterEggPlaying)
-        {
-            HideEasterEggVideoPopup();
-            return;
-        }
+    private void EasterEggOverlay_MouseDown(object sender, MouseButtonEventArgs e) => _easterEggService?.Hide();
 
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+    private void EasterEggPlayer_MediaEnded(object sender, RoutedEventArgs e) => _easterEggService?.Hide();
 
-        if (key != KonamiSequence[_konamiBuffer.Count])
-        {
-            _konamiBuffer.Clear();
-            if (key == KonamiSequence[0]) _konamiBuffer.Add(key);
-            return;
-        }
-
-        _konamiBuffer.Add(key);
-        if (_konamiBuffer.Count < KonamiSequence.Length) return;
-
-        _konamiBuffer.Clear();
-        ShowEasterEggVideoPopup();
-    }
-
-    private void ShowEasterEggVideoPopup()
-    {
-        if (_easterEggPlaying) return;
-
-        var videoPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Videos", "EasterEgg.mp4");
-        if (!File.Exists(videoPath)) return;
-
-        _easterEggPlaying = true;
-
-        EasterEggPlayer.Source = new Uri(videoPath);
-        EasterEggOverlay.Visibility = Visibility.Visible;
-        EasterEggPlayer.Play();
-    }
-
-    private void HideEasterEggVideoPopup()
-    {
-        EasterEggPlayer.Stop();
-        EasterEggPlayer.Source = null;
-        EasterEggOverlay.Visibility = Visibility.Collapsed;
-        _easterEggPlaying = false;
-    }
-
-    private void EasterEggOverlay_MouseDown(object sender, MouseButtonEventArgs e) => HideEasterEggVideoPopup();
-
-    private void EasterEggPlayer_MediaEnded(object sender, RoutedEventArgs e) => HideEasterEggVideoPopup();
-
-    private void EasterEggPlayer_MediaFailed(object sender, ExceptionRoutedEventArgs e) => HideEasterEggVideoPopup();
+    private void EasterEggPlayer_MediaFailed(object sender, ExceptionRoutedEventArgs e) => _easterEggService?.Hide();
 
     private void ShowTutorialVideoPopup()
     {
