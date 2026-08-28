@@ -1,6 +1,6 @@
 - [MainWindow.xaml.cs](MainWindow.xaml.cs),
-- [Services/HandModSubmissionService.cs](Services/HandModSubmissionService.cs),
-- [Services/DiscordOAuthService.cs](Services/DiscordOAuthService.cs),
-- [Services/DiscordPresenceService.cs](Services/DiscordPresenceService.cs),
-- [Services/SkipReportService.cs](Services/SkipReportService.cs),
-- [Services/OnlineUsers/OnlineUsersService.cs](Services/OnlineUsers/OnlineUsersService.cs)
+- [Services/GameFiles/HandModSubmissionService.cs](Services/GameFiles/HandModSubmissionService.cs),
+- [Services/Discord/DiscordOAuthService.cs](Services/Discord/DiscordOAuthService.cs),
+- [Services/Discord/DiscordPresenceService.cs](Services/Discord/DiscordPresenceService.cs),
+- [Services/Community/SkipReportService.cs](Services/Community/SkipReportService.cs),
+- [Services/Community/OnlineUsersService.cs](Services/Community/OnlineUsersService.cs)

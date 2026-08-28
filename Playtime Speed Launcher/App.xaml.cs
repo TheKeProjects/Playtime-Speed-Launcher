@@ -1,5 +1,7 @@
 using System.Windows;
 using SpeedrunLauncher.Services;
+using SpeedrunLauncher.Services.App;
+using SpeedrunLauncher.Services.Platforms;
 
 namespace SpeedrunLauncher;
 
@@ -13,14 +15,20 @@ public partial class App : Application
             return;
         }
 
-        if (e.Args.Length > 0 && e.Args[0] == Services.SteamShortcutHelperEntryPoint.Arg)
+        if (e.Args.Length > 0 && e.Args[0] == SteamShortcutHelperEntryPoint.Arg)
         {
-            Environment.Exit(Services.SteamShortcutHelperEntryPoint.Run(e.Args));
+            Environment.Exit(SteamShortcutHelperEntryPoint.Run(e.Args));
             return;
         }
 
         base.OnStartup(e);
         ResourceExtractor.Extract();
         new MainWindow().Show();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        ResourceExtractor.CleanupSaves();
+        base.OnExit(e);
     }
 }

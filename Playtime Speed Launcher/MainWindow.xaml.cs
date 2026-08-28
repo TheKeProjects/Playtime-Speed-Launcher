@@ -13,10 +13,17 @@ using Microsoft.Win32;
 using PixelFormat = System.Windows.Media.PixelFormats;
 using SpeedrunLauncher.Models;
 using SpeedrunLauncher.Services;
+using SpeedrunLauncher.Services.App;
+using SpeedrunLauncher.Services.Chapters;
+using SpeedrunLauncher.Services.Community;
+using SpeedrunLauncher.Services.Discord;
 using SpeedrunLauncher.Services.Fps;
-using SpeedrunLauncher.Services.OnlineUsers;
+using SpeedrunLauncher.Services.GameFiles;
+using SpeedrunLauncher.Services.Hotkeys;
+using SpeedrunLauncher.Services.LiveSplit;
+using SpeedrunLauncher.Services.Platforms;
 using IOPath = System.IO.Path;
-using Loc = SpeedrunLauncher.Services.LocalizationService;
+using Loc = SpeedrunLauncher.Services.App.LocalizationService;
 
 namespace SpeedrunLauncher;
 
@@ -329,7 +336,7 @@ public partial class MainWindow : Window
                 _fpsOverlay?.SetFps(fps);
             });
         StartLiveSplitPoller();
-        Services.VideoTutorialService.Initialize();
+        VideoTutorialService.Initialize();
         OnlineUsersService.OnlineCountUpdated += count =>
             Dispatcher.BeginInvoke(() => OnlineUsersText.Text = $"{count} online");
         ApplyOnlineUsersVisibility();
@@ -579,9 +586,6 @@ public partial class MainWindow : Window
         CheckpointSelectHeaderText.Text   = Loc.Get("checkpoint_select_header");
         CloseCheckpointSelectBtnText.Text = Loc.Get("back");
 
-        AutoSplitterHeaderText.Text   = Loc.Get("auto_splitter_header");
-        CloseAutoSplitterBtnText.Text = Loc.Get("back");
-
         ChangelogBtnText.Text      = Loc.Get("changelog_btn");
         ChangelogHeaderText.Text   = Loc.Get("changelog_header");
         CloseChangelogBtnText.Text = Loc.Get("back");
@@ -621,12 +625,12 @@ public partial class MainWindow : Window
     {
         try
         {
-            var user = Services.SteamCmdRunner.GetActiveUser();
+            var user = SteamCmdRunner.GetActiveUser();
             if (user is null) return;
 
             SteamPersonaName.Text = user.PersonaName;
 
-            var avatarPath = Services.SteamCmdRunner.GetAvatarPath(user.SteamId64);
+            var avatarPath = SteamCmdRunner.GetAvatarPath(user.SteamId64);
             if (avatarPath != null)
             {
                 var bmp = new BitmapImage();
@@ -695,7 +699,7 @@ public partial class MainWindow : Window
 
     private void PlayIntro()
     {
-        var videoPath = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Videos", "Introduccion.mp4");
+        var videoPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Videos", "Introduccion.mp4");
         if (!File.Exists(videoPath))
         {
             IntroOverlay.Visibility = Visibility.Collapsed;
@@ -2706,12 +2710,12 @@ public partial class MainWindow : Window
 
     private void HandleCoresHotkey(CoresMode mode)
     {
-        var (proc, _) = _cores.FindGameProcess(_chapters);
+        var (proc, _) = _cores.FindGameProcess(_chapters, GetActiveExePath);
         if (proc == null && _cores.CurrentMode == CoresMode.Normal) return;
         proc?.Dispose();
 
         var freezePriority = _coresPriorityHigh ? ProcessPriorityClass.High : ProcessPriorityClass.Idle;
-        var processName = _cores.ApplyMode(mode, _chapters, freezePriority);
+        var processName = _cores.ApplyMode(mode, _chapters, GetActiveExePath, freezePriority);
         if (processName == null) return;
         ShowCoresToast(mode, processName, _cores.DetectedChapter);
     }
@@ -3467,7 +3471,7 @@ public partial class MainWindow : Window
         uint vol    = (uint)(_sfxVolume * 0xFFFF);
         uint stereo = (vol & 0xFFFF) | ((vol & 0xFFFF) << 16);
         waveOutSetVolume(0, stereo);
-        var path = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Sounds", fileName);
+        var path = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Sounds", fileName);
         if (File.Exists(path))
             PlaySoundW(path, 0, SND_ASYNC | SND_FILENAME | SND_NODEFAULT | (noStop ? SND_NOSTOP : 0));
     }
@@ -3491,7 +3495,7 @@ public partial class MainWindow : Window
 
     private static string GetBannerPath(int chapterNumber)
     {
-        var bannerDir  = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Banners");
+        var bannerDir  = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Banners");
         var bannerPath = IOPath.Combine(bannerDir, $"Chapter {chapterNumber}.jpg");
         if (!File.Exists(bannerPath))
             bannerPath = IOPath.Combine(bannerDir, $"Chapter {chapterNumber}.png");
@@ -3577,32 +3581,6 @@ public partial class MainWindow : Window
                 HorizontalAlignment = HorizontalAlignment.Left,
                 Margin = new Thickness(0, 8, 0, 0),
             };
-
-            var splitsDir = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Splits", $"Chapter {chapter.Number}");
-            if (Directory.Exists(splitsDir))
-            {
-                var autoSplitterBtn = new Button
-                {
-                    Background = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
-                    BorderThickness = new Thickness(1),
-                    Padding = new Thickness(10, 5, 10, 5),
-                    Margin = new Thickness(0, 0, 6, 0),
-                    Tag = chapter.Number,
-                };
-                ButtonHelper.SetCornerRadius(autoSplitterBtn, new CornerRadius(3));
-                autoSplitterBtn.Content = new TextBlock
-                {
-                    FontFamily = new FontFamily("Segoe MDL2 Assets"),
-                    Text = "",
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
-                    VerticalAlignment = VerticalAlignment.Center,
-                };
-                autoSplitterBtn.MouseDown += (s, ev) => ev.Handled = true;
-                autoSplitterBtn.Click += AutoSplitterCardBtn_Click;
-                actionsPanel.Children.Add(autoSplitterBtn);
-            }
 
             var saveBtn = new Button
             {
@@ -3739,7 +3717,7 @@ public partial class MainWindow : Window
                 VerticalAlignment   = VerticalAlignment.Center,
             };
 
-            var lockedImgPath = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", "BLOQUEADO.png");
+            var lockedImgPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "BLOQUEADO.png");
             if (File.Exists(lockedImgPath))
             {
                 overlayContent.Children.Add(new Border
@@ -3965,7 +3943,7 @@ public partial class MainWindow : Window
         else
         {
             var epicExe      = _epicService.GetExePath(chNum);
-            var epicIconPath = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", "Epic.png");
+            var epicIconPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "Epic.png");
             InstallsList.Children.Add(
                 MakeInstallRow(Loc.Get("auto_name"), Loc.Get("version_auto_epic"),
                     isAuto: true, isSelected: sel is null, chapterNum: chNum,
@@ -4026,8 +4004,8 @@ public partial class MainWindow : Window
             HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
         };
         var customIcon = inst?.IconPath;
-        var steamImg   = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", "Steam.jpg");
-        var chapterImg = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", $"Chapter {chapterNum}.png");
+        var steamImg   = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "Steam.jpg");
+        var chapterImg = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", $"Chapter {chapterNum}.png");
         iconBorder.Child =
             iconOverride is not null && File.Exists(iconOverride)
                 ? new Image { Source = new BitmapImage(new Uri(iconOverride)), Stretch = Stretch.UniformToFill }
@@ -4262,7 +4240,7 @@ public partial class MainWindow : Window
             Background = new SolidColorBrush(Color.FromArgb(255, 14, 42, 78)),
             HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
         };
-        var chapterImgPreset = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", $"Chapter {chapterNum}.png");
+        var chapterImgPreset = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", $"Chapter {chapterNum}.png");
         iconBorder.Child = File.Exists(chapterImgPreset)
             ? (UIElement)new Image { Source = new BitmapImage(new Uri(chapterImgPreset)), Stretch = Stretch.UniformToFill }
             : new TextBlock
@@ -5036,9 +5014,9 @@ public partial class MainWindow : Window
         });
 
         // ── Saved-account banners ────────────────────────────────────────────
-        Services.SavedAccount? selectedAccount = null;
+        SavedAccount? selectedAccount = null;
 
-        var savedAccounts = Services.SteamCredentialStore.LoadAll();
+        var savedAccounts = SteamCredentialStore.LoadAll();
         if (savedAccounts.Count > 0)
         {
             panel.Children.Add(new TextBlock
@@ -5168,7 +5146,7 @@ public partial class MainWindow : Window
         // Use saved account
         if (selectedAccount != null)
         {
-            var pass = Services.SteamCredentialStore.Decrypt(selectedAccount);
+            var pass = SteamCredentialStore.Decrypt(selectedAccount);
             return (selectedAccount.Username, pass);
         }
 
@@ -5178,7 +5156,7 @@ public partial class MainWindow : Window
         var password = passPb.Password.Length > 0 ? passPb.Password : null;
 
         if (saveCb.IsChecked == true && password != null)
-            Services.SteamCredentialStore.Save(user, password);
+            SteamCredentialStore.Save(user, password);
 
         return (user, password);
     }
@@ -5202,7 +5180,7 @@ public partial class MainWindow : Window
             Width = 40, Height = 40, CornerRadius = new CornerRadius(4),
             Background = new SolidColorBrush(Color.FromArgb(255, 20, 38, 55)),
         };
-        var defaultChapterImg = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", $"Chapter {chapterNum}.png");
+        var defaultChapterImg = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", $"Chapter {chapterNum}.png");
         if (File.Exists(defaultChapterImg))
             iconPreview.Child = new Image { Source = new BitmapImage(new Uri(defaultChapterImg)), Stretch = Stretch.UniformToFill };
 
@@ -5531,13 +5509,30 @@ public partial class MainWindow : Window
             ? Visibility.Visible
             : Visibility.Collapsed;
 
+        if (_saveCardChapter == 5 && Directory.Exists(ResourceExtractor.Chapter5NgPlusDir))
+        {
+            SaveCardNgPlusBtn.Visibility = Visibility.Visible;
+            SaveCardNgPlusBtnText.Text   = File.Exists(IOPath.Combine(Chapter5SaveGamesDir, NgPlusMarkerFileName))
+                ? Loc.Get("ch5_ngplus_unload_btn")
+                : Loc.Get("ch5_ngplus_load_btn");
+        }
+        else
+        {
+            SaveCardNgPlusBtn.Visibility = Visibility.Collapsed;
+        }
+
         SaveCardOverlay.Visibility = Visibility.Visible;
     }
+
+    private const string NgPlusMarkerFileName = ".ngplus_active";
+
+    private static string Chapter5SaveGamesDir =>
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ch5_pro", "Saved", "SaveGames");
 
     private void PopulateCheckpointList()
     {
         CheckpointListPanel.Children.Clear();
-        var savesDir = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Saves", $"Chapter {_saveCardChapter}");
+        var savesDir = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Saves", $"Chapter {_saveCardChapter}");
         if (!Directory.Exists(savesDir)) return;
 
         var folders = Directory.GetDirectories(savesDir)
@@ -5620,82 +5615,6 @@ public partial class MainWindow : Window
     private void CloseCheckpointSelectBtn_Click(object sender, RoutedEventArgs e) =>
         CheckpointSelectOverlay.Visibility = Visibility.Collapsed;
 
-    // ── Auto splitter ────────────────────────────────────────────────────────
-
-    private void AutoSplitterCardBtn_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button btn || btn.Tag is not int chapterNum) return;
-
-        PopulateAutoSplitterList(chapterNum);
-        AutoSplitterOverlay.Visibility = Visibility.Visible;
-    }
-
-    private void PopulateAutoSplitterList(int chapterNum)
-    {
-        AutoSplitterListPanel.Children.Clear();
-        var splitsDir = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Splits", $"Chapter {chapterNum}");
-        if (!Directory.Exists(splitsDir)) return;
-
-        bool first = true;
-        foreach (var file in Directory.EnumerateFiles(splitsDir, "*.asl").OrderBy(IOPath.GetFileName))
-        {
-            var btn = new Button
-            {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Left,
-                Background = new SolidColorBrush(Color.FromArgb(0xFF, 0x0A, 0x18, 0x25)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0x0D, 0x25, 0x35)),
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(14, 9, 14, 9),
-                Margin = first ? new Thickness(0) : new Thickness(0, 6, 0, 0),
-                Tag = (file, chapterNum),
-            };
-            ButtonHelper.SetCornerRadius(btn, new CornerRadius(4));
-            btn.Click += AutoSplitterFileBtn_Click;
-
-            var content = new StackPanel { Orientation = Orientation.Horizontal };
-            content.Children.Add(new TextBlock
-            {
-                FontFamily = new FontFamily("Segoe MDL2 Assets"),
-                Text = "",
-                FontSize = 13,
-                Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0x00, 0xCC, 0xAA)),
-                VerticalAlignment = VerticalAlignment.Center,
-            });
-            content.Children.Add(new TextBlock
-            {
-                Text = IOPath.GetFileNameWithoutExtension(file),
-                FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
-                FontSize = 11,
-                FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0xCC, 0xDD, 0xEE)),
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(10, 0, 0, 0),
-            });
-            btn.Content = content;
-            AutoSplitterListPanel.Children.Add(btn);
-            first = false;
-        }
-    }
-
-    private void AutoSplitterFileBtn_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button btn || btn.Tag is not (string sourcePath, int chapterNum)) return;
-
-        try
-        {
-            var destDir = IOPath.Combine(LiveSplitService.DefaultInstallDir, "Components", "CUSTOM SPLITS", $"CHAPTER {chapterNum}");
-            Directory.CreateDirectory(destDir);
-            File.Copy(sourcePath, IOPath.Combine(destDir, IOPath.GetFileName(sourcePath)), overwrite: true);
-        }
-        catch { }
-
-        AutoSplitterOverlay.Visibility = Visibility.Collapsed;
-    }
-
-    private void CloseAutoSplitterBtn_Click(object sender, RoutedEventArgs e) =>
-        AutoSplitterOverlay.Visibility = Visibility.Collapsed;
-
     private void SaveCardDeleteBtn_Click(object sender, RoutedEventArgs e)
     {
         var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -5724,6 +5643,12 @@ public partial class MainWindow : Window
                 foreach (var file in Directory.GetFiles(folder, pattern))
                     File.Delete(file);
             }
+
+            if (_saveCardChapter == 5)
+            {
+                var marker = IOPath.Combine(folder, NgPlusMarkerFileName);
+                if (File.Exists(marker)) File.Delete(marker);
+            }
         }
         catch { }
 
@@ -5736,7 +5661,7 @@ public partial class MainWindow : Window
         {
             var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var destDir  = IOPath.Combine(localApp, "ch4_pro", "Saved", "SaveGames");
-            var srcDir   = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Saves", "Chapter 4");
+            var srcDir   = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Saves", "Chapter 4");
 
             try
             {
@@ -5757,13 +5682,16 @@ public partial class MainWindow : Window
         {
             var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var destDir  = IOPath.Combine(localApp, "ch5_pro", "Saved", "SaveGames");
-            var srcDir   = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Saves", "Chapter 5");
+            var srcDir   = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Saves", "Chapter 5");
 
             try
             {
                 if (Directory.Exists(destDir))
                     foreach (var f in Directory.GetFiles(destDir, "PoppySave_*"))
                         File.Delete(f);
+
+                var marker = IOPath.Combine(destDir, NgPlusMarkerFileName);
+                if (File.Exists(marker)) File.Delete(marker);
 
                 if (Directory.Exists(srcDir))
                 {
@@ -5774,6 +5702,38 @@ public partial class MainWindow : Window
             }
             catch { }
         }
+
+        SaveCardOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void SaveCardNgPlusBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var destDir = Chapter5SaveGamesDir;
+        var srcDir  = ResourceExtractor.Chapter5NgPlusDir;
+        var marker  = IOPath.Combine(destDir, NgPlusMarkerFileName);
+
+        try
+        {
+            var wasActive = File.Exists(marker);
+
+            if (Directory.Exists(destDir))
+                foreach (var f in Directory.GetFiles(destDir, "PoppySave_*"))
+                    File.Delete(f);
+
+            if (wasActive)
+            {
+                // Currently loaded — this click unloads it (saves are already gone above).
+                File.Delete(marker);
+            }
+            else if (Directory.Exists(srcDir))
+            {
+                Directory.CreateDirectory(destDir);
+                foreach (var f in Directory.GetFiles(srcDir))
+                    File.Copy(f, IOPath.Combine(destDir, IOPath.GetFileName(f)), overwrite: true);
+                File.WriteAllText(marker, "");
+            }
+        }
+        catch { }
 
         SaveCardOverlay.Visibility = Visibility.Collapsed;
     }
@@ -6706,7 +6666,7 @@ public partial class MainWindow : Window
     {
         var mono   = new FontFamily("Cascadia Code, Consolas, Courier New");
         var muted  = Color.FromArgb(255, 138, 170, 187);
-        var tutDir = IOPath.Combine(Services.ResourceExtractor.TempDir, "Assets", "Images", "Tutorial Live Split");
+        var tutDir = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "Tutorial Live Split");
 
         var pages = new[]
         {
@@ -6967,7 +6927,7 @@ public partial class MainWindow : Window
         BugStatusText.Visibility    = Visibility.Collapsed;
         SendBugReportBtnText.Text   = Loc.Get("bug_report_send_btn");
         SendBugReportBtn.IsEnabled  = true;
-        var cached = Services.DiscordOAuthService.LoadCached();
+        var cached = DiscordOAuthService.LoadCached();
         if (cached.HasValue)
         {
             _bugReportDiscordUser          = cached;
@@ -7006,7 +6966,7 @@ public partial class MainWindow : Window
         BugDiscordConnectRow.Visibility = Visibility.Collapsed;
         BugDiscordWaiting.Visibility    = Visibility.Visible;
 
-        var user = await Services.DiscordOAuthService.AuthenticateAsync(_discordAuthCts.Token);
+        var user = await DiscordOAuthService.AuthenticateAsync(_discordAuthCts.Token);
 
         BugDiscordWaiting.Visibility = Visibility.Collapsed;
 
@@ -7015,7 +6975,7 @@ public partial class MainWindow : Window
             _bugReportDiscordUser           = user;
             BugDiscordUsername.Text         = user.Value.Username;
             BugDiscordConnected.Visibility  = Visibility.Visible;
-            Services.DiscordOAuthService.SaveCached(user.Value.Id, user.Value.Username);
+            DiscordOAuthService.SaveCached(user.Value.Id, user.Value.Username);
         }
         else
         {
@@ -7032,7 +6992,7 @@ public partial class MainWindow : Window
 
     private void BugDiscordDisconnectBtn_Click(object sender, RoutedEventArgs e)
     {
-        Services.DiscordOAuthService.ClearCached();
+        DiscordOAuthService.ClearCached();
         _bugReportDiscordUser           = null;
         BugDiscordConnected.Visibility  = Visibility.Collapsed;
         BugDiscordConnectRow.Visibility = Visibility.Visible;
@@ -8798,7 +8758,7 @@ public partial class MainWindow : Window
         HandModsSubmitSendBtnText.Text      = Loc.Get("handmods_submit_send_btn");
 
         HandModsSubmitDiscordWaiting.Visibility = Visibility.Collapsed;
-        var cachedDiscord = Services.DiscordOAuthService.LoadCached();
+        var cachedDiscord = DiscordOAuthService.LoadCached();
         if (cachedDiscord.HasValue)
         {
             HandModsSubmitDiscordUsername.Text         = cachedDiscord.Value.Username;
@@ -8838,7 +8798,7 @@ public partial class MainWindow : Window
     {
         HandModsSubmitColorsPanel.Children.Clear();
         _handModsSubmitColorChips.Clear();
-        foreach (var color in Services.HandModSubmissionService.Colors)
+        foreach (var color in HandModSubmissionService.Colors)
         {
             var chip = MakeSmallButton(color, Teal);
             chip.Margin = new Thickness(0, 0, 6, 6);
@@ -8894,7 +8854,7 @@ public partial class MainWindow : Window
         HandModsSubmitDiscordConnectRow.Visibility = Visibility.Collapsed;
         HandModsSubmitDiscordWaiting.Visibility    = Visibility.Visible;
 
-        var user = await Services.DiscordOAuthService.AuthenticateAsync(_discordAuthCts.Token);
+        var user = await DiscordOAuthService.AuthenticateAsync(_discordAuthCts.Token);
 
         HandModsSubmitDiscordWaiting.Visibility = Visibility.Collapsed;
 
@@ -8902,7 +8862,7 @@ public partial class MainWindow : Window
         {
             HandModsSubmitDiscordUsername.Text        = user.Value.Username;
             HandModsSubmitDiscordConnected.Visibility = Visibility.Visible;
-            Services.DiscordOAuthService.SaveCached(user.Value.Id, user.Value.Username);
+            DiscordOAuthService.SaveCached(user.Value.Id, user.Value.Username);
         }
         else
         {
@@ -8919,7 +8879,7 @@ public partial class MainWindow : Window
 
     private void HandModsSubmitDiscordDisconnectBtn_Click(object sender, RoutedEventArgs e)
     {
-        Services.DiscordOAuthService.ClearCached();
+        DiscordOAuthService.ClearCached();
         HandModsSubmitDiscordConnected.Visibility  = Visibility.Collapsed;
         HandModsSubmitDiscordConnectRow.Visibility = Visibility.Visible;
     }
@@ -8944,7 +8904,10 @@ public partial class MainWindow : Window
             ShowHandModsSubmitError(Loc.Get("handmods_submit_err_files"));
             return;
         }
-        if (Services.DiscordOAuthService.LoadCached() is null)
+        // No raw-byte precheck here — files are zipped first (which usually shrinks them) and,
+        // if the zip still doesn't fit, split across multiple messages. SubmitAsync is the sole
+        // judge of whether it actually fits, using the real post-zip size.
+        if (DiscordOAuthService.LoadCached() is null)
         {
             await ShowDiscordRequiredDialogAsync("handmods_submit_err_discord_required",
                 () => HandModsSubmitDiscordConnectBtn_Click(sender, e));
@@ -8955,11 +8918,11 @@ public partial class MainWindow : Window
         HandModsSubmitSendBtnText.Text      = Loc.Get("handmods_submit_sending");
         HandModsSubmitStatusText.Visibility = Visibility.Collapsed;
 
-        var cached        = Services.DiscordOAuthService.LoadCached();
+        var cached        = DiscordOAuthService.LoadCached();
         var submitterName = cached is { } u ? $"{u.Username} · ID: {u.Id}" : null;
         var submitterId   = cached?.Id;
 
-        var (ok, error) = await Services.HandModSubmissionService.SubmitAsync(
+        var (ok, error) = await HandModSubmissionService.SubmitAsync(
             name, _handModsSubmitChapter, _handModsSubmitColors, _handModsSubmitFiles, submitterName, submitterId);
 
         if (ok)

@@ -2623,6 +2623,26 @@
                             </StackPanel>
                         </Button>
 
+                        <Button x:Name="SaveCardNgPlusBtn"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                local:ButtonHelper.CornerRadius="4"
+                                Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1"
+                                Padding="16,12" Margin="0,12,0,0"
+                                Visibility="Collapsed"
+                                Click="SaveCardNgPlusBtn_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;"
+                                           FontSize="18" Foreground="#00CCAA"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="SaveCardNgPlusBtnText"
+                                           Text=""
+                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                           FontSize="11" FontWeight="Bold" Foreground="#00CCAA"
+                                           VerticalAlignment="Center" Margin="12,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+
                     </StackPanel>
 
                     <Border Grid.Row="2" Background="#060F18"
@@ -2686,57 +2706,6 @@
                                 Margin="0,0,14,0"
                                 Click="CloseCheckpointSelectBtn_Click">
                             <TextBlock x:Name="CloseCheckpointSelectBtnText"
-                                       Text=""
-                                       FontFamily="Cascadia Code, Consolas, Courier New"
-                                       FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
-                        </Button>
-                    </Border>
-                </Grid>
-            </Border>
-        </Grid>
-
-        <!-- ── AUTO SPLITTER OVERLAY ── -->
-        <Grid x:Name="AutoSplitterOverlay"
-              Grid.RowSpan="6"
-              Visibility="Collapsed"
-              Background="#BB000000">
-            <Border Width="420" Background="#09141E"
-                    BorderBrush="#153048" BorderThickness="1"
-                    CornerRadius="4"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Center">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="48"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="52"/>
-                    </Grid.RowDefinitions>
-
-                    <Border Grid.Row="0" Background="#060F18"
-                            BorderBrush="#0D2030" BorderThickness="0,0,0,1">
-                        <TextBlock x:Name="AutoSplitterHeaderText"
-                                   Text=""
-                                   FontFamily="Cascadia Code, Consolas, Courier New"
-                                   FontSize="13" FontWeight="Bold" Foreground="#00CCAA"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-
-                    <ScrollViewer Grid.Row="1" MaxHeight="360"
-                                  VerticalScrollBarVisibility="Auto"
-                                  Margin="24,18,24,18">
-                        <StackPanel x:Name="AutoSplitterListPanel" VerticalAlignment="Top"/>
-                    </ScrollViewer>
-
-                    <Border Grid.Row="2" Background="#060F18"
-                            BorderBrush="#0D2030" BorderThickness="0,1,0,0">
-                        <Button x:Name="CloseAutoSplitterBtn"
-                                Height="36" MinWidth="120"
-                                local:ButtonHelper.CornerRadius="3"
-                                Background="#0A1825" BorderBrush="#0D2535" BorderThickness="1"
-                                HorizontalAlignment="Right" VerticalAlignment="Center"
-                                Margin="0,0,14,0"
-                                Click="CloseAutoSplitterBtn_Click">
-                            <TextBlock x:Name="CloseAutoSplitterBtnText"
                                        Text=""
                                        FontFamily="Cascadia Code, Consolas, Courier New"
                                        FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>

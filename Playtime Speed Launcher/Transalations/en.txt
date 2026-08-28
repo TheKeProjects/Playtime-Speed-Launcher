@@ -225,9 +225,6 @@ save_card_save_btn = SAVE FILE
 # Checkpoint select overlay (Chapter 1)
 checkpoint_select_header = [ SELECT CHECKPOINT ]
 
-# Auto splitter select overlay
-auto_splitter_header = [ AUTO SPLITTER ]
-
 # Hotkey overlay (Ctrl+Shift+Enter)
 hotkey_header   = [ LOAD CHECKPOINT ]
 hotkey_hint     = Esc · close
@@ -294,6 +291,8 @@ ch4_load_btn = LOAD 100%
 
 # Chapter 5 save card
 ch5_load_btn = LOAD 100%
+ch5_ngplus_load_btn = LOAD NG+
+ch5_ngplus_unload_btn = UNLOAD NG+
 
 # Discord presence settings
 discord_settings_btn = Discord Status
@@ -354,6 +353,7 @@ handmods_submit_sending       = Sending…
 handmods_submit_success       = ✔ Thanks! Your mod was submitted for review.
 handmods_submit_err_name      = Give your mod a name first.
 handmods_submit_err_files     = Attach at least one mod file first.
+handmods_submit_err_toolarge  = Those files are too large — keep the total under {0:F0} MB (try zipping them tighter or removing some files) and try again.
 handmods_submit_err_send      = Couldn't send it. Try again.
 
 # Overlays (section in settings)
