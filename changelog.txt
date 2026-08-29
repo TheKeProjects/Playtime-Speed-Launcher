@@ -1,12 +1,3 @@
-2.3.0
-## Additions
-- Added a New Game+ save option for Chapter 5
-
+2.3.1
 ## Bug Fixes
-- Fixed the Cores option not detecting the game
-- Fixed new Hand Mod submissions failing when the files were too large for Discord to accept, files are now zipped automatically
-
-## Other
-- Removed the Auto Splitter option, since splits were only ever available for Chapters 1 and 2
-- Reorganized the launcher's internal file structure by feature area
-- Changed how checkpoint saves are stored to shrink the launcher's install size, and clean them up automatically when the launcher closes
+- Fixed a bug with the cores option (Reported by @nickk893)

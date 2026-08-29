@@ -8,6 +8,11 @@ public static class ChangelogData
 
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.3.1", "29/08/2026",
+        [
+            "## Bug Fixes",
+            "Fixed a bug with the cores option (Reported by @nickk893)",
+        ]),
         new("2.3.0", "29/08/2026",
         [
             "## Additions",

@@ -19,7 +19,7 @@ public sealed class CoresService
     public string? DetectedProcessName { get; private set; }
 
     public (Process? process, int chapter) FindGameProcess(IReadOnlyList<ChapterInfo> chapters,
-        Func<ChapterInfo, string?> getExePath)
+        Func<ChapterInfo, string?> getExePath, Func<string, string?>? resolveShippingExeName = null)
     {
         for (int i = 0; i < chapters.Count; i++)
         {
@@ -29,6 +29,21 @@ public sealed class CoresService
             var name = IOPath.GetFileNameWithoutExtension(path);
             try
             {
+                // Some installs point at a thin launcher stub that stays resident as a parent
+                // process alongside the real renderer it spawns (e.g. Chapter 4/5). Applying
+                // affinity/priority to the idle stub has no effect on load times, so prefer the
+                // shipping process when one is running — same resolution GameWatcherTick uses.
+                var shippingName = resolveShippingExeName?.Invoke(path);
+                if (shippingName != null)
+                {
+                    var shippingProcs = Process.GetProcessesByName(shippingName);
+                    if (shippingProcs.Length > 0)
+                    {
+                        for (int j = 1; j < shippingProcs.Length; j++) shippingProcs[j].Dispose();
+                        return (shippingProcs[0], chapters[i].Number);
+                    }
+                }
+
                 var procs = Process.GetProcessesByName(name);
                 if (procs.Length > 0)
                 {
@@ -42,7 +57,8 @@ public sealed class CoresService
     }
 
     public string? ApplyMode(CoresMode mode, IReadOnlyList<ChapterInfo> chapters,
-        Func<ChapterInfo, string?> getExePath, ProcessPriorityClass freezePriority = ProcessPriorityClass.High)
+        Func<ChapterInfo, string?> getExePath, Func<string, string?>? resolveShippingExeName = null,
+        ProcessPriorityClass freezePriority = ProcessPriorityClass.High)
     {
         // Always restore-then-reapply, even if `mode` already matches `_currentMode` — this makes
         // every hotkey press self-healing if a previous affinity/priority change silently failed
@@ -58,7 +74,7 @@ public sealed class CoresService
             return result;
         }
 
-        var (proc, chapter) = FindGameProcess(chapters, getExePath);
+        var (proc, chapter) = FindGameProcess(chapters, getExePath, resolveShippingExeName);
         if (proc == null)
         {
             DetectedChapter = 0;

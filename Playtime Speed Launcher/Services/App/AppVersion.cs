@@ -2,7 +2,7 @@ namespace SpeedrunLauncher.Services.App;
 
 public static class AppVersion
 {
-    public const string CURRENT_VERSION = "2.3.0";
+    public const string CURRENT_VERSION = "2.3.1";
 
     // TODO: Update these when the GitHub repository is created
     public const string GITHUB_OWNER  = "TheKeProjects";

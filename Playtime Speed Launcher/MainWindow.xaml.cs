@@ -269,6 +269,7 @@ public partial class MainWindow : Window
         ["AdrianPG77"] = "752207247769206795",
         ["ᴢᴀᴇᴇ"] = "807763566849163264",
         ["lumpydesk_yt"] = "1143596461087522857",
+        ["nickk893"] = "694115352694751262",
     };
 
     // ── Palette ───────────────────────────────────────────────────────────────
@@ -2710,12 +2711,12 @@ public partial class MainWindow : Window
 
     private void HandleCoresHotkey(CoresMode mode)
     {
-        var (proc, _) = _cores.FindGameProcess(_chapters, GetActiveExePath);
+        var (proc, _) = _cores.FindGameProcess(_chapters, GetActiveExePath, ResolveShippingExeName);
         if (proc == null && _cores.CurrentMode == CoresMode.Normal) return;
         proc?.Dispose();
 
         var freezePriority = _coresPriorityHigh ? ProcessPriorityClass.High : ProcessPriorityClass.Idle;
-        var processName = _cores.ApplyMode(mode, _chapters, GetActiveExePath, freezePriority);
+        var processName = _cores.ApplyMode(mode, _chapters, GetActiveExePath, ResolveShippingExeName, freezePriority);
         if (processName == null) return;
         ShowCoresToast(mode, processName, _cores.DetectedChapter);
     }
