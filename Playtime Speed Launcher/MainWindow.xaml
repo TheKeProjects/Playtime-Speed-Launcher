@@ -1244,6 +1244,46 @@
                                         </StackPanel>
                                     </Button>
 
+                                    <!-- Keyboard layout selector (only shown for the Keyboard + Mouse skin) -->
+                                    <StackPanel x:Name="OverlayKeyboardLayoutPanel" Margin="0,16,0,0">
+                                        <TextBlock x:Name="OverlayKeyboardLayoutLabel"
+                                                   FontFamily="Cascadia Code, Consolas, Courier New"
+                                                   FontSize="9" FontWeight="Bold"
+                                                   Foreground="#00CCAA" Margin="0,0,0,10"/>
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Button x:Name="OverlayKeyboardLayoutQwertyBtn"
+                                                    Grid.Column="0"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                    Padding="12,10"
+                                                    Click="OverlayKeyboardLayoutQwertyBtn_Click">
+                                                <TextBlock x:Name="OverlayKeyboardLayoutQwertyBtnText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                            </Button>
+
+                                            <Button x:Name="OverlayKeyboardLayoutAzertyBtn"
+                                                    Grid.Column="2"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    local:ButtonHelper.CornerRadius="4"
+                                                    Background="#060F18" BorderBrush="#0D2535" BorderThickness="1"
+                                                    Padding="12,10"
+                                                    Click="OverlayKeyboardLayoutAzertyBtn_Click">
+                                                <TextBlock x:Name="OverlayKeyboardLayoutAzertyBtnText"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"/>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+
                                     <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16"/>
 
                                     <!-- Screen corner selector -->

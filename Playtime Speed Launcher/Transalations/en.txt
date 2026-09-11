@@ -309,6 +309,10 @@ livesplit_tcp_step1 = 1.  Right-click LiveSplit  →  Settings
 livesplit_tcp_step2 = 2.  Set  'Startup Behavior'  to  'Start TCP Server'
 livesplit_tcp_reminder = You only need to do this once. LiveSplit will start the server automatically from now on.
 
+# Legacy local hours notice
+legacy_hours_title = Sorry about this
+legacy_hours_message = We moved your per-chapter hours to the cloud so they can no longer be wiped by an interrupted update or a bad write. Unfortunately your previously tracked hours couldn't be carried over and will be reset to zero. We're sorry for the inconvenience.
+
 # Epic Games
 epic_not_found_content = Could not find the Poppy Playtime Epic Games installation.\n\nSelect the PoppyPlaytimeChapterOne folder inside your Epic Games installation.
 epic_no_exe_error = No Poppy Playtime executables were found in the selected folder.
@@ -363,6 +367,9 @@ overlay_controller_label  = CONTROLLER TYPE
 overlay_dualsense         = DualSense
 overlay_xbox              = Xbox Controller
 overlay_keyboard          = Keyboard + Mouse
+overlay_keyboard_layout_label  = KEYBOARD LAYOUT
+overlay_keyboard_layout_qwerty = QWERTY
+overlay_keyboard_layout_azerty = AZERTY
 overlay_corner_label      = SCREEN CORNER
 overlay_corner_topleft    = Top Left
 overlay_corner_topright   = Top Right

@@ -119,6 +119,7 @@ public partial class ControllerOverlayWindow : Window
     private BitmapSource?              _sheet;
     private List<OverlayElement>       _elements = [];
     private string                     _controllerFolder = "";
+    private string                     _keyboardLayout = "qwerty";
 
     // Active button/trigger images (hidden when not pressed)
     private readonly Dictionary<string, Image> _activeImgs = [];
@@ -149,10 +150,11 @@ public partial class ControllerOverlayWindow : Window
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public ControllerOverlayWindow(string controllerFolderName)
+    public ControllerOverlayWindow(string controllerFolderName, string keyboardLayout = "qwerty")
     {
         InitializeComponent();
         _controllerFolder = controllerFolderName;
+        _keyboardLayout   = keyboardLayout;
         LoadController(controllerFolderName);
         if (_controllerFolder == "keyboard")
             InstallMouseWheelHook();
@@ -249,7 +251,8 @@ public partial class ControllerOverlayWindow : Window
     {
         var baseDir       = System.IO.Path.Combine(
             ResourceExtractor.TempDir, "Assets", "Controllers", "keyboard");
-        var kbJsonPath    = System.IO.Path.Combine(baseDir, "wasd", "wasd-full.json");
+        var kbJsonName    = _keyboardLayout == "azerty" ? "wasd-full-azerty.json" : "wasd-full.json";
+        var kbJsonPath    = System.IO.Path.Combine(baseDir, "wasd", kbJsonName);
         var kbPngPath     = System.IO.Path.Combine(baseDir, "wasd", "wasd.png");
         var mouseJsonPath = System.IO.Path.Combine(baseDir, "mouse", "mouse-no-movement.json");
         var mousePngPath  = System.IO.Path.Combine(baseDir, "mouse", "mouse.png");

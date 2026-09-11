@@ -1,3 +1,6 @@
-2.3.1
-## Bug Fixes
-- Fixed a bug with the cores option (Reported by @nickk893)
+2.3.2
+## Additions
+- Added an AZERTY option for the keyboard overlay
+
+## Other
+- Moved per-chapter hours tracking to the cloud

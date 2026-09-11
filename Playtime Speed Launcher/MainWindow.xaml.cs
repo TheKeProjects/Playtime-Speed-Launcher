@@ -202,6 +202,7 @@ public partial class MainWindow : Window
     private bool                    _overlayEnabled    = false;
     private string                  _overlayController = "xbox-controller";
     private string                  _overlayCorner      = "top-left";
+    private string                  _overlayKeyboardLayout = "qwerty";
     private ControllerOverlayWindow? _controllerOverlay;
 
     private static readonly string OverlayEnabledFile =
@@ -215,6 +216,10 @@ public partial class MainWindow : Window
     private static readonly string OverlayCornerFile =
         IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SpeedrunLauncher", "overlay_corner.cfg");
+
+    private static readonly string OverlayKeyboardLayoutFile =
+        IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SpeedrunLauncher", "overlay_keyboard_layout.cfg");
 
     // ── FPS counter (scoped to the currently-running chapter's game process) ────
     private readonly GameFpsService _fpsService = new();
@@ -342,6 +347,7 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(() => OnlineUsersText.Text = $"{count} online");
         ApplyOnlineUsersVisibility();
         OnlineUsersService.Start();
+        _playtimeStore.Loaded += () => Dispatcher.BeginInvoke(RefreshAllHoursTexts);
         LoadSteamUser();
         _discordPresence.ApplySettings(
             _discordSettings.ShowActivity,
@@ -460,6 +466,9 @@ public partial class MainWindow : Window
         OverlayDualSenseBtnText.Text     = Loc.Get("overlay_dualsense");
         OverlayXboxBtnText.Text          = Loc.Get("overlay_xbox");
         OverlayKeyboardBtnText.Text      = Loc.Get("overlay_keyboard");
+        OverlayKeyboardLayoutLabel.Text       = Loc.Get("overlay_keyboard_layout_label");
+        OverlayKeyboardLayoutQwertyBtnText.Text = Loc.Get("overlay_keyboard_layout_qwerty");
+        OverlayKeyboardLayoutAzertyBtnText.Text = Loc.Get("overlay_keyboard_layout_azerty");
         OverlayCornerLabel.Text             = Loc.Get("overlay_corner_label");
         OverlayCornerTopLeftBtnText.Text     = Loc.Get("overlay_corner_topleft");
         OverlayCornerTopRightBtnText.Text    = Loc.Get("overlay_corner_topright");
@@ -2250,6 +2259,8 @@ public partial class MainWindow : Window
                 _overlayController = File.ReadAllText(OverlayControllerFile).Trim();
             if (File.Exists(OverlayCornerFile))
                 _overlayCorner = File.ReadAllText(OverlayCornerFile).Trim();
+            if (File.Exists(OverlayKeyboardLayoutFile))
+                _overlayKeyboardLayout = File.ReadAllText(OverlayKeyboardLayoutFile).Trim();
         }
         catch { }
 
@@ -2498,6 +2509,17 @@ public partial class MainWindow : Window
         catch { }
     }
 
+    private void SaveOverlayKeyboardLayout()
+    {
+        try
+        {
+            var dir = IOPath.GetDirectoryName(OverlayKeyboardLayoutFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(OverlayKeyboardLayoutFile, _overlayKeyboardLayout);
+        }
+        catch { }
+    }
+
     private void RefreshOverlaysTab()
     {
         SetToggle(OverlayEnableText, _overlayEnabled);
@@ -2525,6 +2547,30 @@ public partial class MainWindow : Window
         Style(OverlayDualSenseBtn, OverlayDualSenseBtnText, _overlayController == "dualsense");
         Style(OverlayXboxBtn,      OverlayXboxBtnText,      _overlayController == "xbox-controller");
         Style(OverlayKeyboardBtn,  OverlayKeyboardBtnText,  _overlayController == "keyboard");
+
+        OverlayKeyboardLayoutPanel.Visibility =
+            _overlayController == "keyboard" ? Visibility.Visible : Visibility.Collapsed;
+        RefreshOverlayKeyboardLayoutButtons();
+    }
+
+    private void RefreshOverlayKeyboardLayoutButtons()
+    {
+        var selectedBrush  = new SolidColorBrush(Teal);
+        var selectedBg     = new SolidColorBrush(Color.FromArgb(255, 0, 40, 30));
+        var selectedBorder = new SolidColorBrush(Teal);
+        var dimBrush       = new SolidColorBrush(Color.FromArgb(255, 58, 106, 138));
+        var dimBg          = new SolidColorBrush(Color.FromArgb(255, 6, 15, 24));
+        var dimBorder      = new SolidColorBrush(Color.FromArgb(255, 13, 37, 53));
+
+        void Style(Button btn, TextBlock text, bool selected)
+        {
+            btn.Background  = selected ? selectedBg : dimBg;
+            btn.BorderBrush = selected ? selectedBorder : dimBorder;
+            text.Foreground = selected ? selectedBrush : dimBrush;
+        }
+
+        Style(OverlayKeyboardLayoutQwertyBtn, OverlayKeyboardLayoutQwertyBtnText, _overlayKeyboardLayout == "qwerty");
+        Style(OverlayKeyboardLayoutAzertyBtn, OverlayKeyboardLayoutAzertyBtnText, _overlayKeyboardLayout == "azerty");
     }
 
     private void RefreshOverlayCornerButtons()
@@ -2594,6 +2640,22 @@ public partial class MainWindow : Window
         if (_overlayEnabled) ApplyOverlayWindow(); // reload with new skin
     }
 
+    private void OverlayKeyboardLayoutQwertyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _overlayKeyboardLayout = "qwerty";
+        SaveOverlayKeyboardLayout();
+        RefreshOverlayKeyboardLayoutButtons();
+        if (_overlayEnabled && _overlayController == "keyboard") ApplyOverlayWindow(); // reload with new layout
+    }
+
+    private void OverlayKeyboardLayoutAzertyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _overlayKeyboardLayout = "azerty";
+        SaveOverlayKeyboardLayout();
+        RefreshOverlayKeyboardLayoutButtons();
+        if (_overlayEnabled && _overlayController == "keyboard") ApplyOverlayWindow(); // reload with new layout
+    }
+
     private void ApplyOverlayWindow()
     {
         // Close existing window
@@ -2606,7 +2668,7 @@ public partial class MainWindow : Window
 
         if (!_overlayEnabled) return;
 
-        _controllerOverlay = new ControllerOverlayWindow(_overlayController);
+        _controllerOverlay = new ControllerOverlayWindow(_overlayController, _overlayKeyboardLayout);
         _controllerOverlay.Closed += OverlayWindow_Closed;
 
         // Position in the configured screen corner
@@ -3526,6 +3588,12 @@ public partial class MainWindow : Window
     {
         var chapter = _chapters[index];
         _hoursTexts[index].Text = ChapterPlaytimeStore.Format(_playtimeStore.GetPlaytime(chapter.Number));
+    }
+
+    private void RefreshAllHoursTexts()
+    {
+        for (int i = 0; i < _hoursTexts.Count; i++)
+            UpdateHoursText(i);
     }
 
     private Border MakeCard(ChapterInfo chapter, string bannerPath, out TextBlock hoursText)

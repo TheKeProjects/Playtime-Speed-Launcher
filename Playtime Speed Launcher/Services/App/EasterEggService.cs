@@ -17,10 +17,13 @@ public sealed class EasterEggService
         [Key.G, Key.A, Key.N, Key.E];
     private static readonly Key[] RaulBecasSequence =
         [Key.R, Key.A, Key.U, Key.L, Key.B, Key.E, Key.C, Key.A, Key.S];
+    private static readonly Key[] TomhSequence =
+        [Key.T, Key.O, Key.M, Key.H];
 
     private readonly List<Key> _konamiBuffer     = [];
     private readonly List<Key> _ganeBuffer       = [];
     private readonly List<Key> _raulBecasBuffer  = [];
+    private readonly List<Key> _tomhBuffer       = [];
 
     private readonly MediaElement _player;
     private readonly UIElement    _overlay;
@@ -46,6 +49,7 @@ public sealed class EasterEggService
         TrackSequence(_konamiBuffer,    KonamiSequence,    key, "Torrente.mp4");
         TrackSequence(_ganeBuffer,      GaneSequence,      key, "Gane.mp4");
         TrackSequence(_raulBecasBuffer, RaulBecasSequence, key, "RaulBecas.mp4");
+        TrackSequence(_tomhBuffer,      TomhSequence,      key, "Tomh.mp4");
     }
 
     private void TrackSequence(List<Key> buffer, Key[] sequence, Key key, string fileName)

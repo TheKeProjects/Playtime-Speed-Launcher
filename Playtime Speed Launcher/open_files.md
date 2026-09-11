@@ -3,4 +3,5 @@
 - [Services/Discord/DiscordOAuthService.cs](Services/Discord/DiscordOAuthService.cs),
 - [Services/Discord/DiscordPresenceService.cs](Services/Discord/DiscordPresenceService.cs),
 - [Services/Community/SkipReportService.cs](Services/Community/SkipReportService.cs),
+- [Services/Chapters/ChapterPlaytimeStore.cs](Services/Chapters/ChapterPlaytimeStore.cs),
 - [Services/Community/OnlineUsersService.cs](Services/Community/OnlineUsersService.cs)

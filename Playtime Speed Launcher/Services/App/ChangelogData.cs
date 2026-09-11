@@ -8,6 +8,14 @@ public static class ChangelogData
 
     public static readonly ChangelogEntry[] Entries =
     [
+        new("2.3.2", "11/09/2026",
+        [
+            "## Additions",
+            "Added an AZERTY option for the keyboard overlay",
+
+            "## Other",
+            "Moved per-chapter hours tracking to the cloud",
+        ]),
         new("2.3.1", "29/08/2026",
         [
             "## Bug Fixes",
