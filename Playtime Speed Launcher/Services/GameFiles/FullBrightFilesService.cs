@@ -6,10 +6,13 @@ namespace SpeedrunLauncher.Services.GameFiles;
 
 /// <summary>
 /// Installs/removes the "FullBright" pak mod files (Chapters 1 and 5) into a game
-/// install's Content\Paks, Binaries\Win64 and project-root folders. Requires
-/// Load Manip to already be installed, since its pak/UE4SS files intentionally
-/// overwrite Load Manip's own. Zip contents are read at runtime so the set of
-/// files/folders to extract or delete always matches what actually ships in the zip.
+/// install's Content\Paks, Binaries\Win64 and project-root folders. Its pak zip ships the exact
+/// same LogicMods pak file as Load Manip's own (Load Manip's menu is baked into that pak, not a
+/// separate UE4SS mod), and its UE4SS build is a complete, self-contained build in its own right —
+/// so FullBright can be installed with or without Load Manip's own install ever having run, but
+/// the two can never truly be separated once both files are in place: there is no "FullBright
+/// without Load Manip's menu" state. Zip contents are read at runtime so the set of files/folders
+/// to extract or delete always matches what actually ships in the zip.
 /// </summary>
 public static class FullBrightFilesService
 {

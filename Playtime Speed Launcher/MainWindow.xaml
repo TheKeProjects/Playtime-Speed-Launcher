@@ -3266,7 +3266,7 @@
               Grid.RowSpan="6"
               Visibility="Collapsed"
               Background="#BB000000">
-            <Border Width="420" Background="#09141E"
+            <Border Width="460" Background="#09141E"
                     BorderBrush="#153048" BorderThickness="1"
                     CornerRadius="4"
                     VerticalAlignment="Center"
@@ -3314,18 +3314,33 @@
                     <Border Grid.Row="2" Background="#060F18"
                             BorderBrush="#0D2030" BorderThickness="0,1,0,0">
                         <Grid Margin="14,0">
-                            <Button x:Name="LoadManipDeleteBtn"
-                                    Height="36" MinWidth="110"
-                                    local:ButtonHelper.CornerRadius="3"
-                                    Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
-                                    Padding="16,0"
-                                    HorizontalAlignment="Left" VerticalAlignment="Center"
-                                    Click="LoadManipDeleteBtn_Click">
-                                <TextBlock Text="DELETE"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="12" FontWeight="Bold"
-                                           Foreground="#CC3333"/>
-                            </Button>
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center">
+                                <Button x:Name="LoadManipDeleteBtn"
+                                        Height="36" MinWidth="100"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
+                                        Padding="14,0"
+                                        Click="LoadManipDeleteBtn_Click">
+                                    <TextBlock Text="DELETE"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="12" FontWeight="Bold"
+                                               Foreground="#CC3333"/>
+                                </Button>
+                                <Button x:Name="LoadManipDeleteAllBtn"
+                                        Height="36" MinWidth="110"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
+                                        Padding="14,0" Margin="8,0,0,0"
+                                        Visibility="Collapsed"
+                                        Click="LoadManipDeleteAllBtn_Click">
+                                    <TextBlock Text="DELETE ALL"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="12" FontWeight="Bold"
+                                               Foreground="#CC3333"/>
+                                </Button>
+                            </StackPanel>
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Right"
                                         VerticalAlignment="Center">
@@ -3487,7 +3502,7 @@
               Grid.RowSpan="6"
               Visibility="Collapsed"
               Background="#BB000000">
-            <Border Width="420" Background="#09141E"
+            <Border Width="470" Background="#09141E"
                     BorderBrush="#153048" BorderThickness="1"
                     CornerRadius="4"
                     VerticalAlignment="Center"
@@ -3535,37 +3550,74 @@
                     <Border Grid.Row="2" Background="#060F18"
                             BorderBrush="#0D2030" BorderThickness="0,1,0,0">
                         <Grid Margin="14,0">
-                            <Button x:Name="FullBrightDeleteBtn"
-                                    Height="36" MinWidth="110"
-                                    local:ButtonHelper.CornerRadius="3"
-                                    Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
-                                    Padding="16,0"
-                                    HorizontalAlignment="Left" VerticalAlignment="Center"
-                                    Click="FullBrightDeleteBtn_Click">
-                                <TextBlock Text="DELETE"
-                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                           FontSize="12" FontWeight="Bold"
-                                           Foreground="#CC3333"/>
-                            </Button>
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center">
+                                <Button x:Name="FullBrightDeleteBtn"
+                                        Height="36" MinWidth="100"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
+                                        Padding="14,0"
+                                        Click="FullBrightDeleteBtn_Click">
+                                    <TextBlock Text="DELETE"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="12" FontWeight="Bold"
+                                               Foreground="#CC3333"/>
+                                </Button>
+                                <Button x:Name="FullBrightDeleteAllBtn"
+                                        Height="36" MinWidth="110"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
+                                        Padding="14,0" Margin="8,0,0,0"
+                                        Click="FullBrightDeleteAllBtn_Click">
+                                    <TextBlock Text="DELETE ALL"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="12" FontWeight="Bold"
+                                               Foreground="#CC3333"/>
+                                </Button>
+                            </StackPanel>
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Right"
                                         VerticalAlignment="Center">
+                                <Button x:Name="FullBrightInstallUe4ssBtn"
+                                        Height="36" MinWidth="140"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#00503C" BorderBrush="#00B482" BorderThickness="1"
+                                        Padding="12,0" Margin="0,0,8,0"
+                                        Visibility="Collapsed"
+                                        Click="FullBrightInstallUe4ssBtn_Click">
+                                    <TextBlock Text="INSTALL UE4SS"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold"
+                                               Foreground="#00CCAA"/>
+                                </Button>
+                                <Button x:Name="FullBrightOnlyBtn"
+                                        Height="36" MinWidth="130"
+                                        local:ButtonHelper.CornerRadius="3"
+                                        Background="#00503C" BorderBrush="#00B482" BorderThickness="1"
+                                        Padding="12,0" Margin="0,0,8,0"
+                                        Click="FullBrightOnlyBtn_Click">
+                                    <TextBlock Text="ONLY FULLBRIGHT"
+                                               FontFamily="Cascadia Code, Consolas, Courier New"
+                                               FontSize="11" FontWeight="Bold"
+                                               Foreground="#00CCAA"/>
+                                </Button>
                                 <Button x:Name="FullBrightYesBtn"
                                         Height="36" MinWidth="110"
                                         local:ButtonHelper.CornerRadius="3"
                                         Background="#00503C" BorderBrush="#00B482" BorderThickness="1"
-                                        Padding="16,0" Margin="0,0,10,0"
+                                        Padding="12,0" Margin="0,0,8,0"
                                         Click="FullBrightYesBtn_Click">
-                                    <TextBlock Text="YES"
+                                    <TextBlock Text="+ LOAD MANIP"
                                                FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="12" FontWeight="Bold"
+                                               FontSize="11" FontWeight="Bold"
                                                Foreground="#00CCAA"/>
                                 </Button>
                                 <Button x:Name="FullBrightNoBtn"
-                                        Height="36" MinWidth="110"
+                                        Height="36" MinWidth="80"
                                         local:ButtonHelper.CornerRadius="3"
                                         Background="#1A0606" BorderBrush="#440000" BorderThickness="1"
-                                        Padding="16,0"
+                                        Padding="14,0"
                                         Click="FullBrightNoBtn_Click">
                                     <TextBlock Text="NO"
                                                FontFamily="Cascadia Code, Consolas, Courier New"

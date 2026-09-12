@@ -1,6 +1,3 @@
-2.3.2
-## Additions
-- Added an AZERTY option for the keyboard overlay
-
-## Other
-- Moved per-chapter hours tracking to the cloud
+2.3.3
+## Bug Fixes
+- Updated Fullbright and LoadManip for Chapter 1 and 5

@@ -54,7 +54,11 @@ public partial class MainWindow : Window
     private int     _ue4ssTargetChapter = 0;
     private string? _ue4ssWin64Dir;
     private string? _ue4ssZipPath;
-    private bool    _ue4ssTargetInstalledViaLoadManip;
+    /// <summary>True when the UE4SS build currently installed for the targeted chapter is owned
+    /// by Load Manip and/or FullBright (either overwrites the plain build with their own), so
+    /// removing/replacing it must go through the special cleanup path in Ue4ssDeleteBtn_Click
+    /// rather than the plain "uninstall the standalone build" one.</summary>
+    private bool    _ue4ssTargetOwnedByMod;
 
     private readonly Dictionary<int, Button> _loadManipBtns = [];
     private int     _loadManipTargetChapter = 0;
@@ -73,6 +77,7 @@ public partial class MainWindow : Window
     private string? _fullBrightUe4ssZipPath;
     private string? _fullBrightMarkerZipPath;
     private string? _fullBrightConfigZipPath;
+    private bool    _fullBrightUe4ssInstalledThisSession;
 
     private int                      _handModsTargetChapter = 0;
     private string?                  _handModsWin64Dir;
@@ -7296,20 +7301,24 @@ public partial class MainWindow : Window
                 : IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
         }
 
-        // UE4SS installed by the Load Manip system is a different build (see
-        // LoadManipFilesService.IsUe4ssFromLoadManip) — don't report it here as the
-        // standalone UE4SS install, since removing/replacing it must go through Load Manip.
-        bool installedViaLoadManip = _ue4ssWin64Dir != null && LoadManipFilesService.IsUe4ssFromLoadManip(_ue4ssWin64Dir);
-        bool installed = _ue4ssWin64Dir != null && IsUe4ssInstalled(_ue4ssWin64Dir) && !installedViaLoadManip;
-        _ue4ssTargetInstalledViaLoadManip = installedViaLoadManip;
+        // UE4SS installed by Load Manip and/or FullBright is a different build than the plain
+        // standalone one — don't report it here as the standalone UE4SS install, since
+        // removing/replacing it must go through the mod-aware cleanup below instead.
+        bool installedViaLoadManip = _ue4ssWin64Dir != null && HasLoadManipMarker(_ue4ssWin64Dir);
+        bool installedViaFullBright = (_ue4ssTargetChapter == 1 || _ue4ssTargetChapter == 5)
+            && _ue4ssWin64Dir != null && FullBrightFilesService.IsInstalled(_ue4ssWin64Dir);
+        bool ownedByMod = installedViaLoadManip || installedViaFullBright;
+        bool installed = _ue4ssWin64Dir != null && IsUe4ssInstalled(_ue4ssWin64Dir) && !ownedByMod;
+        _ue4ssTargetOwnedByMod = ownedByMod;
 
-        if (installedViaLoadManip)
+        if (ownedByMod)
         {
-            bool fullBrightAlsoInstalled = (_ue4ssTargetChapter == 1 || _ue4ssTargetChapter == 5)
-                && _ue4ssWin64Dir != null && FullBrightFilesService.IsInstalled(_ue4ssWin64Dir);
-            Ue4ssPopupQuestion.Text = fullBrightAlsoInstalled
-                ? "Load Manip, FullBright and their UE4SS files must be\nremoved before installing the original UE4SS."
-                : "Load Manip and its UE4SS files must be\nremoved before installing the original UE4SS.";
+            Ue4ssPopupQuestion.Text = (installedViaLoadManip, installedViaFullBright) switch
+            {
+                (true, true)  => "Load Manip, FullBright and their UE4SS files must be\nremoved before installing the original UE4SS.",
+                (true, false) => "Load Manip and its UE4SS files must be\nremoved before installing the original UE4SS.",
+                _             => "FullBright and its UE4SS files must be\nremoved before installing the original UE4SS.",
+            };
             Ue4ssYesBtn.Visibility    = Visibility.Collapsed;
             Ue4ssDeleteBtn.Visibility = Visibility.Visible;
             Ue4ssDeleteBtn.IsEnabled  = true;
@@ -7379,7 +7388,7 @@ public partial class MainWindow : Window
         if (_ue4ssWin64Dir is null)
             return;
 
-        if (_ue4ssTargetInstalledViaLoadManip)
+        if (_ue4ssTargetOwnedByMod)
         {
             var win64        = _ue4ssWin64Dir;
             var paksDir      = LoadManipFilesService.GetPaksDir(win64);
@@ -7526,12 +7535,38 @@ public partial class MainWindow : Window
         File.Exists(IOPath.Combine(win64Dir, "dwmapi.dll")) ||
         Directory.Exists(IOPath.Combine(win64Dir, "ue4ss"));
 
+    /// <summary>True only when Load Manip's own launcher.playtime marker is present — unlike
+    /// <see cref="LoadManipFilesService.IsUe4ssFromLoadManip"/>, this skips the legacy
+    /// AsyncLoadToggle-folder fallback, since FullBright's own UE4SS build (installed standalone,
+    /// without Load Manip) ships that same mod folder and would otherwise false-positive.</summary>
+    private static bool HasLoadManipMarker(string win64Dir) =>
+        File.Exists(IOPath.Combine(win64Dir, "launcher.playtime"));
+
+    /// <summary>True when Load Manip is genuinely installed for the given chapter — not merely
+    /// when FullBright's own pak (same filename, chapters 1 and 5 only) happens to be present.
+    /// On those chapters, Load Manip's own marker must also be present, since installing
+    /// FullBright standalone lays down the identical pak without Load Manip actually being
+    /// there.</summary>
+    private static bool IsLoadManipInstalled(string paksDir, string? zipPath, string? win64Dir, int chapterNumber)
+    {
+        if (zipPath is null || !LoadManipFilesService.IsInstalled(paksDir, zipPath)) return false;
+        if ((chapterNumber == 1 || chapterNumber == 5) && win64Dir != null)
+            return HasLoadManipMarker(win64Dir);
+        return true;
+    }
+
+    /// <summary>True when the UE4SS build in win64Dir is owned by Load Manip and/or FullBright
+    /// (chapters 1 and 5 only) rather than being the plain standalone build.</summary>
+    private static bool IsUe4ssOwnedByMod(string win64Dir, int chapterNumber) =>
+        LoadManipFilesService.IsUe4ssFromLoadManip(win64Dir) ||
+        ((chapterNumber == 1 || chapterNumber == 5) && FullBrightFilesService.IsInstalled(win64Dir));
+
     private bool IsUe4ssActiveForChapter(ChapterInfo ch)
     {
         var exePath = GetActiveExePath(ch);
         if (string.IsNullOrEmpty(exePath)) return false;
         var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
-        return win64 != null && IsUe4ssInstalled(win64) && !LoadManipFilesService.IsUe4ssFromLoadManip(win64);
+        return win64 != null && IsUe4ssInstalled(win64) && !IsUe4ssOwnedByMod(win64, ch.Number);
     }
 
     private void ApplyUe4ssTempRemap(string exe)
@@ -7698,7 +7733,7 @@ public partial class MainWindow : Window
             {
                 var win64 = FindWin64Dir(IOPath.GetDirectoryName(exePath)!);
                 if (win64 != null)
-                    installed = IsUe4ssInstalled(win64) && !LoadManipFilesService.IsUe4ssFromLoadManip(win64);
+                    installed = IsUe4ssInstalled(win64) && !IsUe4ssOwnedByMod(win64, _chapters[i].Number);
             }
             _ue4ssBtns[i].Opacity = installed ? 1.0 : 0.3;
         }
@@ -7756,10 +7791,11 @@ public partial class MainWindow : Window
             && _loadManipWin64Dir != null && !IsUe4ssInstalled(_loadManipWin64Dir);
         bool installed  = !needsUe4ss
             && _loadManipPaksDir != null && _loadManipZipPath != null && File.Exists(_loadManipZipPath)
-            && LoadManipFilesService.IsInstalled(_loadManipPaksDir, _loadManipZipPath);
+            && IsLoadManipInstalled(_loadManipPaksDir, _loadManipZipPath, _loadManipWin64Dir, _loadManipTargetChapter);
 
         LoadManipYesBtn.Visibility           = Visibility.Collapsed;
         LoadManipDeleteBtn.Visibility        = Visibility.Collapsed;
+        LoadManipDeleteAllBtn.Visibility     = Visibility.Collapsed;
         LoadManipInstallUe4ssBtn.Visibility  = Visibility.Collapsed;
         LoadManipWarningText.Visibility      = Visibility.Collapsed;
 
@@ -7781,7 +7817,8 @@ public partial class MainWindow : Window
             LoadManipDeleteBtn.Visibility = Visibility.Visible;
             if (fullBrightAlsoInstalled)
             {
-                LoadManipWarningText.Text = "⚠ FullBright is installed on top of Load Manip\nand will be removed as well.";
+                LoadManipDeleteAllBtn.Visibility = Visibility.Visible;
+                LoadManipWarningText.Text = "⚠ DELETE keeps FullBright installed.\nDELETE ALL removes FullBright too.";
                 LoadManipWarningText.Visibility = Visibility.Visible;
             }
         }
@@ -7845,7 +7882,10 @@ public partial class MainWindow : Window
 
             // If UE4SS was already present before this flow installed it (e.g. via the
             // standalone UE4SS card), its files must be replaced with the Load Manip build.
-            if (!_loadManipUe4ssInstalledThisSession && IsUe4ssInstalled(win64Dir))
+            // No confirmation needed when FullBright already owns it (installed standalone via
+            // "ONLY FULLBRIGHT") — Load Manip cleanly overwrites its own known build.
+            bool ue4ssOwnedByFullBright = FullBrightFilesService.IsInstalled(win64Dir);
+            if (!_loadManipUe4ssInstalledThisSession && !ue4ssOwnedByFullBright && IsUe4ssInstalled(win64Dir))
             {
                 var confirmContent = new TextBlock
                 {
@@ -7899,6 +7939,21 @@ public partial class MainWindow : Window
     }
 
     private async void LoadManipDeleteBtn_Click(object sender, RoutedEventArgs e)
+        => await RemoveLoadManipAsync(alsoRemoveFullBright: false);
+
+    private async void LoadManipDeleteAllBtn_Click(object sender, RoutedEventArgs e)
+        => await RemoveLoadManipAsync(alsoRemoveFullBright: true);
+
+    /// <summary>Removes Load Manip. Its pak and UE4SS build are the exact same files FullBright
+    /// ships (see FullBrightFilesService's class remarks) — there's no separate "Load Manip only"
+    /// state to fall back to, so leaving FullBright installed while dropping Load Manip only
+    /// unmarks it without changing anything the game actually loads. So when FullBright is
+    /// installed and <paramref name="alsoRemoveFullBright"/> is false, every file either package
+    /// could have laid down is wiped and FullBright is reinstalled fresh on top, landing back in a
+    /// clean, fully-working FullBright-only state. When <paramref name="alsoRemoveFullBright"/> is
+    /// true, both are wiped and neither is reinstalled. When FullBright isn't installed, Load
+    /// Manip's own pak/UE4SS/marker are simply removed.</summary>
+    private async Task RemoveLoadManipAsync(bool alsoRemoveFullBright)
     {
         CloseLoadManipOverlay();
 
@@ -7918,19 +7973,21 @@ public partial class MainWindow : Window
             var fullBrightZip       = fullBrightInstalled ? FullBrightFilesService.GetZipPath(_loadManipTargetChapter) : null;
             var fullBrightUe4ssZip  = fullBrightInstalled ? FullBrightFilesService.GetUe4ssZipPath(_loadManipTargetChapter) : null;
             var fullBrightMarkerZip = fullBrightInstalled ? FullBrightFilesService.GetPlaytimeMarkerZipPath(_loadManipTargetChapter) : null;
+            var fullBrightConfigZip = fullBrightInstalled ? FullBrightFilesService.GetConfigZipPath(_loadManipTargetChapter) : null;
+            bool canReinstallFullBright = win64Dir != null
+                && fullBrightZip != null && File.Exists(fullBrightZip)
+                && fullBrightUe4ssZip != null && File.Exists(fullBrightUe4ssZip)
+                && fullBrightMarkerZip != null && File.Exists(fullBrightMarkerZip);
 
             await Task.Run(() =>
             {
-                // FullBright can't exist without Load Manip — its pak/UE4SS overwrote Load
-                // Manip's own files (same paths). Remove it first, otherwise its
-                // fullbright.playtime marker survives and keeps reporting FullBright as
-                // "installed" even after Load Manip (and most of its files) are gone.
-                if (fullBrightInstalled && win64Dir != null
-                    && fullBrightZip != null && File.Exists(fullBrightZip)
-                    && fullBrightUe4ssZip != null && File.Exists(fullBrightUe4ssZip)
-                    && fullBrightMarkerZip != null && File.Exists(fullBrightMarkerZip))
+                if (fullBrightInstalled && canReinstallFullBright)
                 {
-                    FullBrightFilesService.Uninstall(paksDir, win64Dir, fullBrightZip, fullBrightUe4ssZip, fullBrightMarkerZip);
+                    // FullBright's pak/UE4SS overwrote Load Manip's own files (same paths).
+                    // Remove it first, otherwise its fullbright.playtime marker survives and
+                    // keeps reporting FullBright as "installed" even after Load Manip's files
+                    // are gone.
+                    FullBrightFilesService.Uninstall(paksDir, win64Dir!, fullBrightZip!, fullBrightUe4ssZip!, fullBrightMarkerZip!);
                 }
 
                 LoadManipFilesService.Uninstall(paksDir, zipPath);
@@ -7942,6 +7999,11 @@ public partial class MainWindow : Window
                 {
                     LoadManipFilesService.UninstallUe4ss(win64Dir, ue4ssZipPath, markerZipPath);
                 }
+
+                if (fullBrightInstalled && !alsoRemoveFullBright && canReinstallFullBright)
+                {
+                    FullBrightFilesService.Install(paksDir, win64Dir!, fullBrightZip!, fullBrightUe4ssZip!, fullBrightMarkerZip!, fullBrightConfigZip);
+                }
             });
             RefreshLoadManipBtnStates();
             RefreshUe4ssBtnStates();
@@ -7950,9 +8012,14 @@ public partial class MainWindow : Window
             RefreshChapter5FullBrightUI();
             RefreshChapter1UI();
             RefreshChapter5LoadManipUI();
-            ShowLoadManipDialog(fullBrightInstalled
-                ? "Load Manip and FullBright files removed successfully!"
-                : "Load Manip files removed successfully!", success: true);
+
+            var message = (fullBrightInstalled, alsoRemoveFullBright) switch
+            {
+                (true, true)  => "Load Manip and FullBright files removed successfully!",
+                (true, false) => "Load Manip files removed — FullBright kept installed!",
+                _             => "Load Manip files removed successfully!",
+            };
+            ShowLoadManipDialog(message, success: true);
         }
         catch (Exception ex)
         {
@@ -8042,7 +8109,7 @@ public partial class MainWindow : Window
                 {
                     var paksDir = LoadManipFilesService.GetPaksDir(win64);
                     if (paksDir != null)
-                        installed = LoadManipFilesService.IsInstalled(paksDir, zipPath);
+                        installed = IsLoadManipInstalled(paksDir, zipPath, win64, chapterNumber);
                 }
             }
             btn.Opacity = installed ? 1.0 : 0.3;
@@ -8054,6 +8121,7 @@ public partial class MainWindow : Window
     private void FullBrightCardBtn_Click(object sender, RoutedEventArgs e)
     {
         _fullBrightTargetChapter = (int)((Button)sender).Tag;
+        _fullBrightUe4ssInstalledThisSession = false;
 
         if (!ComputeFullBrightTargets())
         {
@@ -8096,25 +8164,98 @@ public partial class MainWindow : Window
 
     private void UpdateFullBrightPopupState()
     {
-        bool installed = _fullBrightWin64Dir != null && FullBrightFilesService.IsInstalled(_fullBrightWin64Dir);
+        // Same "UE4SS is required first" gate Load Manip's own popup uses for Chapters 1 and 5.
+        bool needsUe4ss = _fullBrightWin64Dir != null && !IsUe4ssInstalled(_fullBrightWin64Dir);
+        bool installed  = !needsUe4ss
+            && _fullBrightWin64Dir != null && FullBrightFilesService.IsInstalled(_fullBrightWin64Dir);
 
-        FullBrightYesBtn.Visibility    = installed ? Visibility.Collapsed : Visibility.Visible;
-        FullBrightDeleteBtn.Visibility = installed ? Visibility.Visible : Visibility.Collapsed;
-        FullBrightWarningText.Visibility = Visibility.Collapsed;
+        // Whether Load Manip's own launcher.playtime marker is present alongside FullBright's —
+        // true only when Load Manip was actually installed (via the "+ LOAD MANIP" flow), not
+        // when FullBright was installed standalone via "ONLY FULLBRIGHT".
+        bool loadManipUnderneath = _fullBrightWin64Dir != null
+            && HasLoadManipMarker(_fullBrightWin64Dir);
 
-        FullBrightPopupQuestion.Text = installed
-            ? "Do you want to remove FullBright files\nfrom this version?"
-            : "Do you want to add FullBright files\nto this version?";
+        FullBrightYesBtn.Visibility          = Visibility.Collapsed;
+        FullBrightOnlyBtn.Visibility         = Visibility.Collapsed;
+        FullBrightDeleteBtn.Visibility       = Visibility.Collapsed;
+        FullBrightDeleteAllBtn.Visibility    = Visibility.Collapsed;
+        FullBrightInstallUe4ssBtn.Visibility = Visibility.Collapsed;
+        FullBrightWarningText.Visibility     = Visibility.Collapsed;
 
-        if (installed)
+        if (needsUe4ss)
         {
-            FullBrightWarningText.Text = "⚠ Removing FullBright also removes Load Manip's\noverwritten files — Load Manip will be reinstalled automatically.";
-            FullBrightWarningText.Visibility = Visibility.Visible;
+            FullBrightPopupQuestion.Text = $"UE4SS is required before adding\nFullBright files for Chapter {_fullBrightTargetChapter}.";
+            FullBrightInstallUe4ssBtn.Visibility = Visibility.Visible;
+            if (_fullBrightTargetChapter == 1)
+            {
+                FullBrightWarningText.Text = "⚠ Only compatible with Patch 1.3";
+                FullBrightWarningText.Visibility = Visibility.Visible;
+            }
         }
-        else if (_fullBrightTargetChapter == 1)
+        else if (installed)
         {
-            FullBrightWarningText.Text = "⚠ Only compatible with Patch 1.3";
-            FullBrightWarningText.Visibility = Visibility.Visible;
+            FullBrightPopupQuestion.Text = "Do you want to remove FullBright files\nfrom this version?";
+            FullBrightDeleteBtn.Visibility = Visibility.Visible;
+            if (loadManipUnderneath)
+            {
+                FullBrightDeleteAllBtn.Visibility = Visibility.Visible;
+                FullBrightWarningText.Text = "⚠ DELETE keeps Load Manip installed (restored automatically).\nDELETE ALL removes Load Manip too.";
+                FullBrightWarningText.Visibility = Visibility.Visible;
+            }
+        }
+        else
+        {
+            FullBrightPopupQuestion.Text = "Do you want to add FullBright files\nto this version?";
+            FullBrightYesBtn.Visibility  = Visibility.Visible;
+            FullBrightOnlyBtn.Visibility = Visibility.Visible;
+            if (_fullBrightTargetChapter == 1)
+            {
+                FullBrightWarningText.Text = "⚠ Only compatible with Patch 1.3";
+                FullBrightWarningText.Visibility = Visibility.Visible;
+            }
+        }
+    }
+
+    private async void FullBrightInstallUe4ssBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_fullBrightWin64Dir is null)
+        {
+            CloseFullBrightOverlay();
+            ShowFullBrightDialog("No game path found for this chapter.\nPlease set up the game installation first.");
+            return;
+        }
+
+        // Same generic UE4SS build the Load Manip popup and the standalone UE4SS card install —
+        // FullBright's own UE4SS build then overwrites it once installed (see InstallFullBrightAsync).
+        var ue4ssZipPath = _fullBrightTargetChapter >= 5
+            ? IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 5", "Ue4ss.zip")
+            : IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
+        if (!File.Exists(ue4ssZipPath))
+        {
+            CloseFullBrightOverlay();
+            ShowFullBrightDialog("UE4SS zip not found. Try restarting the launcher.");
+            return;
+        }
+
+        FullBrightInstallUe4ssBtn.IsEnabled = false;
+        try
+        {
+            var win64 = _fullBrightWin64Dir;
+            await Task.Run(() => ZipFile.ExtractToDirectory(ue4ssZipPath, win64, overwriteFiles: true));
+            _fullBrightUe4ssInstalledThisSession = true;
+            RefreshUe4ssBtnStates();
+            // Swap straight to the "add FullBright files" state in the same popup instead of
+            // closing it, since UE4SS is now installed.
+            UpdateFullBrightPopupState();
+        }
+        catch (Exception ex)
+        {
+            CloseFullBrightOverlay();
+            ShowFullBrightDialog($"Error installing UE4SS:\n{ex.Message}");
+        }
+        finally
+        {
+            FullBrightInstallUe4ssBtn.IsEnabled = true;
         }
     }
 
@@ -8175,12 +8316,14 @@ public partial class MainWindow : Window
             return false;
         }
 
-        if (LoadManipFilesService.IsInstalled(paksDir, zipPath))
+        if (IsLoadManipInstalled(paksDir, zipPath, win64Dir, chapterNumber))
             return true;
 
         // Same "existing non-Load-Manip UE4SS must be confirmed-deleted first" branch as
-        // LoadManipYesBtn_Click, duplicated so that method is never modified.
-        if (IsUe4ssInstalled(win64Dir) && !LoadManipFilesService.IsUe4ssFromLoadManip(win64Dir))
+        // LoadManipYesBtn_Click, duplicated so that method is never modified. Skipped when the
+        // FullBright popup's own "INSTALL UE4SS" gate just laid down the generic build itself.
+        if (!_fullBrightUe4ssInstalledThisSession
+            && IsUe4ssInstalled(win64Dir) && !LoadManipFilesService.IsUe4ssFromLoadManip(win64Dir))
         {
             var confirmContent = new TextBlock
             {
@@ -8233,7 +8376,21 @@ public partial class MainWindow : Window
     private async void FullBrightYesBtn_Click(object sender, RoutedEventArgs e)
     {
         CloseFullBrightOverlay();
+        await InstallFullBrightAsync(installLoadManip: true);
+    }
 
+    private async void FullBrightOnlyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        CloseFullBrightOverlay();
+        await InstallFullBrightAsync(installLoadManip: false);
+    }
+
+    /// <summary>Installs FullBright, optionally ensuring Load Manip is installed underneath it
+    /// first (the "+ LOAD MANIP" flow) or installing it standalone (the "ONLY FULLBRIGHT" flow —
+    /// FullBright's own zips ship a complete pak/UE4SS build and don't actually need Load Manip's
+    /// files to already be present).</summary>
+    private async Task InstallFullBrightAsync(bool installLoadManip)
+    {
         if (_fullBrightPaksDir is null || _fullBrightWin64Dir is null)
         {
             ShowFullBrightDialog("No game path found for this chapter.\nPlease set up the game installation first.");
@@ -8255,22 +8412,29 @@ public partial class MainWindow : Window
         var markerZipPath = _fullBrightMarkerZipPath;
         var configZipPath = _fullBrightConfigZipPath;
 
-        var loadManipPaksDir = LoadManipFilesService.GetPaksDir(win64Dir);
-        if (loadManipPaksDir is null)
+        if (installLoadManip)
         {
-            ShowFullBrightDialog("No game path found for this chapter.\nPlease set up the game installation first.");
-            return;
+            var loadManipPaksDir = LoadManipFilesService.GetPaksDir(win64Dir);
+            if (loadManipPaksDir is null)
+            {
+                ShowFullBrightDialog("No game path found for this chapter.\nPlease set up the game installation first.");
+                return;
+            }
+
+            if (!await EnsureLoadManipInstalledAsync(win64Dir, loadManipPaksDir))
+                return;
         }
-
-        var loadManipZipPath = LoadManipFilesService.GetZipPath(_fullBrightTargetChapter);
-        bool loadManipInstalled = loadManipZipPath != null && File.Exists(loadManipZipPath)
-            && LoadManipFilesService.IsInstalled(loadManipPaksDir, loadManipZipPath);
-
-        if (!loadManipInstalled)
+        else if (!_fullBrightUe4ssInstalledThisSession
+                 && IsUe4ssInstalled(win64Dir) && !LoadManipFilesService.IsUe4ssFromLoadManip(win64Dir)
+                 && !FullBrightFilesService.IsInstalled(win64Dir))
         {
+            // A standalone (non-Load-Manip, non-FullBright) UE4SS build is in the way — same
+            // "must be confirmed-deleted first" step the Load Manip install path goes through,
+            // duplicated here for the Only-FullBright path so that path is never modified. Skipped
+            // when the popup's own "INSTALL UE4SS" gate just laid down the generic build itself.
             var confirmContent = new TextBlock
             {
-                Text         = "FullBright requires Load Manip.\nInstall Load Manip now?",
+                Text         = "This requires deleting the current UE4SS files.\nDo you want to delete them?",
                 FontFamily   = new FontFamily("Cascadia Code, Consolas, Courier New"),
                 FontSize     = 12,
                 Foreground   = new SolidColorBrush(Color.FromArgb(200, 160, 180, 200)),
@@ -8281,8 +8445,19 @@ public partial class MainWindow : Window
                 primaryText: "YES", closeText: "CANCEL");
             if (confirmResult != WpfDialogResult.Primary) return;
 
-            if (!await EnsureLoadManipInstalledAsync(win64Dir, loadManipPaksDir))
+            try
+            {
+                var genericUe4ssZip = _fullBrightTargetChapter >= 5
+                    ? IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 5", "Ue4ss.zip")
+                    : IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Tools", "Chapter 1 - 4", "Ue4ss.zip");
+                if (File.Exists(genericUe4ssZip))
+                    await Task.Run(() => LoadManipFilesService.UninstallUe4ss(win64Dir, genericUe4ssZip));
+            }
+            catch (Exception ex)
+            {
+                ShowFullBrightDialog($"Error deleting existing UE4SS files:\n{ex.Message}");
                 return;
+            }
         }
 
         try
@@ -8305,6 +8480,18 @@ public partial class MainWindow : Window
     }
 
     private async void FullBrightDeleteBtn_Click(object sender, RoutedEventArgs e)
+        => await RemoveFullBrightAsync(alsoRemoveLoadManip: false);
+
+    private async void FullBrightDeleteAllBtn_Click(object sender, RoutedEventArgs e)
+        => await RemoveFullBrightAsync(alsoRemoveLoadManip: true);
+
+    /// <summary>Removes FullBright. When Load Manip is installed underneath it (checked via its
+    /// own launcher.playtime marker, which survives FullBright's uninstall since the two mods use
+    /// differently-named marker files), Load Manip's base pak/UE4SS files — overwritten by
+    /// FullBright's own — are restored so it stays installed/functional, unless
+    /// <paramref name="alsoRemoveLoadManip"/> asks to remove Load Manip as well. When FullBright
+    /// was installed standalone (no Load Manip marker present), nothing else is touched.</summary>
+    private async Task RemoveFullBrightAsync(bool alsoRemoveLoadManip)
     {
         CloseFullBrightOverlay();
 
@@ -8324,6 +8511,8 @@ public partial class MainWindow : Window
         var loadManipUe4ssZipPath = LoadManipFilesService.GetUe4ssZipPath(_fullBrightTargetChapter);
         var loadManipMarkerZipPath = LoadManipFilesService.GetPlaytimeMarkerZipPath(_fullBrightTargetChapter);
 
+        bool loadManipWasInstalled = HasLoadManipMarker(win64Dir);
+
         try
         {
             await Task.Run(() =>
@@ -8332,12 +8521,22 @@ public partial class MainWindow : Window
                 // the config zip — only pak/UE4SS/marker get removed here.
                 FullBrightFilesService.Uninstall(paksDir, win64Dir, zipPath, ue4ssZipPath, markerZipPath);
 
-                // FullBright's pak/UE4SS overwrote Load Manip's own files (same paths), so
-                // removing FullBright also removed them — restore Load Manip's base files
-                // so it stays installed/functional afterward.
-                if (loadManipZipPath != null && File.Exists(loadManipZipPath)
+                if (!loadManipWasInstalled)
+                    return;
+
+                if (alsoRemoveLoadManip)
+                {
+                    if (loadManipZipPath != null && File.Exists(loadManipZipPath))
+                        LoadManipFilesService.Uninstall(paksDir, loadManipZipPath);
+                    if (loadManipUe4ssZipPath != null && File.Exists(loadManipUe4ssZipPath))
+                        LoadManipFilesService.UninstallUe4ss(win64Dir, loadManipUe4ssZipPath, loadManipMarkerZipPath);
+                }
+                else if (loadManipZipPath != null && File.Exists(loadManipZipPath)
                     && loadManipUe4ssZipPath != null && File.Exists(loadManipUe4ssZipPath))
                 {
+                    // FullBright's pak/UE4SS overwrote Load Manip's own files (same paths), so
+                    // removing FullBright also removed them — restore Load Manip's base files
+                    // so it stays installed/functional afterward.
                     LoadManipFilesService.Install(paksDir, loadManipZipPath, LoadManipFilesService.GetConfigZipPath(_fullBrightTargetChapter));
                     LoadManipFilesService.InstallUe4ss(win64Dir, loadManipUe4ssZipPath, loadManipMarkerZipPath);
                 }
@@ -8349,7 +8548,14 @@ public partial class MainWindow : Window
             RefreshUe4ssBtnStates();
             RefreshChapter1UI();
             RefreshChapter5LoadManipUI();
-            ShowFullBrightDialog("FullBright files removed and Load Manip restored successfully!", success: true);
+
+            var message = (loadManipWasInstalled, alsoRemoveLoadManip) switch
+            {
+                (true, true)  => "FullBright and Load Manip files removed successfully!",
+                (true, false) => "FullBright files removed and Load Manip restored successfully!",
+                _             => "FullBright files removed successfully!",
+            };
+            ShowFullBrightDialog(message, success: true);
         }
         catch (Exception ex)
         {
