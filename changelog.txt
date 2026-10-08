@@ -1,3 +1,7 @@
-2.3.3
-## Bug Fixes
-- Updated Fullbright and LoadManip for Chapter 1 and 5
+3.0.0
+## Additions
+- Added seasonal themes (Halloween, Summer and Christmas)
+- Added a Chapter 2 checkpoint save with a fixed train code (4312)
+
+## Other
+- Renamed the window mode options to Fullscreen and Windowed and removed the note below them

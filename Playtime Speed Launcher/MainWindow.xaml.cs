@@ -12,6 +12,7 @@ using System.Windows.Threading;
 using Microsoft.Win32;
 using PixelFormat = System.Windows.Media.PixelFormats;
 using SpeedrunLauncher.Models;
+using SpeedrunLauncher.Seasonal;
 using SpeedrunLauncher.Services;
 using SpeedrunLauncher.Services.App;
 using SpeedrunLauncher.Services.Chapters;
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
 {
     private readonly List<ChapterInfo>                            _chapters          = ChapterInfo.GetAll();
     private readonly List<Border>                                 _cards             = [];
+    private readonly List<Rectangle>                              _cardDimmers       = [];
     private readonly List<TextBlock>                              _hoursTexts        = [];
     private readonly List<Button>                                 _ue4ssBtns         = [];
     private readonly InstallationsStore                           _store             = InstallationsStore.Load();
@@ -296,6 +298,8 @@ public partial class MainWindow : Window
         Loc.LoadSaved();
         InitializeComponent();
         ApplyIconTheme();
+        ApplySeasonalPalette();
+        SeasonalRecolor.Attach(this); // tints settings/overlays/dialogs for the active season
         var trophyPath = IOPath.Combine(ResourceExtractor.TempDir, "Assets", "Images", "GoldTrophy.png");
         if (System.IO.File.Exists(trophyPath))
         {
@@ -431,7 +435,6 @@ public partial class MainWindow : Window
         WindowModeSectionLabel.Text  = Loc.Get("window_mode_section");
         WindowModeActualBtnText.Text = Loc.Get("window_mode_actual");
         WindowModeWindowedBtnText.Text = Loc.Get("window_mode_windowed");
-        WindowModeHintText.Text      = Loc.Get("window_mode_hint");
         RefreshWindowModeButtons();
         OnlineUsersSectionLabel.Text = Loc.Get("online_users_section");
         OnlineUsersShowLabel.Text    = Loc.Get("online_users_show_label");
@@ -627,10 +630,7 @@ public partial class MainWindow : Window
         SendBugReportBtnText.Text          = Loc.Get("bug_report_send_btn");
         CloseBugReportBtnText.Text         = Loc.Get("back");
 
-        CardsPanel.Children.Clear();
-        _cards.Clear();
-        BuildCards();
-        SelectChapter(_selected);
+        RebuildCards();
 
         if (VersionsOverlay.Visibility == Visibility.Visible)
             BuildInstallationsList();
@@ -3580,6 +3580,8 @@ public partial class MainWindow : Window
             card.MouseDown   += (_, _) => SelectChapter(idx);
             card.MouseEnter  += (_, _) => { OnCardHover(idx, true); PlaySfx("OpcionMover.WAV", noStop: true); };
             card.MouseLeave  += (_, _) => OnCardHover(idx, false);
+            SeasonalDecorations.SetVariant(card, i); // keep the same decorations when cards are rebuilt
+            SeasonalDecorations.SetDecoration(card, "Chapter");
             _cards.Add(card);
             _hoursTexts.Add(hoursText);
             CardsPanel.Children.Add(card);
@@ -3587,6 +3589,20 @@ public partial class MainWindow : Window
         RefreshUe4ssBtnStates();
         RefreshLoadManipBtnStates();
         RefreshFullBrightBtnStates();
+    }
+
+    /// <summary>Recreates the chapter cards (after a language or seasonal theme change).</summary>
+    private void RebuildCards()
+    {
+        CardsPanel.Children.Clear();
+        _cards.Clear();
+        _cardDimmers.Clear();
+        _hoursTexts.Clear();
+        _ue4ssBtns.Clear();
+        _loadManipBtns.Clear();
+        _fullBrightBtns.Clear();
+        BuildCards();
+        SelectChapter(_selected);
     }
 
     private void UpdateHoursText(int index)
@@ -3599,6 +3615,13 @@ public partial class MainWindow : Window
     {
         for (int i = 0; i < _hoursTexts.Count; i++)
             UpdateHoursText(i);
+    }
+
+    /// <summary>The season's accent color with the given alpha (teal in the classic look).</summary>
+    private static Color CardAccent(byte alpha)
+    {
+        var c = SeasonalThemeService.Instance.Palette.Accent;
+        return Color.FromArgb(alpha, c.R, c.G, c.B);
     }
 
     private Border MakeCard(ChapterInfo chapter, string bannerPath, out TextBlock hoursText)
@@ -3642,7 +3665,7 @@ public partial class MainWindow : Window
             Text = ChapterPlaytimeStore.Format(_playtimeStore.GetPlaytime(chapter.Number)),
             FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
             FontSize = 10,
-            Foreground = new SolidColorBrush(TealDim),
+            Foreground = new SolidColorBrush(CardAccent(120)),
             Margin = new Thickness(0, 2, 0, 0),
         };
         bottom.Children.Add(hoursText);
@@ -3659,7 +3682,7 @@ public partial class MainWindow : Window
             var saveBtn = new Button
             {
                 Background = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
+                BorderBrush = new SolidColorBrush(CardAccent(140)),
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(10, 5, 10, 5),
                 Tag = chapter.Number,
@@ -3671,7 +3694,7 @@ public partial class MainWindow : Window
                 FontFamily = new FontFamily("Segoe MDL2 Assets"),
                 Text = "",
                 FontSize = 11,
-                Foreground = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                Foreground = new SolidColorBrush(CardAccent(200)),
                 VerticalAlignment = VerticalAlignment.Center,
             });
             saveBtnContent.Children.Add(new TextBlock
@@ -3679,7 +3702,7 @@ public partial class MainWindow : Window
                 Text = "+",
                 FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
                 FontSize = 12, FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                Foreground = new SolidColorBrush(CardAccent(200)),
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(4, 0, 0, 0),
             });
@@ -3691,7 +3714,7 @@ public partial class MainWindow : Window
             var ue4ssBtn = new Button
             {
                 Background      = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
-                BorderBrush     = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
+                BorderBrush     = new SolidColorBrush(CardAccent(140)),
                 BorderThickness = new Thickness(1),
                 Padding         = new Thickness(10, 5, 10, 5),
                 Margin          = new Thickness(6, 0, 0, 0),
@@ -3704,7 +3727,7 @@ public partial class MainWindow : Window
                 FontFamily        = new FontFamily("Cascadia Code, Consolas, Courier New"),
                 FontSize          = 9,
                 FontWeight        = FontWeights.Bold,
-                Foreground        = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                Foreground        = new SolidColorBrush(CardAccent(200)),
                 VerticalAlignment = VerticalAlignment.Center,
             };
             ue4ssBtn.MouseDown += (s, ev) => ev.Handled = true;
@@ -3717,7 +3740,7 @@ public partial class MainWindow : Window
                 var loadManipBtn = new Button
                 {
                     Background      = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
-                    BorderBrush     = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
+                    BorderBrush     = new SolidColorBrush(CardAccent(140)),
                     BorderThickness = new Thickness(1),
                     Padding         = new Thickness(10, 5, 10, 5),
                     Margin          = new Thickness(6, 0, 0, 0),
@@ -3739,7 +3762,7 @@ public partial class MainWindow : Window
                     FontFamily        = new FontFamily("Cascadia Code, Consolas, Courier New"),
                     FontSize          = 9,
                     FontWeight        = FontWeights.Bold,
-                    Foreground        = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                    Foreground        = new SolidColorBrush(CardAccent(200)),
                     VerticalAlignment = VerticalAlignment.Center,
                 });
                 loadManipBtn.Content = loadManipContent;
@@ -3754,7 +3777,7 @@ public partial class MainWindow : Window
                 var fullBrightBtn = new Button
                 {
                     Background      = new SolidColorBrush(Color.FromArgb(180, 9, 20, 30)),
-                    BorderBrush     = new SolidColorBrush(Color.FromArgb(140, 0, 204, 170)),
+                    BorderBrush     = new SolidColorBrush(CardAccent(140)),
                     BorderThickness = new Thickness(1),
                     Padding         = new Thickness(10, 5, 10, 5),
                     Margin          = new Thickness(6, 0, 0, 0),
@@ -3767,7 +3790,7 @@ public partial class MainWindow : Window
                     FontFamily        = new FontFamily("Cascadia Code, Consolas, Courier New"),
                     FontSize          = 9,
                     FontWeight        = FontWeights.Bold,
-                    Foreground        = new SolidColorBrush(Color.FromArgb(200, 0, 204, 170)),
+                    Foreground        = new SolidColorBrush(CardAccent(200)),
                     VerticalAlignment = VerticalAlignment.Center,
                 };
                 fullBrightBtn.MouseDown += (s, ev) => ev.Handled = true;
@@ -3798,12 +3821,12 @@ public partial class MainWindow : Window
                 {
                     Width = 120, Height = 120,
                     CornerRadius = new CornerRadius(8),
-                    BorderBrush = new SolidColorBrush(Teal),
+                    BorderBrush = new SolidColorBrush(CardAccent(255)),
                     BorderThickness = new Thickness(2),
                     Background = new SolidColorBrush(Color.FromArgb(160, 9, 20, 30)),
                     Effect = new System.Windows.Media.Effects.DropShadowEffect
                     {
-                        Color = Teal, BlurRadius = 20, ShadowDepth = 0, Opacity = 0.8,
+                        Color = CardAccent(255), BlurRadius = 20, ShadowDepth = 0, Opacity = 0.8,
                     },
                     Child = new Image
                     {
@@ -3820,7 +3843,7 @@ public partial class MainWindow : Window
             {
                 Text = Loc.Get("coming_soon"),
                 FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
-                FontSize = 9, Foreground = new SolidColorBrush(TealDim),
+                FontSize = 9, Foreground = new SolidColorBrush(CardAccent(120)),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment   = VerticalAlignment.Center,
                 TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center,
@@ -3831,14 +3854,42 @@ public partial class MainWindow : Window
             grid.Children.Add(overlay);
         }
 
-        return new Border
+        // Seasonal themes dim unselected cards with this layer instead of Opacity, so the
+        // scenery behind them doesn't show through the card art.
+        var dimmer = new Rectangle
+        {
+            Fill = new SolidColorBrush(SeasonalThemeService.Instance.Palette.Background),
+            Opacity = 0,
+            IsHitTestVisible = false,
+        };
+        grid.Children.Add(dimmer);
+        _cardDimmers.Add(dimmer);
+
+        var card = new Border
         {
             Width = 340, Height = 520, CornerRadius = new CornerRadius(6),
             BorderBrush = new SolidColorBrush(CardBorder), BorderThickness = new Thickness(1),
-            Opacity = chapter.IsAvailable ? 0.6 : 0.3,
             Background = Brushes.Transparent,
             Child = grid,
         };
+        SetCardOpacity(card, dimmer, chapter.IsAvailable ? 0.6 : 0.3);
+        return card;
+    }
+
+    private void SetCardOpacity(int index, double opacity) => SetCardOpacity(_cards[index], _cardDimmers[index], opacity);
+
+    private static void SetCardOpacity(Border card, Rectangle dimmer, double opacity)
+    {
+        if (SeasonalThemeService.Instance.ActiveSeason == "classic")
+        {
+            card.Opacity   = opacity;
+            dimmer.Opacity = 0;
+        }
+        else
+        {
+            card.Opacity   = 1;
+            dimmer.Opacity = 1 - opacity;
+        }
     }
 
     // ── Selection ─────────────────────────────────────────────────────────────
@@ -3854,9 +3905,14 @@ public partial class MainWindow : Window
             bool sel = i == index;
             _cards[i].Width           = sel ? 400 : 340;
             _cards[i].Height          = sel ? 610 : 520;
-            _cards[i].Opacity         = sel ? 1.0 : (_chapters[i].IsAvailable ? 0.55 : 0.28);
-            _cards[i].BorderBrush     = new SolidColorBrush(sel ? Teal : CardBorder);
+            SetCardOpacity(i, sel ? 1.0 : (_chapters[i].IsAvailable ? 0.55 : 0.28));
+            _cards[i].BorderBrush     = new SolidColorBrush(sel ? SeasonalThemeService.Instance.Palette.Accent : CardBorder);
             _cards[i].BorderThickness = new Thickness(sel ? 2 : 1);
+            // Seasonal themes: the selected card glows in the season's accent color.
+            _cards[i].Effect = sel && SeasonalThemeService.Instance.ActiveSeason != "classic"
+                ? new System.Windows.Media.Effects.DropShadowEffect
+                  { Color = SeasonalThemeService.Instance.Palette.Accent, BlurRadius = 34, ShadowDepth = 0, Opacity = 0.55 }
+                : null;
         }
         RefreshInfo();
     }
@@ -3864,7 +3920,7 @@ public partial class MainWindow : Window
     private void OnCardHover(int index, bool enter)
     {
         if (index == _selected) return;
-        _cards[index].Opacity = enter ? 0.85 : (_chapters[index].IsAvailable ? 0.55 : 0.28);
+        SetCardOpacity(index, enter ? 0.85 : (_chapters[index].IsAvailable ? 0.55 : 0.28));
     }
 
     // Returns the exe that should actually be launched for the chapter,
@@ -5613,7 +5669,7 @@ public partial class MainWindow : Window
             .OrderBy(d =>
             {
                 var m = System.Text.RegularExpressions.Regex.Match(IOPath.GetFileName(d), @"^\[(\d+)\]");
-                return m.Success ? int.Parse(m.Groups[1].Value) : 999;
+                return m.Success ? int.Parse(m.Groups[1].Value) : -1; // unnumbered (special) saves go first
             });
 
         var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -6702,6 +6758,55 @@ public partial class MainWindow : Window
         ApplyIconTheme();
         _discordPresence.RefreshIconTheme();
         RefreshIconThemeButtons();
+        SeasonalThemeService.Instance.RefreshSeason();
+        ApplySeasonalPalette();
+    }
+
+    /// <summary>
+    /// Recolors the main screen (background, bars, PLAY button, texts, chapter cards) for the
+    /// active season and turns the glows on/off. The scenery itself is drawn by SeasonalBackdrop.
+    /// </summary>
+    private void ApplySeasonalPalette()
+    {
+        var palette  = SeasonalThemeService.Instance.Palette;
+        var seasonal = SeasonalThemeService.Instance.ActiveSeason != "classic";
+
+        RootBackgroundBrush.Color    = palette.Background;
+        TopBarBorder.Background      = new SolidColorBrush(palette.Bar);
+        TopBarBorder.BorderBrush     = new SolidColorBrush(palette.BarBorder);
+        BottomBarBorder.Background   = new SolidColorBrush(palette.Bar);
+        BottomBarBorder.BorderBrush  = new SolidColorBrush(palette.BarBorder);
+        PlayButton.Background        = new SolidColorBrush(palette.PlayBackground);
+        PlayButtonIcon.Foreground    = new SolidColorBrush(palette.PlayForeground);
+        PlayButtonText.Foreground    = new SolidColorBrush(palette.PlayForeground);
+        TitleText.Foreground         = new SolidColorBrush(palette.Title);
+        StatusText.Foreground        = new SolidColorBrush(palette.Muted);
+        DescriptionText.Foreground   = new SolidColorBrush(palette.Muted);
+        VersionText.Foreground       = new SolidColorBrush(palette.Accent);
+        OnlineUsersDot.Fill          = new SolidColorBrush(palette.Accent);
+
+        // Room above the cards for decorations that sit on their top edge.
+        CardsPanel.Margin = new Thickness(0, seasonal ? 56 : 8, 0, seasonal ? 56 : 8);
+
+        // Glowing title and a softly pulsing glow around the PLAY button.
+        TitleText.Effect = seasonal
+            ? new System.Windows.Media.Effects.DropShadowEffect { Color = palette.Title, BlurRadius = 22, ShadowDepth = 0, Opacity = 0.75 }
+            : null;
+        if (seasonal)
+        {
+            var glow = new System.Windows.Media.Effects.DropShadowEffect { Color = palette.PlayBackground, BlurRadius = 30, ShadowDepth = 0, Opacity = 0.5 };
+            glow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty,
+                new DoubleAnimation(0.3, 0.85, TimeSpan.FromSeconds(1.6))
+                { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
+            PlayButton.Effect = glow;
+        }
+        else PlayButton.Effect = null;
+
+        // Cards bake their accent colors in when built.
+        if (_cards.Count > 0) RebuildCards();
+
+        // Re-tint the rest of the UI (settings, overlays) now that the main screen is rebuilt.
+        SeasonalRecolor.Refresh();
     }
 
     private void IconThemeDefaultBtn_Click(object sender, RoutedEventArgs e)   => SetIconTheme("default");

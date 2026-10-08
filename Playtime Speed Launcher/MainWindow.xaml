@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="clr-namespace:SpeedrunLauncher"
+    xmlns:seasonal="clr-namespace:SpeedrunLauncher.Seasonal"
     Title="Poppy Playtime — Speedrun Launcher"
     WindowState="Maximized"
     WindowStyle="None"
@@ -11,7 +12,7 @@
 
     <Grid>
         <Grid.Background>
-            <SolidColorBrush Color="#070C12"/>
+            <SolidColorBrush x:Name="RootBackgroundBrush" Color="#070C12"/>
         </Grid.Background>
 
         <Grid.RowDefinitions>
@@ -23,8 +24,11 @@
             <RowDefinition Height="38"/>
         </Grid.RowDefinitions>
 
+        <!-- Seasonal scenery behind the whole UI (sky, moon/sun, landscape, garland under the top bar) -->
+        <seasonal:SeasonalBackdrop Grid.RowSpan="6" GarlandTop="36"/>
+
         <!-- ── TOP STATUS BAR ── -->
-        <Border Grid.Row="0" Background="#08111A"
+        <Border x:Name="TopBarBorder" Grid.Row="0" Background="#08111A"
                 BorderBrush="#0D2030" BorderThickness="0,0,0,1"/>
         <StackPanel Grid.Row="0"
                     Orientation="Horizontal"
@@ -114,13 +118,13 @@
                                                 <Thumb.Template>
                                                     <ControlTemplate TargetType="{x:Type Thumb}">
                                                         <Border x:Name="ThumbBorder"
-                                                                Background="#1A3A55"
+                                                                Background="{DynamicResource Seasonal.1A3A55}"
                                                                 CornerRadius="3"
                                                                 Height="6"
                                                                 VerticalAlignment="Center"/>
                                                         <ControlTemplate.Triggers>
                                                             <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter TargetName="ThumbBorder" Property="Background" Value="#00CCAA"/>
+                                                                <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource Seasonal.00CCAA}"/>
                                                             </Trigger>
                                                         </ControlTemplate.Triggers>
                                                     </ControlTemplate>
@@ -133,11 +137,14 @@
                         </Setter>
                     </Style>
                 </ScrollViewer.Resources>
-                <StackPanel x:Name="CardsPanel"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Margin="0,8"/>
+                <!-- Inside the ScrollViewer so the cards' seasonal decorations scroll and clip with them. -->
+                <AdornerDecorator>
+                    <StackPanel x:Name="CardsPanel"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Margin="0,8"/>
+                </AdornerDecorator>
             </ScrollViewer>
         </Grid>
 
@@ -281,7 +288,8 @@
                     Click="PlayButton_Click"
                     Margin="8,0,8,0">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE768;"
+                    <TextBlock x:Name="PlayButtonIcon"
+                               FontFamily="Segoe MDL2 Assets" Text="&#xE768;"
                                FontSize="16" Foreground="#060C12"
                                VerticalAlignment="Center"/>
                     <TextBlock x:Name="PlayButtonText"
@@ -309,7 +317,7 @@
         </Grid>
 
         <!-- ── BOTTOM BAR ── -->
-        <Border Grid.Row="5" Background="#08111A"
+        <Border x:Name="BottomBarBorder" Grid.Row="5" Background="#08111A"
                 BorderBrush="#0D2030" BorderThickness="0,1,0,0"/>
 
         <Button x:Name="BugReportButton"
@@ -386,6 +394,9 @@
                 <Image x:Name="SteamAvatar" Stretch="UniformToFill"/>
             </Border>
         </StackPanel>
+
+        <!-- Seasonal ambient animations (click-through, below the overlays/dialogs) -->
+        <seasonal:SeasonalOverlay Grid.RowSpan="6"/>
 
         <!-- ── VERSIONS OVERLAY ── -->
         <Grid x:Name="VersionsOverlay"
@@ -850,10 +861,6 @@
                                                    FontSize="11" FontWeight="Bold" Foreground="#3A6A8A"
                                                    VerticalAlignment="Center"/>
                                     </Button>
-                                    <TextBlock x:Name="WindowModeHintText"
-                                               FontFamily="Cascadia Code, Consolas, Courier New"
-                                               FontSize="9" Foreground="#3A6A8A"
-                                               TextWrapping="Wrap" Margin="0,0,0,0"/>
 
                                     <Border BorderBrush="#0D2030" BorderThickness="0,0,0,1" Margin="0,16,0,16"/>
 
@@ -1970,8 +1977,8 @@
                             <ScrollViewer x:Name="SettingsCoresScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                                 <ScrollViewer.Resources>
                                     <Style TargetType="ComboBoxItem">
-                                        <Setter Property="Background" Value="#0A1825"/>
-                                        <Setter Property="Foreground" Value="#8AAABB"/>
+                                        <Setter Property="Background" Value="{DynamicResource Seasonal.0A1825}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource Seasonal.8AAABB}"/>
                                         <Setter Property="FontFamily" Value="Cascadia Code, Consolas, Courier New"/>
                                         <Setter Property="FontSize" Value="10"/>
                                         <Setter Property="Padding" Value="10,5"/>
@@ -1985,11 +1992,11 @@
                                                     </Border>
                                                     <ControlTemplate.Triggers>
                                                         <Trigger Property="IsHighlighted" Value="True">
-                                                            <Setter TargetName="itemBorder" Property="Background" Value="#123049"/>
+                                                            <Setter TargetName="itemBorder" Property="Background" Value="{DynamicResource Seasonal.123049}"/>
                                                         </Trigger>
                                                         <Trigger Property="IsSelected" Value="True">
-                                                            <Setter TargetName="itemBorder" Property="Background" Value="#0F2438"/>
-                                                            <Setter Property="Foreground" Value="#00CCAA"/>
+                                                            <Setter TargetName="itemBorder" Property="Background" Value="{DynamicResource Seasonal.0F2438}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource Seasonal.00CCAA}"/>
                                                         </Trigger>
                                                     </ControlTemplate.Triggers>
                                                 </ControlTemplate>
@@ -1997,10 +2004,10 @@
                                         </Setter>
                                     </Style>
                                     <Style TargetType="ComboBox">
-                                        <Setter Property="Background" Value="#0A1825"/>
-                                        <Setter Property="BorderBrush" Value="#1A3A55"/>
+                                        <Setter Property="Background" Value="{DynamicResource Seasonal.0A1825}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource Seasonal.1A3A55}"/>
                                         <Setter Property="BorderThickness" Value="1"/>
-                                        <Setter Property="Foreground" Value="#8AAABB"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource Seasonal.8AAABB}"/>
                                         <Setter Property="FontFamily" Value="Cascadia Code, Consolas, Courier New"/>
                                         <Setter Property="FontSize" Value="10"/>
                                         <Setter Property="FontWeight" Value="Bold"/>
@@ -2029,7 +2036,7 @@
                                                                                 <ColumnDefinition Width="18"/>
                                                                             </Grid.ColumnDefinitions>
                                                                             <TextBlock Grid.Column="1" Text="&#9660;"
-                                                                                       FontSize="7" Foreground="#8AAABB"
+                                                                                       FontSize="7" Foreground="{DynamicResource Seasonal.8AAABB}"
                                                                                        HorizontalAlignment="Center"
                                                                                        VerticalAlignment="Center"/>
                                                                         </Grid>

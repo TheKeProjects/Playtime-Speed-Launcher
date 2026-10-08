@@ -11,9 +11,8 @@ settings_title = [ SETTINGS ]
 sound_effects = Sound effects
 language_label = Language
 window_mode_section = WINDOW MODE
-window_mode_actual = Actual (fullscreen, no window controls)
-window_mode_windowed = Windowed (covers the full screen, adds a minimize button)
-window_mode_hint = Both modes keep the launcher covering the whole screen. "Windowed" adds a minimize button so you can drop to the desktop without closing the app.
+window_mode_actual = Fullscreen
+window_mode_windowed = Windowed
 online_users_section = ONLINE USERS
 online_users_show_label = Show online users counter
 
@@ -388,7 +387,7 @@ fps_overlay_font_monospace   = Monospace
 
 # Icon & app theme (section in settings)
 icontheme_section    = ICON & APP THEME
-icontheme_hint       = Choose the launcher's icon and Discord Rich Presence look. "Default" uses whatever theme is currently active in the build. This affects the running window/taskbar icon and Discord Rich Presence — it does not change the .exe file icon shown in File Explorer or on desktop shortcuts.
+icontheme_hint       = Choose the launcher's icon, Discord Rich Presence look and app theme (Summer, Halloween and Christmas also change the launcher's colors and add seasonal decorations and animations). "Default" uses whatever theme is currently active in the build. This affects the running window/taskbar icon and Discord Rich Presence — it does not change the .exe file icon shown in File Explorer or on desktop shortcuts.
 icontheme_default    = Default
 icontheme_classic    = Classic
 icontheme_lgbtq      = LGBTQ+

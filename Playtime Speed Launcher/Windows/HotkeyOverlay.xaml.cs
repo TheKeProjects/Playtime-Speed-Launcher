@@ -121,7 +121,7 @@ public partial class HotkeyOverlay : Window
             .OrderBy(d =>
             {
                 var m = System.Text.RegularExpressions.Regex.Match(IOPath.GetFileName(d), @"^\[(\d+)\]");
-                return m.Success ? int.Parse(m.Groups[1].Value) : 999;
+                return m.Success ? int.Parse(m.Groups[1].Value) : -1; // unnumbered (special) saves go first
             })
             .Select(d => saveFile != null
                 ? (name: IOPath.GetFileName(d), src: IOPath.Combine(d, saveFile), isDir: false)

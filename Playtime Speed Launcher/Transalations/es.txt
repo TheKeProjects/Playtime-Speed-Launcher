@@ -11,9 +11,8 @@ settings_title = [ CONFIGURACIÓN ]
 sound_effects = Efectos de sonido
 language_label = Idioma
 window_mode_section = MODO DE VENTANA
-window_mode_actual = Actual (pantalla completa, sin controles de ventana)
-window_mode_windowed = Ventana (cubre toda la pantalla, añade botón de minimizar)
-window_mode_hint = Ambos modos mantienen el launcher cubriendo toda la pantalla. "Ventana" añade un botón para minimizar y volver al escritorio sin cerrar la app.
+window_mode_actual = Pantalla completa
+window_mode_windowed = Windowed
 online_users_section = USUARIOS EN LÍNEA
 online_users_show_label = Mostrar contador de usuarios en línea
 
@@ -384,7 +383,7 @@ fps_overlay_font_monospace   = Monoespaciada
 
 # Icono y tema de la app (sección en configuración)
 icontheme_section    = ICONO Y TEMA DE LA APP
-icontheme_hint       = Elige el icono del launcher y el aspecto de Discord Rich Presence. "Por defecto" usa el tema que esté activo en la build actual. Esto afecta al icono de la ventana/barra de tareas y a Discord Rich Presence — no cambia el icono del archivo .exe que se ve en el Explorador de archivos ni en los accesos directos del escritorio.
+icontheme_hint       = Elige el icono del launcher, el aspecto de Discord Rich Presence y el tema de la app (Verano, Halloween y Navidad también cambian los colores del launcher y añaden decoraciones y animaciones de temporada). "Por defecto" usa el tema que esté activo en la build actual. Esto afecta al icono de la ventana/barra de tareas y a Discord Rich Presence — no cambia el icono del archivo .exe que se ve en el Explorador de archivos ni en los accesos directos del escritorio.
 icontheme_default    = Por defecto
 icontheme_classic    = Clásico
 icontheme_lgbtq      = LGBTQ+

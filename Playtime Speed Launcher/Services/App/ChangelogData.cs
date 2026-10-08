@@ -8,6 +8,15 @@ public static class ChangelogData
 
     public static readonly ChangelogEntry[] Entries =
     [
+        new("3.0.0", "08/10/2026",
+        [
+            "## Additions",
+            "Added seasonal themes (Halloween, Summer and Christmas)",
+            "Added a Chapter 2 checkpoint save with a fixed train code (4312)",
+
+            "## Other",
+            "Renamed the window mode options to Fullscreen and Windowed and removed the note below them",
+        ]),
         new("2.3.3", "12/09/2026",
         [
             "## Bug Fixes",

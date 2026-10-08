@@ -40,9 +40,18 @@
                 </Setter>
             </Style>
 
+            <!-- Classic colors used inside styles/templates. Seasonal themes replace these at
+                 runtime with tinted versions (see Seasonal/SeasonalRecolor.cs). -->
+            <SolidColorBrush x:Key="Seasonal.00CCAA" Color="#00CCAA"/>
+            <SolidColorBrush x:Key="Seasonal.0A1825" Color="#0A1825"/>
+            <SolidColorBrush x:Key="Seasonal.8AAABB" Color="#8AAABB"/>
+            <SolidColorBrush x:Key="Seasonal.123049" Color="#123049"/>
+            <SolidColorBrush x:Key="Seasonal.0F2438" Color="#0F2438"/>
+            <SolidColorBrush x:Key="Seasonal.1A3A55" Color="#1A3A55"/>
+
             <!-- Slider dark style -->
             <Style TargetType="Slider">
-                <Setter Property="Foreground" Value="#00CCAA"/>
+                <Setter Property="Foreground" Value="{DynamicResource Seasonal.00CCAA}"/>
             </Style>
 
             <!-- LiveSplit logo icon (converted from LiveSplitInstaller.svg) -->
