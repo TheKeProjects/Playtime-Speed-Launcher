@@ -54,6 +54,12 @@ public sealed class F11RemapService : IDisposable
     private LowLevelProc? _mouseProc;
     private readonly HashSet<uint> _heldKeys = [];
 
+    /// <summary>True while the low-level keyboard hook is installed.</summary>
+    public bool HasKeyboardHook => _keyboardHook != 0;
+
+    /// <summary>Raised for every real (non-injected) key press seen by the hook: (vkCode, time).</summary>
+    public event Action<uint, uint>? RawKeyDown;
+
     public void Load()
     {
         try
@@ -190,6 +196,8 @@ public sealed class F11RemapService : IDisposable
             var isDown   = msg is WM_KEYDOWN or WM_SYSKEYDOWN;
             var isUp     = msg is WM_KEYUP   or WM_SYSKEYUP;
             var injected = (data.flags & LLKHF_INJECTED) != 0;
+
+            if (isDown && !injected) RawKeyDown?.Invoke(data.vkCode, data.time);
 
             // Swallow the real F11 key so it never reaches the foreground app —
             // but let our own SendF11() (which is reported as "injected") through.

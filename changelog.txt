@@ -1,7 +1,7 @@
-3.0.0
+3.0.1
 ## Additions
-- Added seasonal themes (Halloween, Summer and Christmas)
-- Added a Chapter 2 checkpoint save with a fixed train code (4312)
+- Added two new easter eggs
+- Easter eggs can now also be activated in-game
 
-## Other
-- Renamed the window mode options to Fullscreen and Windowed and removed the note below them
+## Bug Fixes
+- Fixed easter eggs not working while custom keys or the Cores hotkeys were enabled

@@ -8,6 +8,15 @@ public static class ChangelogData
 
     public static readonly ChangelogEntry[] Entries =
     [
+        new("3.0.1", "11/10/2026",
+        [
+            "## Additions",
+            "Added two new easter eggs",
+            "Easter eggs can now also be activated in-game",
+
+            "## Bug Fixes",
+            "Fixed easter eggs not working while custom keys or the Cores hotkeys were enabled",
+        ]),
         new("3.0.0", "08/10/2026",
         [
             "## Additions",

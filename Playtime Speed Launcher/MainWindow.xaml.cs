@@ -332,8 +332,14 @@ public partial class MainWindow : Window
         InitLangSelector();
         ApplyLanguage();
         SetupWindow();
-        _easterEggService = new EasterEggService(EasterEggPlayer, EasterEggOverlay);
-        AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler((_, e) => _easterEggService.HandleKeyDown(e)), true);
+        _easterEggService = new EasterEggService(EasterEggPlayer, EasterEggOverlay, IsGameForeground);
+        AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler((_, e) =>
+        {
+            // While any low-level keyboard hook is installed, keys are fed from the hooks instead
+            // (see FeedEasterEggFromHook) — WPF key events don't arrive reliably then.
+            if (!AnyKeyboardHookActive) _easterEggService.HandleKeyDown(e);
+        }), true);
+        _f11Remap.RawKeyDown += (vk, time) => FeedEasterEggFromHook(vk, time);
         CardsScrollViewer.PreviewMouseWheel += (s, e) =>
         {
             if (CardsScrollViewer.ScrollableWidth <= 0) return;
@@ -856,6 +862,8 @@ public partial class MainWindow : Window
         UnregisterHotKey(hwnd, TUTORIAL_HOTKEY_ID);
         UninstallCoresHook();
         UninstallChapter4RemapHook();
+        UninstallEasterEggHook();
+        _easterEggService?.Hide();
         _hotkeyOverlay?.Close();
         _tutorialOverlay?.Close();
         _beginnerTutorialOverlay?.Close();
@@ -1479,8 +1487,109 @@ public partial class MainWindow : Window
         return false;
     }
 
+    private bool AnyKeyboardHookActive =>
+        _coresKeyboardHook != 0 || _chapter4KeyboardHook != 0 || _f11Remap.HasKeyboardHook
+        || _easterEggKeyboardHook != 0;
+
+    // Dedicated hook so easter eggs can also be typed in-game (the launcher never gets WPF key
+    // events while the game has focus). Only installed while a chapter is running.
+    private nint _easterEggKeyboardHook;
+    private LowLevelKeyboardProc? _easterEggKeyboardProc;
+
+    private const uint VK_ESCAPE = 0x1B;
+
+    private void RefreshEasterEggHook()
+    {
+        bool anyRunning = false;
+        for (int i = 0; i < _chapters.Count; i++)
+            if (_gameWasRunning[i]) { anyRunning = true; break; }
+
+        if (anyRunning && _easterEggKeyboardHook == 0)
+        {
+            using var curProcess = System.Diagnostics.Process.GetCurrentProcess();
+            using var curModule  = curProcess.MainModule!;
+            _easterEggKeyboardProc = EasterEggKeyboardHookProc;
+            _easterEggKeyboardHook = SetWindowsHookEx(13, _easterEggKeyboardProc, GetModuleHandle(curModule.ModuleName), 0);
+        }
+        else if (!anyRunning && _easterEggKeyboardHook != 0)
+        {
+            UninstallEasterEggHook();
+        }
+    }
+
+    private void UninstallEasterEggHook()
+    {
+        if (_easterEggKeyboardHook != 0)
+        {
+            UnhookWindowsHookEx(_easterEggKeyboardHook);
+            _easterEggKeyboardHook = 0;
+        }
+        _easterEggKeyboardProc = null;
+    }
+
+    private nint EasterEggKeyboardHookProc(int nCode, nint wParam, nint lParam)
+    {
+        if (nCode >= 0 && FeedEasterEggFromHook(wParam, lParam))
+            return 1;
+        return CallNextHookEx(_easterEggKeyboardHook, nCode, wParam, lParam);
+    }
+
+    // Several hooks can be installed at once and each sees the same key press, so the
+    // (vkCode, time) pair of the last press fed in is kept to drop the duplicates.
+    private uint _lastEasterEggVk;
+    private uint _lastEasterEggTime;
+
+    /// <summary>
+    /// Feeds a key press seen by a low-level hook to the easter eggs. Returns true when the key
+    /// should be swallowed (Escape closing a video playing over the game, so the game doesn't
+    /// also open its pause menu).
+    /// </summary>
+    private bool FeedEasterEggFromHook(uint vkCode, uint time)
+    {
+        // Never let an exception escape into a hook callback — that takes the whole app down.
+        try
+        {
+            if (_easterEggService == null) return false;
+
+            bool inGame = IsGameForeground();
+            if (vkCode == VK_ESCAPE && inGame && _easterEggService.PlayingInGame)
+            {
+                Dispatcher.BeginInvoke(() => _easterEggService?.Hide());
+                return true;
+            }
+
+            if (vkCode == _lastEasterEggVk && time == _lastEasterEggTime) return false;
+            _lastEasterEggVk   = vkCode;
+            _lastEasterEggTime = time;
+
+            // Only count keys typed into the launcher itself or into the running game.
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            if (!inGame && (hwnd == 0 || GetForegroundWindow() != hwnd)) return false;
+
+            // Deferred so the hook callback returns immediately (starting a video inside it could
+            // exceed the low-level hook timeout and get the hook silently removed by Windows).
+            var key = KeyInterop.KeyFromVirtualKey((int)vkCode);
+            Dispatcher.BeginInvoke(() =>
+            {
+                try { _easterEggService?.HandleKey(key); }
+                catch { _easterEggService?.Hide(); }
+            });
+        }
+        catch { }
+        return false;
+    }
+
+    private bool FeedEasterEggFromHook(nint wParam, nint lParam)
+    {
+        if ((int)wParam is not (0x0100 or 0x0104)) return false; // WM_KEYDOWN, WM_SYSKEYDOWN
+        var data = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+        if ((data.flags & LLKHF_INJECTED) != 0) return false;
+        return FeedEasterEggFromHook(data.vkCode, data.time);
+    }
+
     private nint CoresKeyboardHookProc(int nCode, nint wParam, nint lParam)
     {
+        if (nCode >= 0) FeedEasterEggFromHook(wParam, lParam);
         if (nCode >= 0 && (int)wParam == 0x0100) // WM_KEYDOWN
         {
             var vkCode = (uint)System.Runtime.InteropServices.Marshal.ReadInt32(lParam);
@@ -1538,6 +1647,7 @@ public partial class MainWindow : Window
     {
         if (nCode >= 0)
         {
+            FeedEasterEggFromHook(wParam, lParam);
             var data     = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
             var msg      = (int)wParam;
             var isDown   = msg is 0x0100 or 0x0104; // WM_KEYDOWN, WM_SYSKEYDOWN
@@ -3262,6 +3372,8 @@ public partial class MainWindow : Window
             _discordPresence.SetChapterSelected(_chapters[_selected], GetVersionLabel(_chapters[_selected]));
 
         if (stateChanged) RefreshInfo();
+
+        RefreshEasterEggHook();
 
         // Restore UE4SS temp remap when the launched game exits
         if (_ue4ssTempRemap && !string.IsNullOrEmpty(_ue4ssTempRemapExe) && _gameWatcherInitialized)

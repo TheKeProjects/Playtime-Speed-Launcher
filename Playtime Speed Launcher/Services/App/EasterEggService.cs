@@ -19,37 +19,58 @@ public sealed class EasterEggService
         [Key.R, Key.A, Key.U, Key.L, Key.B, Key.E, Key.C, Key.A, Key.S];
     private static readonly Key[] TomhSequence =
         [Key.T, Key.O, Key.M, Key.H];
+    private static readonly Key[] PichaSequence =
+        [Key.P, Key.I, Key.C, Key.H, Key.A];
+    private static readonly Key[] GokuSequence =
+        [Key.G, Key.O, Key.K, Key.U];
 
     private readonly List<Key> _konamiBuffer     = [];
     private readonly List<Key> _ganeBuffer       = [];
     private readonly List<Key> _raulBecasBuffer  = [];
     private readonly List<Key> _tomhBuffer       = [];
+    private readonly List<Key> _pichaBuffer      = [];
+    private readonly List<Key> _gokuBuffer       = [];
 
     private readonly MediaElement _player;
     private readonly UIElement    _overlay;
+    private readonly Func<bool>   _isGameForeground;
+
+    // Set while a video is playing over the game instead of inside the launcher.
+    private EasterEggOverlayWindow? _gameOverlay;
 
     public bool Playing { get; private set; }
 
-    public EasterEggService(MediaElement player, UIElement overlay)
+    /// <summary>True while the video is being shown over the game.</summary>
+    public bool PlayingInGame => _gameOverlay != null;
+
+    public EasterEggService(MediaElement player, UIElement overlay, Func<bool> isGameForeground)
     {
-        _player  = player;
-        _overlay = overlay;
+        _player           = player;
+        _overlay          = overlay;
+        _isGameForeground = isGameForeground;
     }
 
-    public void HandleKeyDown(KeyEventArgs e)
+    public void HandleKeyDown(KeyEventArgs e) =>
+        HandleKey(e.Key == Key.System ? e.SystemKey : e.Key);
+
+    /// <summary>
+    /// Feeds one key press. Also called with keys read from the launcher's low-level
+    /// keyboard hooks, since WPF key events don't arrive reliably while those are installed.
+    /// </summary>
+    public void HandleKey(Key key)
     {
-        if (e.Key == Key.Escape && Playing)
+        if (key == Key.Escape && Playing)
         {
             Hide();
             return;
         }
 
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
-
         TrackSequence(_konamiBuffer,    KonamiSequence,    key, "Torrente.mp4");
         TrackSequence(_ganeBuffer,      GaneSequence,      key, "Gane.mp4");
         TrackSequence(_raulBecasBuffer, RaulBecasSequence, key, "RaulBecas.mp4");
         TrackSequence(_tomhBuffer,      TomhSequence,      key, "Tomh.mp4");
+        TrackSequence(_pichaBuffer,     PichaSequence,     key, "Picha.mp4");
+        TrackSequence(_gokuBuffer,      GokuSequence,      key, "Goku.mp4");
     }
 
     private void TrackSequence(List<Key> buffer, Key[] sequence, Key key, string fileName)
@@ -77,6 +98,21 @@ public sealed class EasterEggService
 
         Playing = true;
 
+        if (_isGameForeground())
+        {
+            try
+            {
+                _gameOverlay = new EasterEggOverlayWindow(videoPath);
+                _gameOverlay.Finished += Hide;
+                _gameOverlay.Show();
+            }
+            catch
+            {
+                Hide();
+            }
+            return;
+        }
+
         _player.Source       = new Uri(videoPath);
         _overlay.Visibility  = Visibility.Visible;
         _player.Play();
@@ -84,6 +120,14 @@ public sealed class EasterEggService
 
     public void Hide()
     {
+        if (_gameOverlay != null)
+        {
+            var window = _gameOverlay;
+            _gameOverlay = null;
+            window.Finished -= Hide;
+            window.Close();
+        }
+
         _player.Stop();
         _player.Source      = null;
         _overlay.Visibility = Visibility.Collapsed;
