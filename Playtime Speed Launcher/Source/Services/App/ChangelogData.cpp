@@ -1,0 +1,287 @@
+// Launcher changelog. Add new versions at the TOP (newest first).
+#include "Services/App/ChangelogData.h"
+
+namespace SpeedrunLauncher::Services::Changelog {
+
+const std::vector<Entry>& Entries() {
+    static const std::vector<Entry> entries = {
+        { L"4.0.0", L"16/10/2026", {
+            L"## Additions",
+            L"The launcher has been rebuilt from scratch in C++: it opens faster and uses far fewer resources",
+            L"New Store to browse and install old versions of every chapter",
+            L"Installing a version now guides you step by step, including the Steam login and the phone confirmation",
+            L"Redesigned the versions menu: switch chapters at the top and drag versions to reorder them",
+            L"Removing a version can now also delete its folder (it goes to the Recycle Bin)",
+            L"New Key to Click option in Settings > Controls: turn any key into a mouse click, with a shortcut to turn it on and off",
+            L"Load Manip keys can't be changed while that chapter is open, and a button lets you close the game",
+            L"Redesigned the version history, tutorials, bug report and skip report menus",
+            L"Every menu has new animations: a glow when it opens and its content sliding in one by one",
+            L"Seasonal scenery is more alive, and its animations pause while a game is running",
+            L"## Bug Fixes",
+            L"Fixed the launcher stuttering every few seconds while idle",
+            L"Fixed menus lagging and using a lot of CPU",
+            L"Fixed some popups showing a black area",
+            L"Fixed saved Steam accounts not showing up when installing a version",
+            L"Fixed keyboard lag in every app while the Cores option was enabled",
+            L"Fixed the Cores hotkeys sometimes stopping working or not affecting the game",
+            L"Fixed the FPS counter not asking for administrator permission",
+            L"Fixed the Cores option and the FPS counter not detecting Chapter 2 and Chapter 3",
+            L"Fixed the version history taking a long time to open",
+            L"## Other",
+            L"Much lower CPU usage, especially while a game is running",
+        } },
+        { L"3.0.1", L"11/10/2026", {
+            L"## Additions",
+            L"Added two new easter eggs",
+            L"Easter eggs can now also be activated in-game",
+            L"## Bug Fixes",
+            L"Fixed easter eggs not working while custom keys or the Cores hotkeys were enabled",
+        } },
+        { L"3.0.0", L"08/10/2026", {
+            L"## Additions",
+            L"Added seasonal themes (Halloween, Summer and Christmas)",
+            L"Added a Chapter 2 checkpoint save with a fixed train code (4312)",
+            L"## Other",
+            L"Renamed the window mode options to Fullscreen and Windowed and removed the note below them",
+        } },
+        { L"2.3.3", L"12/09/2026", {
+            L"## Bug Fixes",
+            L"Updated Fullbright and LoadManip for Chapter 1 and 5",
+        } },
+        { L"2.3.2", L"11/09/2026", {
+            L"## Additions",
+            L"Added an AZERTY option for the keyboard overlay",
+            L"## Other",
+            L"Moved per-chapter hours tracking to the cloud",
+        } },
+        { L"2.3.1", L"29/08/2026", {
+            L"## Bug Fixes",
+            L"Fixed a bug with the cores option (Reported by @nickk893)",
+        } },
+        { L"2.3.0", L"29/08/2026", {
+            L"## Additions",
+            L"Added a New Game+ save option for Chapter 5",
+            L"## Bug Fixes",
+            L"Fixed the Cores option not detecting the game",
+            L"Fixed new Hand Mod submissions failing when the files were too large for Discord to accept, files are now zipped automatically",
+            L"## Other",
+            L"Removed the Auto Splitter option, since splits were only ever available for Chapters 1 and 2",
+            L"Reorganized the launcher's internal file structure by feature area",
+            L"Changed how checkpoint saves are stored to shrink the launcher's install size, and clean them up automatically when the launcher closes",
+        } },
+        { L"2.2.4", L"20/08/2026", {
+            L"## Bug Fixes",
+            L"Fixed Load Manip for Chapter 5",
+        } },
+        { L"2.2.3", L"19/08/2026", {
+            L"## Additions",
+            L"Added more EasterEggs",
+        } },
+        { L"2.2.2", L"17/08/2026", {
+            L"## Bug Fixes",
+            L"Fixed more performance issues",
+        } },
+        { L"2.2.1", L"15/08/2026", {
+            L"## Additions",
+            L"Added new skips for chapter 5",
+            L"## Bug Fixes",
+            L"Fixed Skips and Glitches tutorial videos failing to load or getting stuck when switching between videos (Reported by @lumpydesk_yt)",
+        } },
+        { L"2.2.0", L"14/08/2026", {
+            L"## Additions",
+            L"Added a Manual Update option that downloads the latest version and replaces the launcher automatically if the update fails",
+            L"Added a Priority for 0 cores setting in the Cores tab, letting you choose between High (default) and Low priority",
+        } },
+        { L"2.1.3", L"13/08/2026", {
+            L"## Bug Fixes",
+            L"Fixed Cores priority not re-applying after switching modes several times, previously requiring a game restart to fix",
+            L"Fixed Cores priority not changing for Chapter 2 even though the core count changed correctly",
+            L"## Other",
+            L"Renamed the Cores tab's 'Freeze/Slower/Normal loads' options to '0 cores', '1 core', and 'All cores'",
+            L"Changed the default Cores hotkeys to B (0 cores), N (1 core), and M (all cores)",
+            L"Removed the 'not allowed in official runs' warning from the Cores tab",
+            L"Moved the Cores tab to appear right after Load Manip in settings",
+        } },
+        { L"2.1.2", L"09/08/2026", {
+            L"## Bug Fixes",
+            L"Fixed Chapter 5 hand mods failing to install after being moved to Git LFS",
+        } },
+        { L"2.1.1", L"08/08/2026", {
+            L"## Additions",
+            L"Added a live online users counter",
+            L"## Bug Fixes",
+            L"Fixed the chapter cards getting cut off on screens with different resolutions",
+        } },
+        { L"2.1.0", L"05/08/2026", {
+            L"## Additions",
+            L"Added the option to install the hand mods individually (Still working on the mods)",
+            L"Discord is now required for submitting new Hand Mods",
+            L"## Bug Fixes",
+            L"Fixed the FPS counter not working in Chapter 4",
+            L"Fixed hand mod conflict detection not accounting for individually installed hands",
+        } },
+        { L"2.0.11", L"04/08/2026", {
+            L"## Additions",
+            L"Added Load Manip mod for Chapter 5 (Thanks to @AdrianPG77)",
+            L"Added Fullbright mod for Chapter 5 (Thanks to @AdrianPG77)",
+            L"Added an option to add the launcher to Steam as an independent game",
+            L"Added a Hand Mods system to browse and install community hand-skin mods per chapter",
+            L"Added the option to submit new Hand Mods for review",
+            L"Added a Chapter 6 card (Coming Soon)",
+            L"## Bug Fixes",
+            L"Fixed Load Manip mod not working with the Thumb Mouse Buttons",
+            L"Fixed Fullbright mod not working with the Thumb Mouse Buttons",
+            L"Fixed more bugs with the FPS counter",
+            L"Fixed the Steam profile not showing up inside the launcher",
+            L"Fixed the chapter description text shifting the chapter cards up or down depending on its length",
+            L"## Other",
+            L"Moved Load Manip settings into their own tab, with a chapter selector for Chapter 1, 4, and 5",
+        } },
+        { L"2.0.10", L"25/07/2026", {
+            L"Added a timer that tracks in-game hours per chapter",
+            L"Fixed several bugs with the FPS counter",
+            L"Improved detection of Load Manip for Chapter 1",
+            L"Added the ability to reorder installed versions",
+            L"Added Fullbright mod for chapter 1 (Thanks to @AdrianPG77)",
+        } },
+        { L"2.0.9", L"22/07/2026", {
+            L"Fixed position of the FPS overlay",
+            L"Added the option to minimize the launcher",
+            L"Added the leaderboards for every chapter",
+        } },
+        { L"2.0.8", L"18/07/2026", {
+            L"Fixed position of the FPS overlay",
+            L"Fixed a bug that causes the game stop if you click the keyboard overlay",
+        } },
+        { L"2.0.7", L"18/07/2026", {
+            L"Added more icons (Thanks to @ᴢᴀᴇᴇ)",
+            L"Added an FPS Overlay",
+            L"Fixed some skips",
+            L"Added a key remapping system for Load Manip",
+        } },
+        { L"2.0.6", L"04/07/2026", {
+            L"Fixed some visual bugs with the controllers overlay",
+            L"Updated app icon (Thanks to @ᴢᴀᴇᴇ)",
+            L"Added a system to send new skips to the developers",
+            L"Added new skips to Chapter 1",
+            L"Added a setting to select the icon app (Taskbar and Discord)",
+        } },
+        { L"2.0.5", L"01/07/2026", {
+            L"Added controller overlay",
+            L"Added keyboard and mouse overlay",
+            L"Added Load Manip Tool for chapter 1 and 4 (Thanks to @AdrianPG77)",
+        } },
+        { L"2.0.4", L"26/06/2026", {
+            L"Added UE4SS for all the chapters",
+        } },
+        { L"2.0.3", L"24/06/2026", {
+            L"Reorganized settings into separate tabs (Steam, Controller, Discord, etc.)",
+            L"Added CPU core and priority management",
+        } },
+        { L"2.0.2", L"21/06/2026", {
+            L"Updated more skips (Thanks to @Edwin and @Technight)",
+        } },
+        { L"1.3.1", L"20/06/2026", {
+            L"Updated skips across all categories (Thanks to @Edwin for all chapters and @Technight for the new patch Chapter 4 skips)",
+            L"Improved and updated Discord Rich Presence",
+            L"Redesigned the application icon",
+        } },
+        { L"1.3.0", L"14/06/2026", {
+            L"Added a key remapping system for F11",
+            L"Fixed audio system issues (again)",
+        } },
+        { L"1.2.11", L"10/06/2026", {
+            L"Added a tutorial on how to automatically connect LiveSplit to Discord",
+            L"Added auto splitters for Chapters 1 and 2",
+        } },
+        { L"1.2.10", L"07/06/2026", {
+            L"Added full controller support across all chapters",
+            L"Discord is now required for submitting bug reports and feedback",
+        } },
+        { L"1.2.9", L"05/06/2026", {
+            L"Fixed issues with the audio system",
+            L"Improved and fixed various elements of the Strats Menu overlay",
+            L"Fixed several bugs affecting the video player controls",
+        } },
+        { L"1.2.8", L"04/06/2026", {
+            L"Improved the beginner tutorial",
+            L"Updated the application icon",
+        } },
+        { L"1.2.7", L"03/06/2026", {
+            L"Updated the Skips Menu; videos no longer need to be downloaded",
+            L"Fixed category assignments for several strats",
+            L"Added the ability to search for strats by author",
+        } },
+        { L"1.2.6", L"02/06/2026", {
+            L"Added Glitches & Skips Tutorials for Chapters 3, 4, and 5",
+            L"Updated the Tutorials Menu overlay",
+            L"Discord is now required for submitting error reports and feedback",
+            L"Removed the 'Delete Saves' button from Chapters 1, 2, and 3",
+            L"Added a beginner tutorial to help users learn how to use the launcher",
+        } },
+        { L"1.2.5", L"31/05/2026", {
+            L"Added a setting to customize the Glitches and Skips Tutorials Menu keybind",
+            L"Added an in-game popup displaying the keybind used to open the Tutorials Menu",
+            L"Added a Version History menu to view the complete changelog from all releases",
+        } },
+        { L"1.2.4", L"29/05/2026", {
+            L"Added in-game glitch and skip tutorials (currently available for Chapters 1 and 2, default key: F9)",
+            L"Added Discord Rich Presence support while watching tutorials",
+            L"Added Steam profile user and avatar display to the main menu",
+            L"Added an option to save the user and password for automatic depot downloads (still require Steam Guard)",
+            L"Fixed the LOAD button in the in-game checkpoint loader for Chapters 1, 2, and 3",
+        } },
+        { L"1.2.3", L"27/05/2026", {
+            L"Added Epic Games support",
+            L"Added LiveSplit timer integration to Discord Rich Presence",
+            L"Added settings to manage Discord Rich Presence",
+            L"Added an in-game checkpoint loader for Chapters 4 and 5 (load and delete all saves)",
+        } },
+        { L"1.2.2", L"25/05/2026", {
+            L"Improved Discord Rich Presence integration",
+            L"Added checkpoint selection status support to Discord Rich Presence",
+        } },
+        { L"1.2.1", L"24/05/2026", {
+            L"Added Discord Rich Presence support",
+            L"Fixed the installation of Chapter 1 version: NMG_Any% 1.2",
+        } },
+        { L"1.2.0", L"23/05/2026", {
+            L"Added an integrated error reporting system to the launcher (bottom-left corner)",
+            L"Fixed the camera when opening the checkpoint loader",
+            L"Added a popup in Poppy Playtime Chapters 1–3 showing the keybind combination to open the checkpoint loader",
+            L"Added a setting to customize the checkpoint loader keybind",
+        } },
+        { L"1.1.1", L"19/05/2026", {
+            L"Fixed checkpoint 27 from Chapter 2",
+        } },
+        { L"1.1.0", L"24/04/2026", {
+            L"Added checkpoint system for Chapters 1, 2, and 3",
+            L"Added an in-game checkpoint loader (Ctrl + Alt + Enter)",
+            L"Added all checkpoints to Chapters 4 and 5",
+            L"Updated the image for Chapter 5",
+        } },
+        { L"1.0.5", L"16/04/2026", {
+            L"Added an option to open the launcher from steam",
+        } },
+        { L"1.0.4", L"14/04/2026", {
+            L"Fixed the name for the chapter 4",
+        } },
+        { L"1.0.3", L"14/04/2026", {
+            L"Added patch 1.3 for Poppy Playtime 1",
+            L"Now the tool is approved by Speedrun.com",
+        } },
+        { L"1.0.2", L"23/03/2026", {
+            L"Added a manual mode without Steam Guard",
+            L"Added a Installer of Live Split",
+        } },
+        { L"1.0.1", L"13/03/2026", {
+            L"Added better instructions when sending the steam guard verification",
+        } },
+        { L"1.0.0", L"08/03/2026", {
+            L"Initial release",
+        } },
+    };
+    return entries;
+}
+
+} // namespace SpeedrunLauncher::Services::Changelog

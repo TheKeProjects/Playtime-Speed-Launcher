@@ -1,7 +1,26 @@
-3.0.1
+4.0.0
 ## Additions
-- Added two new easter eggs
-- Easter eggs can now also be activated in-game
+- The launcher has been rebuilt from scratch in C++: it opens faster and uses far fewer resources
+- New Store to browse and install old versions of every chapter
+- Installing a version now guides you step by step, including the Steam login and the phone confirmation
+- Redesigned the versions menu: switch chapters at the top and drag versions to reorder them
+- Removing a version can now also delete its folder (it goes to the Recycle Bin)
+- New Key to Click option in Settings > Controls: turn any key into a mouse click, with a shortcut to turn it on and off
+- Load Manip keys can't be changed while that chapter is open, and a button lets you close the game
+- Redesigned the version history, tutorials, bug report and skip report menus
+- Every menu has new animations: a glow when it opens and its content sliding in one by one
+- Seasonal scenery is more alive, and its animations pause while a game is running
 
 ## Bug Fixes
-- Fixed easter eggs not working while custom keys or the Cores hotkeys were enabled
+- Fixed the launcher stuttering every few seconds while idle
+- Fixed menus lagging and using a lot of CPU
+- Fixed some popups showing a black area
+- Fixed saved Steam accounts not showing up when installing a version
+- Fixed keyboard lag in every app while the Cores option was enabled
+- Fixed the Cores hotkeys sometimes stopping working or not affecting the game
+- Fixed the FPS counter not asking for administrator permission
+- Fixed the Cores option and the FPS counter not detecting Chapter 2 and Chapter 3
+- Fixed the version history taking a long time to open
+
+## Other
+- Much lower CPU usage, especially while a game is running
