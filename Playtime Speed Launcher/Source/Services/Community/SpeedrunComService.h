@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -29,6 +30,19 @@ struct LeaderboardEntry {
     std::wstring playerName;
     double timeSeconds = 0.0;
     std::wstring runWeblink;
+    std::wstring videoUrl;        // first video attached to the run (YouTube / Twitch / ...), may be empty
+    std::wstring date;            // "2026-03-14" (when it was played), may be empty
+    std::wstring comment;         // the runner's comment on the run
+    std::wstring country;         // ISO code of the (first) runner's country, "us"; empty for guests / unset
+    std::wstring countryName;     // "United States"
+    std::wstring playerWeblink;   // speedrun.com profile of the (first) runner
+    uint32_t nameColor = 0;       // 0xRRGGBB of the runner's name style on speedrun.com (0 = none)
+
+    // Derived once when fetched (the window draws these every frame)
+    int daysAgo = -1;             // days since `date` (-1 = unknown)
+    std::wstring youtubeId;       // the video's YouTube id when it's on YouTube (plays inside the launcher)
+    std::wstring videoSite;       // "YouTube" / "Twitch" / ... for labels
+    std::wstring flagUrl;         // speedrun.com picture of `country`'s flag
 };
 
 const std::map<int, std::wstring>& ChapterGameIds();

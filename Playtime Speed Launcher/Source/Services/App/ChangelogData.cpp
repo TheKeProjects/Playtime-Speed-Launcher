@@ -5,6 +5,32 @@ namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
+        { L"4.1.0", L"18/10/2026", {
+            L"## Additions",
+            L"Leaderboards: a run's YouTube video now plays inside the launcher, like the skips and glitches tutorials (other sites open in the browser)",
+            L"Leaderboards: click a runner to see the run's date, country, comment and links to the run and their profile",
+            L"New hand mod preview: one big picture per hand, browse with the arrows or the arrow keys, and install it right there",
+            L"The checkpoint menu can be used with the keyboard (arrows to pick, Enter to load), a double click loads a checkpoint, and it confirms when something was loaded or deleted",
+            L"Downloading SteamCMD shows each step and a progress bar with the downloaded size, and can be cancelled",
+            L"The beginner tutorials remember which videos you've watched and have a Next button to go to the following one",
+            L"## Redesigns",
+            L"Leaderboards: chapter and category tabs, a podium for the top 3 and the full top 10 with each runner's flag, name colour, gap to the record and how long ago the run was",
+            L"Hand Mods: chapter and version cards, a step bar, screens sliding in and out, loading placeholders, a retry button and a new install screen with a progress ring",
+            L"Hand Mods: the Individual Hands menu is now a grid of picture cards, and the Hand Conflict warning shows what goes in and which mods will be removed first",
+            L"Checkpoint menu (hotkey): new look, with animations when it opens and closes and checkpoints sliding in one by one",
+            L"Beginner tutorials: a 4-step path, cards that explain each video and a step list beside the video while watching",
+            L"SteamCMD install window: explains what SteamCMD is and both ways to get it",
+            L"## Seasonal Themes",
+            L"The checkpoint, skips and glitches, skip report, leaderboards, beginner tutorials and Hand Mods menus now follow the seasonal themes (Halloween, Summer and Christmas)",
+            L"Those menus get the season's decorations on their top edge and their own particles: snow, embers with a bat or bubbles and glints",
+            L"## Performance",
+            L"Menus that play videos no longer redraw at your monitor's full refresh rate while a video is loaded",
+            L"The new menus only keep redrawing while something is actually moving, and their decorative animations settle down after a few seconds",
+            L"The Hand Mods menu no longer checks the mod files on disk every frame, and hand pictures load in the background",
+            L"## Bug Fixes",
+            L"Fixed a tutorial video staying on screen after going back to the list",
+            L"Fixed the SteamCMD download status always showing in Spanish",
+        } },
         { L"4.0.0", L"16/10/2026", {
             L"## Additions",
             L"The launcher has been rebuilt from scratch in C++: it opens faster and uses far fewer resources",

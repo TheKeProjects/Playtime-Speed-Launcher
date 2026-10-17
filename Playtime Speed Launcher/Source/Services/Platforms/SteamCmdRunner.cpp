@@ -134,13 +134,21 @@ void CopyCredentials(const std::wstring& steamCmdPath) {
     Files::Copy(source, Files::Combine(Files::DirectoryName(steamCmdPath), L"config", L"config.vdf"), true);
 }
 
-std::optional<std::wstring> Download(const std::function<void(const std::wstring&)>& status, std::wstring* error) {
+std::optional<std::wstring> Download(const DownloadProgress& progress, std::wstring* error, const Async::Cancel& cancel) {
     Files::CreateDirectories(LocalDir());
     const std::wstring zip = Files::Combine(LocalDir(), L"steamcmd.zip");
     const std::wstring exe = Files::Combine(LocalDir(), L"steamcmd.exe");
-    if (status) status(L"Descargando SteamCMD\x2026");
-    if (!Http::Download(Config::Links::SteamCmdZip, zip, nullptr, error)) return std::nullopt;
-    if (status) status(L"Extrayendo\x2026");
+    if (progress) progress(DownloadStage::Downloading, 0, 0);
+    const bool downloaded = Http::Download(Config::Links::SteamCmdZip, zip, [&](uint64_t received, uint64_t total) {
+        if (progress) progress(DownloadStage::Downloading, received, total);
+        return !cancel.Requested();
+    }, error);
+    if (cancel.Requested()) {
+        if (error) error->clear();
+        return std::nullopt;
+    }
+    if (!downloaded) return std::nullopt;
+    if (progress) progress(DownloadStage::Extracting, 0, 0);
     if (!Zip::ExtractToDirectory(zip, LocalDir(), true, error)) return std::nullopt;
     Files::Delete(zip);
     if (!Files::Exists(exe)) {

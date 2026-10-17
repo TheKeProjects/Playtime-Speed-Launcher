@@ -77,6 +77,12 @@ void VideoPlayerPanel::Load(const std::wstring& videoId) {
 
 void VideoPlayerPanel::Stop() {
     player.Stop();
+    // Hide the player window now: the owner may stop drawing this panel (back to a list), and
+    // Draw is what normally syncs its visibility, so it would stay on screen with its last frame
+    if (lastVisible) {
+        player.SetVisible(false);
+        lastVisible = false;
+    }
     hasVideo = loading = playing = false;
     message = style.emptyText;
     messageColor = Hex(0x1A3A55);
@@ -131,7 +137,7 @@ void VideoPlayerPanel::Draw(Ui& ui, const Rect& area, float scale, bool roundBot
             const float w = style.emptyGlyph ? 220.f : 200.f;
             g.FillRound({ video.CX() - w * 0.5f, y + 14.f, w, 4.f }, 2.f, Hex(0x0D2030));
             g.FillRound({ video.CX() - w * 0.5f, y + 14.f, w, 4.f }, 2.f, Palette::Teal);
-            ui.KeepAnimating();
+            ui.KeepAnimatingThrottled();   // waiting for the player (nothing moves): ~60 fps is plenty
         }
     }
 
@@ -166,7 +172,7 @@ void VideoPlayerPanel::Draw(Ui& ui, const Rect& area, float scale, bool roundBot
     const std::wstring time = ready ? FormatTime(dragging ? seekValue * player.Duration() : player.Position()) + L" / " + FormatTime(player.Duration())
                                     : L"0:00 / 0:00";
     g.Text(time, { row.x + 40.f + 12.f, row.y, 200.f, row.h }, Palette::Dim, Mono(10.f));
-    if (ready) ui.KeepAnimating();   // position ticks
+    if (ready) ui.KeepAnimatingThrottled();   // position ticks: ~60 fps, not the monitor's full refresh rate
 
     // Volume: mute toggle + slider
     const Rect slider{ row.R() - 90.f, row.CY() - 6.f, 90.f, 12.f };

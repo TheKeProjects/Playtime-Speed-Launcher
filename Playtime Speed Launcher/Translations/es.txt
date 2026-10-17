@@ -148,6 +148,18 @@ downloading_steamcmd_title = Descargando SteamCMD…
 starting = Iniciando…
 steamcmd_initializing = Iniciando SteamCMD…
 steamcmd_in_progress = SteamCMD en proceso…
+steamcmd_hero_sub = Herramienta oficial de Valve para descargar desde Steam
+steamcmd_not_found_desc = SteamCMD es necesario para descargar versiones históricas de los capítulos. Solo hay que instalarlo una vez.
+steamcmd_chip_size = ~4 MB
+steamcmd_chip_official = OFICIAL DE VALVE
+steamcmd_chip_local = SIN PERMISOS DE ADMIN
+steamcmd_option_auto_title = DESCARGAR AUTOMÁTICAMENTE (RECOMENDADO)
+steamcmd_option_auto_desc = El launcher lo descarga y lo prepara por ti en unos segundos.
+steamcmd_option_find_title = BUSCAR EN MI PC
+steamcmd_option_find_desc = Si ya tienes SteamCMD instalado, selecciona tu steamcmd.exe.
+steamcmd_step_download = Descargando SteamCMD
+steamcmd_step_extract = Extrayendo archivos
+steamcmd_step_ready = Listo para usar
 
 # Archivos no encontrados
 files_not_found_title = Archivos no encontrados
@@ -282,6 +294,15 @@ hotkey_hint     = Esc · cerrar
 hotkey_load_btn     = CARGAR 100%
 hotkey_load_all_btn = CARGAR
 hotkey_delete_btn   = BORRAR GUARDADOS
+hotkey_title        = CARGAR CHECKPOINT
+hotkey_count        = {0} checkpoints
+hotkey_start_saves  = Guardados de inicio
+hotkey_start_saves_desc = CARGAR copia los guardados de inicio de este capítulo. BORRAR GUARDADOS elimina tu progreso actual.
+hotkey_empty        = No hay checkpoints disponibles.
+hotkey_nav_hint     = navegar
+hotkey_enter_hint   = cargar
+hotkey_loaded       = CHECKPOINT CARGADO
+hotkey_deleted      = GUARDADOS BORRADOS
 
 # Controles (sección en configuración)
 controls_section       = CONTROLES

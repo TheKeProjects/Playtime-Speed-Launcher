@@ -19,7 +19,7 @@ public:
     void Open();
 
 private:
-    enum class SectionKind { Additions, Fixes, Other, Generic };
+    enum class SectionKind { Additions, Fixes, Other, Redesigns, Themes, Performance, Generic };
     struct Line {
         std::wstring text;
         bool mentions = false;

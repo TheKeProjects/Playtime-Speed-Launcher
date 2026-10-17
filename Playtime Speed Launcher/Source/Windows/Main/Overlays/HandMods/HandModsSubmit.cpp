@@ -5,13 +5,17 @@
 #include "Core/Files.h"
 #include "Core/System.h"
 #include "Core/Text.h"
+#include "Graphics/Animation.h"
 #include "Localization/Localization.h"
 #include "Services/GameFiles/HandModSubmission.h"
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/Controls.h"
+#include "UI/Widgets/Form.h"
+#include "UI/Widgets/Stagger.h"
 #include "UI/Widgets/TextBox.h"
 #include "Windows/Dialogs/DialogParts.h"
 #include "Windows/Main/MainWindow.h"
+#include "Windows/Main/Overlays/HandMods/HandModsKit.h"
 #include "Windows/Main/Overlays/HandMods/HandModsOverlay.h"
 
 namespace SpeedrunLauncher::Main {
@@ -57,7 +61,7 @@ void HandModsOverlay::OpenSubmit() {
     submitStatus.clear();
     sending = false;
     discord.Reset();
-    screen = Screen::Submit;
+    GoTo(Screen::Submit);
 }
 
 void HandModsOverlay::Send() {
@@ -89,7 +93,7 @@ void HandModsOverlay::Send() {
             submitStatus = Loc::Get("handmods_submit_success");
             Async::After(2000, [this] {
                 sending = false;
-                if (screen == Screen::Submit) screen = Screen::Hub;
+                if (screen == Screen::Submit) GoTo(Screen::Hub, -1);
             });
         } else {
             sending = false;
@@ -100,13 +104,20 @@ void HandModsOverlay::Send() {
 
 void HandModsOverlay::DrawSubmit(Ui& ui, Column& col) {
     auto& g = ui.g;
+    // Each section rises in one after another
+    const auto section = [&](int index) { return StaggerItem(ui, screenChangedAt + 0.04, index, 0.f, 14.f, 0.05, 0.38); };
+
     // Discord identity
-    Caption(ui, col, Loc::Get("handmods_submit_discord_label"));
-    discord.Draw(ui, col, [this] { infoOpen = true; }, DiscordIdentityStyle::HandMods());
+    {
+        auto in = section(0);
+        Caption(ui, col, Loc::Get("handmods_submit_discord_label"));
+        discord.Draw(ui, col, [this] { infoOpen = true; }, DiscordIdentityStyle::HandMods());
+    }
 
     // Chapter
-    Caption(ui, col, Loc::Get("handmods_submit_chapter_label"));
     {
+        auto in = section(1);
+        Caption(ui, col, Loc::Get("handmods_submit_chapter_label"));
         std::vector<std::wstring> texts;
         std::vector<bool> selected;
         for (int n = 1; n <= 5; ++n) {
@@ -119,8 +130,9 @@ void HandModsOverlay::DrawSubmit(Ui& ui, Column& col) {
     }
 
     // Name
-    Caption(ui, col, Loc::Get("handmods_submit_name_label"));
     {
+        auto in = section(2);
+        Caption(ui, col, Loc::Get("handmods_submit_name_label"));
         TextBoxStyle s;
         s.text = Mono(12.f);
         s.foreground = Palette::Bright;
@@ -133,8 +145,9 @@ void HandModsOverlay::DrawSubmit(Ui& ui, Column& col) {
     }
 
     // Hand colours
-    Caption(ui, col, Loc::Get("handmods_submit_colors_label"));
     {
+        auto in = section(3);
+        Caption(ui, col, Loc::Get("handmods_submit_colors_label"));
         const auto& colors = Submission::Colors();
         std::vector<bool> selected;
         for (const auto& c : colors) selected.push_back(std::find(submitColors.begin(), submitColors.end(), c) != submitColors.end());
@@ -149,8 +162,9 @@ void HandModsOverlay::DrawSubmit(Ui& ui, Column& col) {
     }
 
     // Files
-    Caption(ui, col, Loc::Get("handmods_submit_files_label"));
     {
+        auto in = section(4);
+        Caption(ui, col, Loc::Get("handmods_submit_files_label"));
         const std::wstring text = Loc::Get("handmods_submit_files_btn");
         const ButtonStyle s{ Palette::ButtonBg, Palette::ButtonBorder, 1.f, 3.f, { 12.f, 6.f }, 0.f, 0.f };
         const float h = g.Measure(L"Ag", Mono(11.f, true)).h + 12.f + 2.f;
@@ -169,13 +183,30 @@ void HandModsOverlay::DrawSubmit(Ui& ui, Column& col) {
     }
 
     // Status + SEND
+    auto in = section(5);
     if (!submitStatus.empty()) {
-        col.Gap(Paragraph(ui, col.x, col.y, col.w, submitStatus, Mono(10.f, true), submitOk ? Rgba(0, 200, 140) : Rgba(200, 60, 60)));
+        // The message slides down into place when it changes
+        const float shown = ui.Animate(ui.MakeId("submit-status"), 1.f, 12.f, 0.f);
+        g.PushOpacity(shown);
+        col.Gap(Paragraph(ui, col.x, col.y - (1.f - shown) * 8.f, col.w, submitStatus, Mono(10.f, true), submitOk ? Rgba(0, 200, 140) : Rgba(200, 60, 60)));
+        g.PopLayer();
         col.Gap(10.f);
+    } else {
+        ui.SetValue(ui.MakeId("submit-status"), 0.f);
     }
     const std::wstring send = Loc::Get(sending && !submitOk ? "handmods_submit_sending" : "handmods_submit_send_btn");
-    const ButtonStyle s{ Palette::ConfirmBg, Palette::ConfirmBorder, 1.f, 3.f, { 0.f }, 0.f, 36.f };
-    if (TextButton(ui, ui.MakeId("submit-send"), col.Next(36.f), send, Mono(11.f, true).Center(), Palette::Teal, s, !sending)) Send();
+    const ButtonStyle s{ Palette::ConfirmBg, Palette::ConfirmBorder, 1.f, 6.f, { 0.f }, 0.f, 38.f };
+    const Rect b = col.Next(38.f);
+    const double now = Async::Now();
+    if (submitOk) g.GlowRound(b, 6.f, HandKit::kGreen, 16.f, 0.25f + 0.2f * Anim::PingPong(now, 1.4));
+    else if (!sending) g.GlowRound(b, 6.f, Palette::Teal, 14.f, 0.16f);   // static: an idle form doesn't redraw
+    if (TextButton(ui, ui.MakeId("submit-send"), b, send, Mono(11.f, true).Center(), Palette::Teal, s, !sending)) Send();
+    if (sending && !submitOk) {
+        const float tw = g.Measure(send, Mono(11.f, true)).w;
+        Form::Spinner(ui, b.CX() - tw * 0.5f - 16.f, b.CY(), 6.f, Palette::Teal);
+    }
+    if (sending) HandKit::Shimmer(g, b, 6.f, now, 1.1, 1.6f);
+    if (sending || submitOk) ui.KeepAnimatingThrottled();
 }
 
 } // namespace SpeedrunLauncher::Main

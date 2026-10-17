@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
@@ -18,9 +19,13 @@ std::optional<SteamUser> ActiveUser();                    // most recent loginus
 std::optional<std::wstring> AvatarPath(const std::wstring& steamId64);
 void CopyCredentials(const std::wstring& steamCmdPath);   // Steam's config.vdf → SteamCMD's config folder
 
+enum class DownloadStage { Downloading, Extracting };
+// `progress(stage, received, total)` (total is 0 while unknown / extracting), from the worker thread.
+using DownloadProgress = std::function<void(DownloadStage stage, uint64_t received, uint64_t total)>;
+
 // Downloads steamcmd.zip into %LOCALAPPDATA%\SpeedrunLauncher\steamcmd and extracts it.
-// Blocking. Returns the exe path, or nullopt with `error` set.
-std::optional<std::wstring> Download(const std::function<void(const std::wstring&)>& status, std::wstring* error);
+// Blocking. Returns the exe path, or nullopt with `error` set (empty when `cancel` stopped it).
+std::optional<std::wstring> Download(const DownloadProgress& progress, std::wstring* error, const Async::Cancel& cancel = {});
 
 // Runs "+login user [pass] +download_depot app depot manifest +quit" hidden. Blocking (worker thread).
 // `line` gets every output line; `prompt` is called (on this worker thread) when SteamCMD asks for a

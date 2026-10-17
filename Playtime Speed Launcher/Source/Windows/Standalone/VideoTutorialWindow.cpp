@@ -2,6 +2,7 @@
 #include <cmath>
 #include "App/Launcher.h"
 #include "Core/Text.h"
+#include "Seasonal/SeasonalCardArt.h"
 #include "Seasonal/SeasonalTheme.h"
 #include "Services/Discord/DiscordPresenceService.h"
 #include "UI/Style.h"
@@ -29,6 +30,12 @@ bool VideoTutorialWindow::Open() {
     o.topmost = true;
     o.showCommand = SW_HIDE;
     if (!Create(o)) return false;
+    g.SetColorFilter(&Seasonal::Filter);   // follows the seasonal theme like the main window
+    // Seasonal particles: idle frames at 30 fps (input / tweens still at full rate)
+    if (Seasonal::IsSeasonal()) {
+        SetContinuous(true, true);
+        SetIdleFps(30.0);
+    }
     SetWindowPos(hwnd, HWND_TOPMOST, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left,
                  mi.rcMonitor.bottom - mi.rcMonitor.top, 0);
     player.Create(hwnd, { true, L"Select a video", Rgba(26, 58, 85) });
@@ -146,7 +153,10 @@ void VideoTutorialWindow::OnFrame() {
         ui.KeepAnimating();   // lay out again with the new height
     }
     if (!loadingId.empty()) ui.KeepAnimating();
+    // Seasonal theme: particles over the menu (the video itself is a child window on top), decorations on the top edge
+    Seasonal::CardArt::DrawPanelParticles(g, panel, 8.f, ui.Time(), 0.6f);
     PanelDecor(ui, panel, 8.f, Palette::Teal, openT, header.B());
+    Seasonal::CardArt::DrawPanelEdge(g, panel, ui.Time());
     if (PanelEntranceRunning(openT)) ui.KeepAnimating();
     if (backdrop.held && ui.In().pressed[0] && !ui.MouseOver(panel)) Close();
 }

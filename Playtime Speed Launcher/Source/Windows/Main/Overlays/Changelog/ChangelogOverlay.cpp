@@ -43,6 +43,9 @@ SectionLook Look(int kind) {
         case 0: return { Rgba(46, 204, 140), 0xE710 };    // Additions: + (Add)
         case 1: return { Rgba(255, 152, 72), 0xE90F };    // Bug Fixes: wrench (Repair)
         case 2: return { Rgba(110, 168, 240), 0xE946 };   // Other: (i) (Info)
+        case 3: return { Rgba(186, 140, 255), 0xE790 };   // Redesigns: palette (Color)
+        case 4: return { Rgba(255, 196, 64), 0xE706 };    // Seasonal Themes: sun (Brightness)
+        case 5: return { Rgba(80, 206, 236), 0xE945 };    // Performance: lightning bolt
         default: return { Hex(0x00CCAA), 0xE73E };        // anything else: check mark
     }
 }
@@ -72,7 +75,10 @@ void ChangelogOverlay::BuildLayout(Ui& ui, float width) {
                 s.kind = s.title == L"Additions" ? SectionKind::Additions
                          : s.title == L"Bug Fixes" ? SectionKind::Fixes
                          : s.title == L"Other" ? SectionKind::Other
-                                               : SectionKind::Generic;
+                         : s.title == L"Redesigns" ? SectionKind::Redesigns
+                         : s.title == L"Seasonal Themes" ? SectionKind::Themes
+                         : s.title == L"Performance" ? SectionKind::Performance
+                                                     : SectionKind::Generic;
                 if (!card.sections.empty()) cy += kSectionGap - kLineGap;
                 s.y = cy;
                 cy += kTagH + 8.f;

@@ -4,6 +4,7 @@
 #include "Core/Async.h"
 #include "Core/Text.h"
 #include "Graphics/Animation.h"
+#include "Seasonal/SeasonalCardArt.h"
 #include "Seasonal/SeasonalTheme.h"
 #include "Services/Community/SkipReportService.h"
 #include "Services/Community/VideoTutorialService.h"
@@ -85,6 +86,12 @@ bool ReportSkipWindow::Open(HWND owner) {
     o.height = 740;
     o.showCommand = SW_HIDE;
     if (!Create(o)) return false;
+    g.SetColorFilter(&Seasonal::Filter);   // follows the seasonal theme like the main window
+    // Seasonal particles: idle frames at 30 fps (input / tweens still at full rate)
+    if (Seasonal::IsSeasonal()) {
+        SetContinuous(true, true);
+        SetIdleFps(30.0);
+    }
     CenterOnOwner(*this, owner, 460.f, 740.f);
     if (owner) EnableWindow(owner, FALSE);   // ShowDialog
     openedAt = Async::Now();
@@ -359,6 +366,7 @@ void ReportSkipWindow::OnFrame() {
     }
 
     const float sinceOpen = static_cast<float>(now - openedAt);
+    Seasonal::CardArt::DrawPanelParticles(g, panel, 12.f, now, 0.6f);   // seasonal theme
     PanelDecor(ui, panel, 12.f, Palette::Teal, sinceOpen, header.B() - 1.f);
     if (PanelEntranceRunning(sinceOpen)) ui.KeepAnimating();
     if (scaled) ui.PopTransform();

@@ -1,5 +1,7 @@
 #include "Windows/Main/Overlays/Versions/PresetInstaller.h"
 #include <algorithm>
+#include <atomic>
+#include <cmath>
 #include <set>
 #include "App/Launcher.h"
 #include "App/Paths.h"
@@ -16,6 +18,7 @@
 #include "UI/Style.h"
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/Controls.h"
+#include "UI/Widgets/Form.h"
 #include "UI/Window.h"
 #include "Windows/Dialogs/DialogParts.h"
 #include "Windows/Dialogs/DialogWindow.h"
@@ -50,6 +53,117 @@ void ModeCard(Ui& ui, Column& col, const std::wstring& title, const std::wstring
     ui.g.Border(r, 3.f, accent.WithAlpha(20.f / 255.f), accent.WithAlpha(50.f / 255.f), 1.f);
     ui.g.Text(title, { r.x + 11.f, r.y + 9.f, inner, titleH }, titleColor, Mono(11.f, true));
     ui.g.Text(desc, { r.x + 11.f, r.y + 9.f + titleH + 3.f, inner, descH }, kDim, body);
+}
+
+// SteamCMD dialogs header: glowing badge with a glyph, "STEAMCMD" and a subtitle.
+void SteamCmdHero(Ui& ui, Column& col, wchar_t glyph, const std::wstring& subtitle, float marginBottom) {
+    auto& g = ui.g;
+    const Rect r = col.Next(48.f, marginBottom);
+    const Rect badge{ r.x, r.y, 48.f, 48.f };
+    const float pulse = 0.5f + 0.5f * static_cast<float>(std::sin(ui.Time() * 2.4));
+    g.GlowRound(badge, 12.f, kTeal, 18.f, 0.15f + 0.2f * pulse);
+    g.Border(badge, 12.f, Rgba(0, 204, 170, 28), Rgba(0, 204, 170, 130), 1.f);
+    // The glyph bobs gently
+    g.Text(std::wstring(1, glyph), badge.Offset(0.f, 2.f * static_cast<float>(std::sin(ui.Time() * 2.4))), kTeal, IconFont(20.f));
+    g.Text(L"STEAMCMD", { badge.R() + 14.f, r.y + 5.f, r.w - 62.f, 20.f }, Rgba(214, 228, 238), Mono(14.f, true));
+    g.Text(subtitle, { badge.R() + 14.f, r.y + 26.f, r.w - 62.f, 16.f }, kDim, Mono(10.f));
+    ui.KeepAnimatingThrottled();
+}
+
+// Row of small pills ("~4 MB", "Official from Valve"...)
+void InfoChips(Ui& ui, Column& col, const std::vector<std::wstring>& chips, float marginBottom) {
+    const TextStyle style = Mono(9.f, true).Center();
+    const Rect r = col.Next(22.f, marginBottom);
+    float x = r.x;
+    for (const auto& chip : chips) {
+        const float w = ui.g.Measure(chip, style).w + 18.f;
+        if (x + w > r.R()) break;
+        ui.g.Border({ x, r.y, w, r.h }, 11.f, Rgba(0, 204, 170, 16), Rgba(0, 204, 170, 60), 1.f);
+        ui.g.Text(chip, { x, r.y, w, r.h }, Rgba(120, 210, 190), style);
+        x += w + 6.f;
+    }
+}
+
+// Written by the download worker, read by the dialog every frame
+struct SteamCmdDownloadState {
+    std::atomic<int> stage{ 0 };   // SteamCmd::DownloadStage
+    std::atomic<uint64_t> received{ 0 }, total{ 0 };
+    Async::Cancel cancel;
+    double startedAt = 0.0;
+};
+
+std::wstring Megabytes(uint64_t bytes) {
+    wchar_t buf[32];
+    swprintf_s(buf, L"%.1f MB", static_cast<double>(bytes) / (1024.0 * 1024.0));
+    return buf;
+}
+
+float DrawSteamCmdDownload(Ui& ui, const Rect& area, const SteamCmdDownloadState& state) {
+    auto& g = ui.g;
+    Column col(area);
+    SteamCmdHero(ui, col, Glyphs::Download, Loc::Get("steamcmd_hero_sub"), 18.f);
+
+    const int stage = state.stage.load();
+    const uint64_t received = state.received.load(), total = state.total.load();
+    // Steps: done (✓), running (spinner), waiting (ring)
+    const std::wstring steps[] = { Loc::Get("steamcmd_step_download"), Loc::Get("steamcmd_step_extract"), Loc::Get("steamcmd_step_ready") };
+    for (int i = 0; i < 3; ++i) {
+        const Rect row = col.Next(24.f, 4.f);
+        const float cx = row.x + 10.f, cy = row.CY();
+        const bool done = i < stage, running = i == stage;
+        const float lit = ui.Animate(ui.MakeId("steamcmd-step", i), done || running ? 1.f : 0.f, 10.f);
+        if (done) {
+            g.FillEllipse(cx, cy, 9.f, 9.f, Rgba(0, 204, 170, 40));
+            g.StrokeEllipse(cx, cy, 9.f, 9.f, kTeal, 1.f);
+            g.Text(std::wstring(1, Glyphs::CheckMark), { cx - 9.f, cy - 9.f, 18.f, 18.f }, kTeal, IconFont(9.f));
+        } else if (running) {
+            Form::Spinner(ui, cx, cy, 8.f, kTeal);
+        } else {
+            g.StrokeEllipse(cx, cy, 8.f, 8.f, Rgba(58, 106, 138, 140), 1.f);
+        }
+        const Color text = Lerp(Rgba(90, 120, 145), done ? Rgba(120, 200, 180) : Rgba(214, 228, 238), lit);
+        g.Text(steps[i], { row.x + 30.f, row.y, row.w - 30.f, row.h }, text, Mono(11.f, running));
+        if (i < 2) g.FillRect({ cx - 0.5f, cy + 10.f, 1.f, 8.f }, done ? Rgba(0, 204, 170, 120) : Rgba(58, 106, 138, 70));
+    }
+    col.Gap(12.f);
+
+    // Progress bar: determinate while the size is known, marquee otherwise
+    const Rect bar = col.Next(8.f, 8.f);
+    const bool known = stage == 0 && total > 0;
+    if (known) {
+        const float target = static_cast<float>(static_cast<double>(received) / static_cast<double>(total));
+        const float shown = ui.Animate(ui.MakeId("steamcmd-progress"), target, 10.f, 0.f);
+        g.FillRound(bar, 4.f, Hex(0x0D2535));
+        if (shown > 0.f) {
+            const Rect fill{ bar.x, bar.y, std::max(8.f, bar.w * shown), bar.h };
+            g.GlowRound(fill, 4.f, kTeal, 10.f, 0.35f);
+            g.FillLinear(fill, 4.f, { { 0.f, Rgba(0, 150, 125) }, { 1.f, kTeal } }, { 0.f, 0.f }, { 1.f, 0.f });
+            // Light sweeping along the filled part
+            const float sweep = static_cast<float>(std::fmod(ui.Time() * 0.9, 1.3)) - 0.15f;
+            g.PushRoundClip(fill, 4.f);
+            g.FillLinear({ fill.x + fill.w * sweep - 40.f, fill.y, 80.f, fill.h }, 0.f,
+                         { { 0.f, Rgba(255, 255, 255, 0) }, { 0.5f, Rgba(255, 255, 255, 70) }, { 1.f, Rgba(255, 255, 255, 0) } }, { 0.f, 0.f }, { 1.f, 0.f });
+            g.PopLayer();
+        }
+    } else {
+        ProgressBarIndeterminate(ui, bar, kTeal);
+    }
+
+    // "1.8 / 4.0 MB · 45%"  ............  "00:04"
+    const Rect status = col.Next(16.f);
+    std::wstring line;
+    if (stage == 0) {
+        if (total > 0) line = Megabytes(received) + L" / " + Megabytes(total) + L"  \x00B7  " +
+                              std::to_wstring(static_cast<int>(100.0 * static_cast<double>(received) / static_cast<double>(total))) + L"%";
+        else if (received > 0) line = Megabytes(received);
+        else line = Loc::Get("starting");
+    } else {
+        line = Loc::Get("steamcmd_step_extract") + L"\x2026";
+    }
+    g.Text(line, status, kTeal, Mono(10.f, true));
+    g.Text(Elapsed(Async::Now() - state.startedAt), status, kDim, Mono(10.f).Right());
+    ui.KeepAnimating();
+    return col.Height();
 }
 
 std::wstring SafeFileName(const std::wstring& name) {
@@ -200,9 +314,19 @@ void PresetInstaller::AcquireSteamCmd(std::function<void(std::optional<std::wstr
     Dialogs::Options o;
     o.title = Loc::Get("steamcmd_not_found_title");
     o.primary = Loc::Get("steamcmd_download_auto");
+    o.primaryMinWidth = 150.f;
     o.secondary = Loc::Get("steamcmd_find");
     o.close = Loc::Get("cancel");
-    Dialogs::ShowText(Owner(), o, Loc::Get("steamcmd_not_found_content"), Rgba(160, 180, 200), [this, then](Dialogs::Result r) {
+    o.contentWidth = 440.f;
+    Dialogs::Show(Owner(), o, [](Ui& ui, const Rect& area) {
+        Column col(area);
+        SteamCmdHero(ui, col, Glyphs::Download, Loc::Get("steamcmd_hero_sub"), 14.f);
+        P::Label(ui, col, Loc::Get("steamcmd_not_found_desc"), 11.f, Rgba(160, 190, 210), false, 10.f);
+        InfoChips(ui, col, { Loc::Get("steamcmd_chip_size"), Loc::Get("steamcmd_chip_official"), Loc::Get("steamcmd_chip_local") }, 16.f);
+        ModeCard(ui, col, Loc::Get("steamcmd_option_auto_title"), Loc::Get("steamcmd_option_auto_desc"), kTeal, kTeal, 6.f);
+        ModeCard(ui, col, Loc::Get("steamcmd_option_find_title"), Loc::Get("steamcmd_option_find_desc"), Rgba(80, 130, 200), Rgba(80, 160, 230), 0.f);
+        return col.Height();
+    }, [this, then](Dialogs::Result r) {
         if (r == Dialogs::Result::Secondary) {
             const std::wstring picked = System::PickFile(Owner(), L"steamcmd.exe", { { L"steamcmd.exe", L"steamcmd.exe" }, { L"Executables", L"*.exe" } });
             if (then) then(picked.empty() ? std::nullopt : std::optional<std::wstring>(picked));
@@ -212,21 +336,27 @@ void PresetInstaller::AcquireSteamCmd(std::function<void(std::optional<std::wstr
             if (then) then(std::nullopt);
             return;
         }
-        // Download with a status line
-        auto status = std::make_shared<std::wstring>(Loc::Get("starting"));
+        // Download: steps (download → extract → ready) with a live progress bar; Cancel stops it
+        auto state = std::make_shared<SteamCmdDownloadState>();
+        state->startedAt = Async::Now();
         Dialogs::Options p;
         p.title = Loc::Get("downloading_steamcmd_title");
+        p.close = Loc::Get("cancel");
+        p.contentWidth = 400.f;
         p.live = true;
-        const int progress = Dialogs::Show(Owner(), p, [status](Ui& ui, const Rect& area) {
-            return UI::Paragraph(ui, area.x, area.y, area.w, *status, Mono(12.f), kTeal);
-        });
-        Async::Run([status] {
+        const int progress = Dialogs::Show(Owner(), p, [state](Ui& ui, const Rect& area) { return DrawSteamCmdDownload(ui, area, *state); },
+                                           [state](Dialogs::Result) { state->cancel.Request(); });
+        Async::Run([state] {
             std::wstring error;
-            auto path = SteamCmd::Download([status](const std::wstring& s) { Async::Post([status, s] { *status = s; }); }, &error);
+            auto path = SteamCmd::Download([state](SteamCmd::DownloadStage stage, uint64_t received, uint64_t total) {
+                state->stage = static_cast<int>(stage);
+                state->received = received;
+                state->total = total;
+            }, &error, state->cancel);
             return std::make_pair(path, error);
-        }, [this, progress, then](std::pair<std::optional<std::wstring>, std::wstring> result) {
+        }, [this, progress, state, then](std::pair<std::optional<std::wstring>, std::wstring> result) {
             Dialogs::Close(progress);
-            if (!result.first) ShowError(Loc::Get("error_download_steamcmd") + L"\n" + result.second);
+            if (!result.first && !state->cancel.Requested()) ShowError(Loc::Get("error_download_steamcmd") + L"\n" + result.second);
             if (then) then(result.first);
         });
     });

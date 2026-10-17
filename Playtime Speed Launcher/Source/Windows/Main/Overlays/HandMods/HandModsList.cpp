@@ -4,19 +4,24 @@
 #include <memory>
 #include "Core/Async.h"
 #include "Core/Text.h"
+#include "Graphics/Animation.h"
 #include "Graphics/Images.h"
 #include "Localization/Localization.h"
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/Controls.h"
+#include "UI/Widgets/Form.h"
 #include "UI/Widgets/ScrollArea.h"
+#include "UI/Widgets/Stagger.h"
 #include "Windows/Dialogs/DialogParts.h"
 #include "Windows/Dialogs/DialogWindow.h"
 #include "Windows/Main/MainWindow.h"
+#include "Windows/Main/Overlays/HandMods/HandModsKit.h"
 #include "Windows/Main/Overlays/HandMods/HandModsOverlay.h"
 
 namespace SpeedrunLauncher::Main {
 
 using namespace UI;
+using namespace HandKit;
 namespace HM = Services::HandMods;
 namespace P = Dialogs::Parts;
 
@@ -24,25 +29,34 @@ namespace {
 
 constexpr Color kRowText = Rgba(210, 220, 230), kRowSub = Rgba(45, 90, 120), kRemove = Rgba(204, 51, 51, 200);
 
-// Decoded preview images, keyed by colour (decoded once per dialog).
-struct Previews {
-    std::vector<HM::HandImage> raw;
-    std::vector<ImagePtr> decoded;
-    ImagePtr For(const std::wstring& color) {
-        if (decoded.size() != raw.size()) {
-            decoded.clear();
-            for (const auto& image : raw) decoded.push_back(Images::FromMemory(image.data));
-        }
-        for (size_t i = 0; i < raw.size(); ++i)
-            if (_wcsicmp(raw[i].color.c_str(), color.c_str()) == 0) return decoded[i];
-        return nullptr;
-    }
+constexpr unsigned kViewerSide = 900;   // big enough for the viewer's stage on a high-DPI screen
+constexpr unsigned kThumbSide = 360;    // Individual Hands cards
+
+// Hand pictures decoded on the worker thread (only the GPU upload is left for the UI thread)
+struct DecodedHand {
+    std::wstring color;
+    unsigned w = 0, h = 0;
+    std::vector<uint32_t> pixels;
 };
 
-void Note(Ui& ui, Column& col, const std::wstring& text, Color color) {
-    col.Gap(12.f);
-    col.Gap(Paragraph(ui, col.x + 4.f, col.y, col.w - 8.f, text, Mono(11.f), color));
+std::vector<DecodedHand> DecodeHands(const std::vector<HM::HandImage>& images, unsigned maxSide) {
+    std::vector<DecodedHand> out;
+    for (const auto& image : images) {
+        DecodedHand d;
+        d.color = image.color;
+        if (!Images::DecodeMemory(image.data, maxSide, d.w, d.h, d.pixels)) d.pixels.clear();
+        out.push_back(std::move(d));
+    }
+    return out;
 }
+
+std::vector<HandPreview> UploadHands(const std::vector<DecodedHand>& decoded) {
+    std::vector<HandPreview> out;
+    for (const auto& d : decoded) out.push_back({ d.color, d.pixels.empty() ? nullptr : Images::FromPixels(d.w, d.h, d.pixels.data()) });
+    return out;
+}
+
+std::wstring ChapterTitle(int n) { return Loc::Get("ch" + std::to_string(n) + "_title"); }
 
 } // namespace
 
@@ -76,66 +90,165 @@ void HandModsOverlay::LoadMods() {
 
 void HandModsOverlay::DrawMods(Ui& ui, Column& col) {
     auto& g = ui.g;
+    const double now = Async::Now();
+    const float labelH = g.Measure(L"Ag", Mono(10.f, true)).h;
+
+    // Error: badge, message and a retry button
     if (!loadError.empty()) {
-        Note(ui, col, L"Failed to load mods:\n" + loadError, Rgba(204, 51, 51, 220));
+        StaggerItem in(ui, screenChangedAt + 0.04, 0, 0.f, 12.f, 0.0, 0.4);
+        const float msgH = g.Measure(loadError, Mono(9.f).Wrap().Center(), col.w - 40.f).h;
+        const Rect r = col.Next(150.f + msgH);
+        Badge(ui, r.CX(), r.y + 34.f, 22.f, std::wstring(1, Glyphs::Warning), IconFont(16.f), Palette::DangerText);
+        g.Text(L"Failed to load mods", { r.x, r.y + 68.f, r.w, 18.f }, Palette::DangerText, Mono(11.f, true).Center());
+        g.Text(loadError, { r.x + 20.f, r.y + 90.f, r.w - 40.f, msgH }, kSub, Mono(9.f).Wrap().Center());
+        const float w = P::SmallButtonWidth(ui, L"Retry", 90.f);
+        if (P::SmallButton(ui, ui.MakeId("hand-retry"), { r.CX() - w * 0.5f, r.y + 102.f + msgH, w, 28.f }, L"Retry", Palette::Teal)) {
+            cache.erase(chapter);
+            LoadMods();
+            screenChangedAt = now;   // cascade the skeleton in again
+        }
         return;
     }
+    // Loading: placeholder cards with a light sweeping over them
     if (!mods) {
-        Note(ui, col, L"Fetching mods\x2026", Palette::TealDim);
+        g.Text(L"FETCHING MODS\x2026", col.Next(labelH, 10.f), kSub.Fade(0.6f + 0.4f * Anim::PingPong(now, 1.2)), Mono(10.f, true));
+        for (int i = 0; i < 4; ++i) {
+            StaggerItem in(ui, screenChangedAt + 0.05, i, 0.f, 10.f, 0.06, 0.4);
+            const Rect r = col.Next(64.f, 8.f);
+            g.Border(r, 8.f, kCardBg, kCardBorder, 1.f);
+            g.FillEllipse(r.x + 32.f, r.CY(), 17.f, 17.f, Rgba(255, 255, 255, 14));
+            g.FillRound({ r.x + 62.f, r.y + 17.f, r.w * (0.32f + 0.08f * (i % 3)), 10.f }, 5.f, Rgba(255, 255, 255, 18));
+            g.FillRound({ r.x + 62.f, r.y + 35.f, r.w * 0.16f, 8.f }, 4.f, Rgba(255, 255, 255, 12));
+            g.FillRound({ r.R() - 104.f, r.CY() - 14.f, 90.f, 28.f }, 4.f, Rgba(255, 255, 255, 12));
+            Shimmer(g, r, 8.f, now + i * 0.12, 1.4, 1.4f);
+        }
         ui.KeepAnimatingThrottled();
         return;
     }
     if (mods->empty()) {
-        Note(ui, col, L"No hand mods available for this chapter yet.", Rgba(160, 180, 200, 160));
+        StaggerItem in(ui, screenChangedAt + 0.04, 0, 0.f, 12.f, 0.0, 0.4);
+        const Rect r = col.Next(130.f);
+        // The hand waves for a few seconds while nobody has made one yet
+        const float calm = Calm(now - screenChangedAt, 3.0);
+        const float wave = std::sin(static_cast<float>(now) * 5.f) * 14.f * calm;
+        g.FillEllipse(r.CX(), r.y + 36.f, 24.f, 24.f, Palette::Teal.WithAlpha(0.10f));
+        g.PushTransform(D2D1::Matrix3x2F::Rotation(wave, D2D1::Point2F(r.CX(), r.y + 48.f)));
+        g.Text(L"\x270B", { r.CX() - 24.f, r.y + 12.f, 48.f, 48.f }, Palette::Teal, Mono(24.f).WithFont(Font::Ui).Center());
+        g.PopTransform();
+        g.Text(L"No hand mods for this chapter yet", { r.x, r.y + 72.f, r.w, 18.f }, kText, Mono(11.f, true).Center());
+        g.Text(L"Made one? Share it from the hub with Submit a Hand Mod.", { r.x, r.y + 94.f, r.w, 16.f }, kSub, Mono(9.f).Center());
+        if (calm > 0.f) ui.KeepAnimatingThrottled();
         return;
     }
-    const float nameH = g.Measure(L"Ag", Mono(13.f).SemiBold()).h, subH = g.Measure(L"Ag", Mono(10.f)).h;
-    const std::vector<HM::Mod> list = *mods;   // rows can trigger reloads
+
+    // No row action replaces the list while it's drawn (reloads only come from the screens before it),
+    // so no per-frame copy; the actions get their own copy of the mod
+    const std::vector<HM::Mod>& list = *mods;
+    const std::vector<bool>& isInstalled = InstalledFlags();
+    const int installedCount = static_cast<int>(std::count(isInstalled.begin(), isInstalled.end(), true));
+    {
+        StaggerItem in(ui, screenChangedAt, 0, 0.f, 8.f, 0.0, 0.3);
+        const Rect r = col.Next(labelH, 10.f);
+        const std::wstring summary = std::to_wstring(list.size()) + (list.size() == 1 ? L" MOD" : L" MODS") + L"  \x00B7  " + ChapterTitle(chapter);
+        g.Text(summary, r, kSub, Mono(10.f, true).Ellipsis());
+        if (installedCount > 0) {
+            const std::wstring text = std::to_wstring(installedCount) + L" INSTALLED";
+            Pill(g, r.R() - PillWidth(g, text), r.CY(), text, kGreen, true);
+        }
+    }
+
     for (size_t i = 0; i < list.size(); ++i) {
         const HM::Mod& mod = list[i];
-        const bool installed = paks && HM::IsInstalled(*paks, mod.baseName);
-        const Rect r = col.Next(8.f + std::max(nameH + subH, 28.f) + 8.f, 2.f);
-        g.FillRound(r, 4.f, installed ? Rgba(0, 204, 170, 30) : Rgba(255, 255, 255, 12));
-        const Rect inner = r.Inset(10.f, 8.f);
+        const bool installedNow = isInstalled[i];
+        StaggerItem in(ui, screenChangedAt + 0.05, static_cast<int>(i), 26.f * screenDirection, 0.f, 0.045, 0.38);
         ui.PushId(static_cast<int64_t>(i));
+        // Installing / removing it fades the green tint in and out
+        const float lit = ui.Animate(ui.MakeId("installed"), installedNow ? 1.f : 0.f, 8.f, installedNow ? 1.f : 0.f);
+        const Rect slot = col.Next(64.f, 8.f);
+        const Card c = DrawCard(ui, ui.MakeId("card"), slot, kGreen, 8.f, lit, true, false);
+        const Rect inner = c.r.Inset(14.f, 0.f);
+        const float cy = c.r.CY();
+
+        // Hand badge (a ✓ joins it once installed)
+        const float bx = inner.x + 18.f;
+        const float bob = std::sin(static_cast<float>(now) * 3.f + static_cast<float>(i)) * 1.5f * c.hover;
+        g.FillEllipse(bx, cy, 18.f, 18.f, Lerp(Palette::Teal.WithAlpha(0.10f), kGreen.WithAlpha(0.18f), lit));
+        g.StrokeEllipse(bx, cy, 18.f, 18.f, Lerp(Palette::Teal.WithAlpha(0.35f), kGreen.WithAlpha(0.7f), lit), 1.f);
+        g.Text(L"\x270B", { bx - 18.f, cy - 18.f + bob, 36.f, 36.f }, Palette::Teal, Mono(16.f).WithFont(Font::Ui).Center());
+        if (lit > 0.01f) {
+            const float pop = Anim::EaseOutBack(lit, 1.4f);
+            g.FillEllipse(bx + 13.f, cy + 12.f, 7.f * pop, 7.f * pop, kGreen);
+            g.Text(std::wstring(1, Glyphs::CheckMark), { bx + 6.f, cy + 5.f, 14.f, 14.f }, Palette::PanelBg.WithAlpha(lit), IconFont(7.f));
+        }
 
         // Actions (right to left): Install / Uninstall / "unavailable", extras, preview, info
         RowFromRight right{ inner.R(), inner.y, inner.h };
-        const float cy = inner.CY();
-        if (installed) {
+        if (installedNow) {
             const float w = P::SmallButtonWidth(ui, L"Uninstall", 90.f);
-            const Rect b = right.Next(w, 6.f);
-            if (P::SmallButton(ui, ui.MakeId("uninstall"), { b.x, cy - 14.f, w, 28.f }, L"Uninstall", kRemove)) Uninstall(mod);
+            const Rect b = right.Next(w, 8.f);
+            if (P::SmallButton(ui, ui.MakeId("uninstall"), { b.x, cy - 14.f, w, 28.f }, L"Uninstall", kRemove)) Uninstall(HM::Mod(mod));
         } else if (!paks) {
             const float w = g.Measure(L"unavailable", Mono(10.f)).w + 1.f;
-            g.Text(L"unavailable", right.Next(w, 6.f), Rgba(160, 180, 200, 140), Mono(10.f));
+            g.Text(L"unavailable", right.Next(w, 8.f), Rgba(160, 180, 200, 140), Mono(10.f));
         } else {
             const float w = P::SmallButtonWidth(ui, L"Install", 90.f);
-            const Rect b = right.Next(w, 6.f);
-            if (P::SmallButton(ui, ui.MakeId("install"), { b.x, cy - 14.f, w, 28.f }, L"Install", Palette::Teal)) StartInstall(mod);
+            const Rect b = right.Next(w, 8.f);
+            // The install button breathes while the card is hovered
+            if (c.hover > 0.01f) g.GlowRound({ b.x, cy - 14.f, w, 28.f }, 3.f, Palette::Teal, 12.f, 0.35f * c.hover);
+            if (P::SmallButton(ui, ui.MakeId("install"), { b.x, cy - 14.f, w, 28.f }, L"Install", Palette::Teal)) StartInstall(HM::Mod(mod));
         }
-        const struct {
+        static const struct {
             const char* id;
+            const wchar_t* key;   // busyButtons suffix
             wchar_t glyph;
             void (HandModsOverlay::*action)(const HM::Mod&);
-        } buttons[] = { { "extras", 0xE8B7, &HandModsOverlay::ShowExtras },
-                        { "preview", 0xEB9F, &HandModsOverlay::ShowPreview },
-                        { "info", 0xE946, &HandModsOverlay::ShowInfo } };
+        } buttons[] = { { "extras", L"extras", 0xE8B7, &HandModsOverlay::ShowExtras },
+                        { "preview", L"preview", 0xEB9F, &HandModsOverlay::ShowPreview },
+                        { "info", L"info", 0xE946, &HandModsOverlay::ShowInfo } };
         for (const auto& b : buttons) {
-            const Rect slot = right.Next(26.f, 6.f);
-            const bool busy = busyButtons.count(mod.baseName + Text::Widen(b.id)) != 0;
-            const ButtonStyle s{ Rgba(100, 130, 160, 40), Colors::Transparent, 0.f, 3.f, { 0.f }, 0.f, 26.f };
-            if (TextButton(ui, ui.MakeId(b.id), { slot.x, cy - 13.f, 26.f, 26.f }, std::wstring(1, b.glyph), IconFont(13.f), Rgba(160, 180, 200, 220), s,
-                           !busy))
-                (this->*b.action)(mod);
+            const Rect slotB = right.Next(28.f, 4.f);
+            const Rect br{ slotB.x, cy - 14.f, 28.f, 28.f };
+            const bool busy = !busyButtons.empty() && busyButtons.count(mod.baseName + b.key) != 0;
+            if (busy) {
+                // Waiting on the download: spinner instead of the icon
+                g.FillRound(br, 14.f, Rgba(100, 130, 160, 40));
+                Form::Spinner(ui, br.CX(), br.CY(), 7.f, Palette::Teal);
+                ui.KeepAnimatingThrottled();
+                continue;
+            }
+            const ButtonStyle s{ Rgba(100, 130, 160, static_cast<int>(20 + 30 * c.hover)), Colors::Transparent, 0.f, 14.f, { 0.f }, 0.f, 28.f };
+            if (TextButton(ui, ui.MakeId(b.id), br, std::wstring(1, b.glyph), IconFont(12.f), Rgba(160, 180, 200, 220), s))
+                (this->*b.action)(HM::Mod(mod));
         }
 
-        const float textW = std::max(0.f, right.right - 8.f - inner.x);
-        const float top = cy - (nameH + subH) * 0.5f;
-        g.Text(mod.name, { inner.x, top, textW, nameH }, kRowText, Mono(13.f).SemiBold().Ellipsis());
-        g.Text(Text::FileSize(mod.size), { inner.x, top + nameH, textW, subH }, kRowSub, Mono(10.f));
+        const float textX = bx + 30.f + 3.f * c.hover;
+        const float textW = std::max(0.f, right.right - 8.f - textX);
+        g.Text(mod.name, { textX, c.r.y + 13.f, textW, 20.f }, Lerp(kRowText, Colors::White, c.hover), Mono(12.f).SemiBold().Ellipsis());
+        float sx = textX;
+        const std::wstring size = Text::FileSize(mod.size);
+        const float sizeW = g.Measure(size, Mono(9.f)).w + 1.f;
+        g.Text(size, { sx, c.r.y + 34.f, sizeW, 16.f }, kRowSub, Mono(9.f));
+        sx += sizeW + 8.f;
+        if (lit > 0.01f && sx + 70.f < textX + textW) {
+            const bool fading = lit < 0.999f;   // a layer only while it fades
+            if (fading) g.PushOpacity(lit);
+            Pill(g, sx, c.r.y + 42.f, L"INSTALLED", kGreen, true);
+            if (fading) g.PopLayer();
+        }
         ui.PopId();
     }
+}
+
+const std::vector<bool>& HandModsOverlay::InstalledFlags() {
+    const void* list = mods ? static_cast<const void*>(mods->data()) : nullptr;
+    const size_t count = mods ? mods->size() : 0;
+    if (installedRevision != listRevision || installedList != list || installed.size() != count) {
+        installed.assign(count, false);
+        for (size_t i = 0; i < count; ++i) installed[i] = paks && HM::IsInstalled(*paks, (*mods)[i].baseName);
+        installedRevision = listRevision;
+        installedList = list;
+    }
+    return installed;
 }
 
 void HandModsOverlay::Uninstall(const HM::Mod& mod) {
@@ -168,36 +281,22 @@ void HandModsOverlay::ShowPreview(const HM::Mod& mod) {
     const std::wstring key = mod.baseName + L"preview";
     busyButtons.insert(key);
     const int number = chapter;
-    Async::Run([mod, number]() -> std::optional<std::vector<HM::HandImage>> {
+    Async::Run([mod, number]() -> std::optional<std::vector<DecodedHand>> {
         const auto zip = HM::Download(mod, number, {});
         if (!zip) return std::nullopt;
-        return HM::ReadHandImages(*zip);
-    }, [this, key, mod](std::optional<std::vector<HM::HandImage>> images) {
+        return DecodeHands(HM::ReadHandImages(*zip), kViewerSide);
+    }, [this, key, mod](std::optional<std::vector<DecodedHand>> decoded) {
         busyButtons.erase(key);
-        if (!images) {
+        if (!decoded) {
             ShowMessage(L"Couldn't load " + mod.name + L"'s preview:\nThe download failed.");
             return;
         }
-        auto previews = std::make_shared<Previews>();
-        previews->raw = *images;
-        Dialogs::Options o;
-        o.title = mod.name + L" preview";
-        o.close = L"OK";
-        o.contentWidth = images->empty() ? 360.f : static_cast<float>(images->size()) * (260.f + 16.f);
-        Dialogs::Show(main.Hwnd(), o, [previews](Ui& ui, const Rect& area) -> float {
-            auto& g = ui.g;
-            if (previews->raw.empty()) return Paragraph(ui, area.x, area.y, area.w, L"No preview available.", Mono(12.f), Rgba(160, 180, 200, 200));
-            float x = area.x;
-            const float labelH = g.Measure(L"Ag", Mono(12.f)).h;
-            for (const auto& image : previews->raw) {
-                const Rect card{ x + 8.f, area.y, 260.f, 260.f };
-                g.FillRound(card, 6.f, Rgba(14, 42, 78));
-                if (auto img = previews->For(image.color)) g.DrawImageRounded(*img, card, 6.f);
-                g.Text(image.color, { card.x, card.B() + 6.f, card.w, labelH }, Rgba(160, 180, 200, 200), Mono(12.f).Center());
-                x += 276.f;
-            }
-            return 260.f + 6.f + labelH;
-        });
+        if (!popup.IsOpen()) return;
+        viewer = {};
+        viewer.open = true;
+        viewer.mod = mod;
+        viewer.images = UploadHands(*decoded);
+        viewer.openedAt = Async::Now();
     });
 }
 
@@ -208,17 +307,17 @@ void HandModsOverlay::ShowExtras(const HM::Mod& mod) {
     struct Loaded {
         std::optional<std::wstring> zip;
         std::vector<HM::Extra> extras;
-        std::vector<HM::HandImage> images;
+        std::vector<DecodedHand> images;
     };
     Async::Run([mod, number] {
         Loaded l;
         l.zip = HM::Download(mod, number, {});
         if (l.zip) {
             l.extras = HM::ReadExtras(*l.zip);
-            if (!l.extras.empty()) l.images = HM::ReadHandImages(*l.zip);
+            if (!l.extras.empty()) l.images = DecodeHands(HM::ReadHandImages(*l.zip), kThumbSide);
         }
         return l;
-    }, [this, key, mod, number](Loaded loaded) {
+    }, [this, key, mod](Loaded loaded) {
         busyButtons.erase(key);
         if (!loaded.zip) {
             ShowMessage(L"Couldn't load " + mod.name + L"'s extras:\nThe download failed.");
@@ -228,119 +327,17 @@ void HandModsOverlay::ShowExtras(const HM::Mod& mod) {
             ShowMessage(mod.name + L" doesn't ship any individual hand options.");
             return;
         }
-        struct State {
-            std::wstring zip;
-            std::vector<HM::Extra> extras;
-            Previews previews;
-            std::optional<std::wstring> paks;
-            int chapter = 0;
-            int busy = -1;
-        };
-        auto state = std::make_shared<State>();
-        state->zip = *loaded.zip;
-        state->extras = loaded.extras;
-        state->previews.raw = loaded.images;
-        state->paks = paks;
-        state->chapter = number;
-        HWND owner = main.Hwnd();
-        HandModsOverlay* self = this;
-
-        Dialogs::Options o;
-        o.title = mod.name + L" \x2014 Individual Hands";
-        o.close = L"Close";
-        o.contentWidth = 380.f;
-        Dialogs::Show(owner, o, [state, owner, self](Ui& ui, const Rect& area) -> float {
-            auto& g = ui.g;
-            const float nameH = g.Measure(L"Ag", Mono(13.f).SemiBold()).h, subH = g.Measure(L"Ag", Mono(10.f)).h;
-            const float rowH = 8.f + std::max(44.f, nameH + subH) + 8.f;
-            const float listH = state->extras.size() * (rowH + 6.f);
-            const Rect viewport{ area.x, area.y, area.w, std::min(listH, 420.f) };
-            ScrollArea scroll(ui, ui.MakeId("extras-scroll"), viewport, false, 48.f, ScrollArea::Bar::Classic);
-            Column col(viewport.x, viewport.y, scroll.ContentWidth());
-            for (size_t i = 0; i < state->extras.size(); ++i) {
-                const HM::Extra& extra = state->extras[i];
-                const bool installed = state->paks && HM::IsInstalled(*state->paks, extra.baseName);
-                const Rect r = col.Next(rowH, 6.f);
-                g.FillRound(r, 4.f, installed ? Rgba(0, 204, 170, 30) : Rgba(255, 255, 255, 12));
-                const Rect inner = r.Inset(10.f, 8.f);
-                const Rect thumb{ inner.x, inner.CY() - 22.f, 44.f, 44.f };
-                g.FillRound(thumb, 4.f, Rgba(14, 42, 78));
-                if (auto img = state->previews.For(extra.color)) g.DrawImageRounded(*img, thumb, 4.f);
-
-                RowFromRight right{ inner.R(), inner.y, inner.h };
-                const float cy = inner.CY();
-                const bool busy = state->busy == static_cast<int>(i);
-                const auto finish = [state, self](int) {
-                    state->busy = -1;
-                    ++self->listRevision;
-                };
-                if (installed) {
-                    const float w = P::SmallButtonWidth(ui, L"Uninstall", 90.f);
-                    const Rect b = right.Next(w);
-                    if (P::SmallButton(ui, ui.MakeId("extra-uninstall", static_cast<int64_t>(i)), { b.x, cy - 14.f, w, 28.f }, L"Uninstall", kRemove, !busy)) {
-                        state->busy = static_cast<int>(i);
-                        const std::wstring dir = *state->paks, baseName = extra.baseName;
-                        Async::Run([dir, baseName] {
-                            HM::UninstallByBaseName(dir, baseName);
-                            return 0;
-                        }, finish);
-                    }
-                } else if (!state->paks) {
-                    const float w = g.Measure(L"unavailable", Mono(10.f)).w + 1.f;
-                    g.Text(L"unavailable", right.Next(w), Rgba(160, 180, 200, 140), Mono(10.f));
-                } else {
-                    const float w = P::SmallButtonWidth(ui, L"Install", 90.f);
-                    const Rect b = right.Next(w);
-                    if (P::SmallButton(ui, ui.MakeId("extra-install", static_cast<int64_t>(i)), { b.x, cy - 14.f, w, 28.f }, L"Install", Palette::Teal, !busy)) {
-                        state->busy = static_cast<int>(i);
-                        // Extract the nested zip, then resolve hand-colour conflicts like a normal install
-                        const HM::Extra e = extra;
-                        Async::Run([state, e] { return HM::ExtractExtra(state->zip, e, state->chapter); },
-                                   [state, e, owner, self, finish](std::optional<std::wstring> extraZip) {
-                                       if (!extraZip) {
-                                           finish(0);
-                                           self->ShowMessage(L"Error installing " + e.color + L":\nCould not extract it.");
-                                           return;
-                                       }
-                                       const std::vector<std::wstring> hands{ e.color };
-                                       std::vector<std::wstring> conflicting;
-                                       for (const auto& [baseName, markerHands] : HM::AllInstalledHandMarkers(*state->paks))
-                                           if (_wcsicmp(baseName.c_str(), e.baseName.c_str()) != 0 && HM::HandsConflict(hands, markerHands))
-                                               conflicting.push_back(baseName);
-                                       const std::wstring dir = *state->paks, zipPath = *extraZip;
-                                       const auto doInstall = [dir, zipPath, e, hands, conflicting, finish] {
-                                           Async::Run([dir, zipPath, e, hands, conflicting] {
-                                               for (const auto& c : conflicting) HM::UninstallByBaseName(dir, c);
-                                               HM::Install(dir, zipPath, e.baseName, hands);
-                                               return 0;
-                                           }, finish);
-                                       };
-                                       if (conflicting.empty()) {
-                                           doInstall();
-                                           return;
-                                       }
-                                       Dialogs::Options c;
-                                       c.title = L"Hand Conflict";
-                                       c.primary = L"Continue";
-                                       c.close = L"Cancel";
-                                       Dialogs::ShowText(owner, c,
-                                                         L"\x26A0 " + e.color + L" changes the " + e.color + L" hand.\n" + Text::Join(conflicting, L", ") +
-                                                             L" will be removed first.",
-                                                         Rgba(160, 180, 200, 200), [doInstall, finish](Dialogs::Result r) {
-                                                             if (r == Dialogs::Result::Primary) doInstall();
-                                                             else finish(0);
-                                                         });
-                                   });
-                    }
-                }
-                const float textX = thumb.R() + 10.f, textW = std::max(0.f, right.right - 8.f - textX);
-                const float top = cy - (nameH + subH) * 0.5f;
-                g.Text(extra.color, { textX, top, textW, nameH }, kRowText, Mono(13.f).SemiBold());
-                g.Text(Text::FileSize(extra.size), { textX, top + nameH, textW, subH }, kRowSub, Mono(10.f));
-            }
-            scroll.SetContentSize(listH);
-            return viewport.h;
-        });
+        if (!popup.IsOpen()) return;
+        const int generation = extrasPanel.generation + 1;
+        extrasPanel = {};
+        extrasPanel.generation = generation;
+        extrasPanel.open = true;
+        extrasPanel.mod = mod;
+        extrasPanel.zip = *loaded.zip;
+        extrasPanel.extras = std::move(loaded.extras);
+        extrasPanel.previews = UploadHands(loaded.images);
+        extrasPanel.doneAt.assign(extrasPanel.extras.size(), -10.0);
+        extrasPanel.openedAt = Async::Now();
     });
 }
 
