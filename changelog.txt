@@ -1,4 +1,30 @@
-4.1.0
+4.1.1 | 18/10/2026
+## Additions
+- New loading screen: a picture from a random chapter and a progress bar while the launcher gets everything ready, so the main screen opens with all its pictures already loaded
+- New Chapters / Multiplayers tabs above the cards: Project Playtime can be launched from the launcher, and Escape From Playtime shows up locked until it comes out
+- Leaderboards: the podium shows each runner's speedrun.com profile picture
+- Leaderboards: pictures in a run's comment now show up under it (click one to open it full size)
+
+## Redesigns
+- Epic Games: switching to Epic shows a searching screen with the Epic logo in a progress ring, the drive and folder being checked, and a success animation when the game is found
+- Epic Games: new "not found" window that shows which folder to select, with a button to search again
+
+## Seasonal Themes
+- The SteamCMD and version install windows now follow the seasonal themes, with the season's decorations and particles
+
+## Performance
+- The loading screen decodes several pictures at once, so the launcher opens sooner on slower PCs
+- The Epic Games search checks the top folders of every drive first and skips system links and folders, so most installs are found much sooner
+- Updates restart the launcher about 2 seconds sooner
+- The chapter and multiplayer cards no longer check files on disk every frame
+- Pictures from the internet (flags, video thumbnails, profile pictures) download and load in the background without stuttering, profile pictures are kept on your PC so they show up instantly the next time, and a picture that speedrun.com refuses is tried again
+
+## Bug Fixes
+- Fixed automatic updates failing on some PCs: the updater now waits for the launcher to fully close and retries if the files are still in use
+- Fixed the launcher freezing while it searched your drives for the Epic Games install
+- Fixed the leaderboards always showing in Spanish, and the beginner tutorials, skip report, skips and glitches, Hand Mods menus and the loading screen always showing in English: they now follow the launcher's language
+
+4.1.0 | 18/10/2026
 ## Additions
 - Leaderboards: a run's YouTube video now plays inside the launcher, like the skips and glitches tutorials (other sites open in the browser)
 - Leaderboards: click a runner to see the run's date, country, comment and links to the run and their profile
@@ -27,3 +53,291 @@
 ## Bug Fixes
 - Fixed a tutorial video staying on screen after going back to the list
 - Fixed the SteamCMD download status always showing in Spanish
+
+4.0.0 | 16/10/2026
+## Additions
+- The launcher has been rebuilt from scratch in C++: it opens faster and uses far fewer resources
+- New Store to browse and install old versions of every chapter
+- Installing a version now guides you step by step, including the Steam login and the phone confirmation
+- Redesigned the versions menu: switch chapters at the top and drag versions to reorder them
+- Removing a version can now also delete its folder (it goes to the Recycle Bin)
+- New Key to Click option in Settings > Controls: turn any key into a mouse click, with a shortcut to turn it on and off
+- Load Manip keys can't be changed while that chapter is open, and a button lets you close the game
+- Redesigned the version history, tutorials, bug report and skip report menus
+- Every menu has new animations: a glow when it opens and its content sliding in one by one
+- Seasonal scenery is more alive, and its animations pause while a game is running
+
+## Bug Fixes
+- Fixed the launcher stuttering every few seconds while idle
+- Fixed menus lagging and using a lot of CPU
+- Fixed some popups showing a black area
+- Fixed saved Steam accounts not showing up when installing a version
+- Fixed keyboard lag in every app while the Cores option was enabled
+- Fixed the Cores hotkeys sometimes stopping working or not affecting the game
+- Fixed the FPS counter not asking for administrator permission
+- Fixed the Cores option and the FPS counter not detecting Chapter 2 and Chapter 3
+- Fixed the version history taking a long time to open
+
+## Other
+- Much lower CPU usage, especially while a game is running
+
+3.0.1 | 11/10/2026
+## Additions
+- Added two new easter eggs
+- Easter eggs can now also be activated in-game
+
+## Bug Fixes
+- Fixed easter eggs not working while custom keys or the Cores hotkeys were enabled
+
+3.0.0 | 08/10/2026
+## Additions
+- Added seasonal themes (Halloween, Summer and Christmas)
+- Added a Chapter 2 checkpoint save with a fixed train code (4312)
+
+## Other
+- Renamed the window mode options to Fullscreen and Windowed and removed the note below them
+
+2.3.3 | 12/09/2026
+## Bug Fixes
+- Updated Fullbright and LoadManip for Chapter 1 and 5
+
+2.3.2 | 11/09/2026
+## Additions
+- Added an AZERTY option for the keyboard overlay
+
+## Other
+- Moved per-chapter hours tracking to the cloud
+
+2.3.1 | 29/08/2026
+## Bug Fixes
+- Fixed a bug with the cores option (Reported by @nickk893)
+
+2.3.0 | 29/08/2026
+## Additions
+- Added a New Game+ save option for Chapter 5
+
+## Bug Fixes
+- Fixed the Cores option not detecting the game
+- Fixed new Hand Mod submissions failing when the files were too large for Discord to accept, files are now zipped automatically
+
+## Other
+- Removed the Auto Splitter option, since splits were only ever available for Chapters 1 and 2
+- Reorganized the launcher's internal file structure by feature area
+- Changed how checkpoint saves are stored to shrink the launcher's install size, and clean them up automatically when the launcher closes
+
+2.2.4 | 20/08/2026
+## Bug Fixes
+- Fixed Load Manip for Chapter 5
+
+2.2.3 | 19/08/2026
+## Additions
+- Added more EasterEggs
+
+2.2.2 | 17/08/2026
+## Bug Fixes
+- Fixed more performance issues
+
+2.2.1 | 15/08/2026
+## Additions
+- Added new skips for chapter 5
+
+## Bug Fixes
+- Fixed Skips and Glitches tutorial videos failing to load or getting stuck when switching between videos (Reported by @lumpydesk_yt)
+
+2.2.0 | 14/08/2026
+## Additions
+- Added a Manual Update option that downloads the latest version and replaces the launcher automatically if the update fails
+- Added a Priority for 0 cores setting in the Cores tab, letting you choose between High (default) and Low priority
+
+2.1.3 | 13/08/2026
+## Bug Fixes
+- Fixed Cores priority not re-applying after switching modes several times, previously requiring a game restart to fix
+- Fixed Cores priority not changing for Chapter 2 even though the core count changed correctly
+
+## Other
+- Renamed the Cores tab's 'Freeze/Slower/Normal loads' options to '0 cores', '1 core', and 'All cores'
+- Changed the default Cores hotkeys to B (0 cores), N (1 core), and M (all cores)
+- Removed the 'not allowed in official runs' warning from the Cores tab
+- Moved the Cores tab to appear right after Load Manip in settings
+
+2.1.2 | 09/08/2026
+## Bug Fixes
+- Fixed Chapter 5 hand mods failing to install after being moved to Git LFS
+
+2.1.1 | 08/08/2026
+## Additions
+- Added a live online users counter
+
+## Bug Fixes
+- Fixed the chapter cards getting cut off on screens with different resolutions
+
+2.1.0 | 05/08/2026
+## Additions
+- Added the option to install the hand mods individually (Still working on the mods)
+- Discord is now required for submitting new Hand Mods
+
+## Bug Fixes
+- Fixed the FPS counter not working in Chapter 4
+- Fixed hand mod conflict detection not accounting for individually installed hands
+
+2.0.11 | 04/08/2026
+## Additions
+- Added Load Manip mod for Chapter 5 (Thanks to @AdrianPG77)
+- Added Fullbright mod for Chapter 5 (Thanks to @AdrianPG77)
+- Added an option to add the launcher to Steam as an independent game
+- Added a Hand Mods system to browse and install community hand-skin mods per chapter
+- Added the option to submit new Hand Mods for review
+- Added a Chapter 6 card (Coming Soon)
+
+## Bug Fixes
+- Fixed Load Manip mod not working with the Thumb Mouse Buttons
+- Fixed Fullbright mod not working with the Thumb Mouse Buttons
+- Fixed more bugs with the FPS counter
+- Fixed the Steam profile not showing up inside the launcher
+- Fixed the chapter description text shifting the chapter cards up or down depending on its length
+
+## Other
+- Moved Load Manip settings into their own tab, with a chapter selector for Chapter 1, 4, and 5
+
+2.0.10 | 25/07/2026
+- Added a timer that tracks in-game hours per chapter
+- Fixed several bugs with the FPS counter
+- Improved detection of Load Manip for Chapter 1
+- Added the ability to reorder installed versions
+- Added Fullbright mod for chapter 1 (Thanks to @AdrianPG77)
+
+2.0.9 | 22/07/2026
+- Fixed position of the FPS overlay
+- Added the option to minimize the launcher
+- Added the leaderboards for every chapter
+
+2.0.8 | 18/07/2026
+- Fixed position of the FPS overlay
+- Fixed a bug that causes the game stop if you click the keyboard overlay
+
+2.0.7 | 18/07/2026
+- Added more icons (Thanks to @ᴢᴀᴇᴇ)
+- Added an FPS Overlay
+- Fixed some skips
+- Added a key remapping system for Load Manip
+
+2.0.6 | 04/07/2026
+- Fixed some visual bugs with the controllers overlay
+- Updated app icon (Thanks to @ᴢᴀᴇᴇ)
+- Added a system to send new skips to the developers
+- Added new skips to Chapter 1
+- Added a setting to select the icon app (Taskbar and Discord)
+
+2.0.5 | 01/07/2026
+- Added controller overlay
+- Added keyboard and mouse overlay
+- Added Load Manip Tool for chapter 1 and 4 (Thanks to @AdrianPG77)
+
+2.0.4 | 26/06/2026
+- Added UE4SS for all the chapters
+
+2.0.3 | 24/06/2026
+- Reorganized settings into separate tabs (Steam, Controller, Discord, etc.)
+- Added CPU core and priority management
+
+2.0.2 | 21/06/2026
+- Updated more skips (Thanks to @Edwin and @Technight)
+
+1.3.1 | 20/06/2026
+- Updated skips across all categories (Thanks to @Edwin for all chapters and @Technight for the new patch Chapter 4 skips)
+- Improved and updated Discord Rich Presence
+- Redesigned the application icon
+
+1.3.0 | 14/06/2026
+- Added a key remapping system for F11
+- Fixed audio system issues (again)
+
+1.2.11 | 10/06/2026
+- Added a tutorial on how to automatically connect LiveSplit to Discord
+- Added auto splitters for Chapters 1 and 2
+
+1.2.10 | 07/06/2026
+- Added full controller support across all chapters
+- Discord is now required for submitting bug reports and feedback
+
+1.2.9 | 05/06/2026
+- Fixed issues with the audio system
+- Improved and fixed various elements of the Strats Menu overlay
+- Fixed several bugs affecting the video player controls
+
+1.2.8 | 04/06/2026
+- Improved the beginner tutorial
+- Updated the application icon
+
+1.2.7 | 03/06/2026
+- Updated the Skips Menu; videos no longer need to be downloaded
+- Fixed category assignments for several strats
+- Added the ability to search for strats by author
+
+1.2.6 | 02/06/2026
+- Added Glitches & Skips Tutorials for Chapters 3, 4, and 5
+- Updated the Tutorials Menu overlay
+- Discord is now required for submitting error reports and feedback
+- Removed the 'Delete Saves' button from Chapters 1, 2, and 3
+- Added a beginner tutorial to help users learn how to use the launcher
+
+1.2.5 | 31/05/2026
+- Added a setting to customize the Glitches and Skips Tutorials Menu keybind
+- Added an in-game popup displaying the keybind used to open the Tutorials Menu
+- Added a Version History menu to view the complete changelog from all releases
+
+1.2.4 | 29/05/2026
+- Added in-game glitch and skip tutorials (currently available for Chapters 1 and 2, default key: F9)
+- Added Discord Rich Presence support while watching tutorials
+- Added Steam profile user and avatar display to the main menu
+- Added an option to save the user and password for automatic depot downloads (still require Steam Guard)
+- Fixed the LOAD button in the in-game checkpoint loader for Chapters 1, 2, and 3
+
+1.2.3 | 27/05/2026
+- Added Epic Games support
+- Added LiveSplit timer integration to Discord Rich Presence
+- Added settings to manage Discord Rich Presence
+- Added an in-game checkpoint loader for Chapters 4 and 5 (load and delete all saves)
+
+1.2.2 | 25/05/2026
+- Improved Discord Rich Presence integration
+- Added checkpoint selection status support to Discord Rich Presence
+
+1.2.1 | 24/05/2026
+- Added Discord Rich Presence support
+- Fixed the installation of Chapter 1 version: NMG_Any% 1.2
+
+1.2.0 | 23/05/2026
+- Added an integrated error reporting system to the launcher (bottom-left corner)
+- Fixed the camera when opening the checkpoint loader
+- Added a popup in Poppy Playtime Chapters 1–3 showing the keybind combination to open the checkpoint loader
+- Added a setting to customize the checkpoint loader keybind
+
+1.1.1 | 19/05/2026
+- Fixed checkpoint 27 from Chapter 2
+
+1.1.0 | 24/04/2026
+- Added checkpoint system for Chapters 1, 2, and 3
+- Added an in-game checkpoint loader (Ctrl + Alt + Enter)
+- Added all checkpoints to Chapters 4 and 5
+- Updated the image for Chapter 5
+
+1.0.5 | 16/04/2026
+- Added an option to open the launcher from steam
+
+1.0.4 | 14/04/2026
+- Fixed the name for the chapter 4
+
+1.0.3 | 14/04/2026
+- Added patch 1.3 for Poppy Playtime 1
+- Now the tool is approved by Speedrun.com
+
+1.0.2 | 23/03/2026
+- Added a manual mode without Steam Guard
+- Added a Installer of Live Split
+
+1.0.1 | 13/03/2026
+- Added better instructions when sending the steam guard verification
+
+1.0.0 | 08/03/2026
+- Initial release

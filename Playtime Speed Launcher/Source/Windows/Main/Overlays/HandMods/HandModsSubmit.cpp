@@ -171,7 +171,7 @@ void HandModsOverlay::DrawSubmit(Ui& ui, Column& col) {
         const Rect r = col.Next(h);
         if (TextButton(ui, ui.MakeId("submit-files"), { r.x, r.y, ButtonWidth(ui, text, Mono(11.f, true), s), h }, text, Mono(11.f, true).Center(),
                        Palette::Dim, s)) {
-            auto picked = System::PickFiles(main.Hwnd(), L"", { { L"Mod files", L"*.zip;*.pak;*.ucas;*.utoc" } });
+            auto picked = System::PickFiles(main.Hwnd(), L"", { { Loc::Get("hm_mod_files"), L"*.zip;*.pak;*.ucas;*.utoc" } });
             if (!picked.empty()) submitFiles = picked;
         }
         std::vector<std::wstring> names;

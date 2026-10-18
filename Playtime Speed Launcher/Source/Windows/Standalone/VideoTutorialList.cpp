@@ -12,6 +12,7 @@
 #include "UI/Widgets/TextBox.h"
 #include "Windows/Standalone/Common/Pills.h"
 #include "Windows/Standalone/VideoTutorialWindow.h"
+#include "Localization/Localization.h"
 
 namespace SpeedrunLauncher::Windows {
 
@@ -59,7 +60,7 @@ std::vector<std::wstring> ParseRunCategories(const std::wstring& description) {
     return out;
 }
 
-void FilterLabel(Ui& ui, Column& col, const wchar_t* text) {
+void FilterLabel(Ui& ui, Column& col, const std::wstring& text) {
     col.Gap(6.f);
     const float h = ui.g.Measure(L"Ag", Mono(8.f, true)).h;
     ui.g.Text(text, col.Next(h), Rgba(0, 204, 170, 100), Mono(8.f, true));
@@ -69,7 +70,7 @@ void FilterLabel(Ui& ui, Column& col, const wchar_t* text) {
 bool FilterRow(Ui& ui, Column& col, std::string_view id, const std::vector<std::wstring>& options, std::optional<std::wstring>& value,
                float marginBottom = 4.f) {
     col.Gap(3.f);
-    std::vector<std::wstring> labels{ L"All" };
+    std::vector<std::wstring> labels{ Loc::Get("vt_all") };
     labels.insert(labels.end(), options.begin(), options.end());
     const int clicked = Pills::Wrap(ui, col, id, labels, [&](size_t i) { return i == 0 ? !value.has_value() : value && *value == labels[i]; });
     col.Gap(marginBottom);   // WrapPanel bottom margin (the pills' own 4 px are already in)
@@ -127,7 +128,7 @@ void VideoTutorialWindow::DrawFilters(Column& col) {
     RefreshFilterLists();
     const auto chapters = lists.chapters;   // copies: picking a chapter rebuilds the lists
     if (!chapters.empty()) {
-        FilterLabel(ui, col, L"CHAPTER");
+        FilterLabel(ui, col, Loc::Get("vt_chapter"));
         if (FilterRow(ui, col, "f-chapter", chapters, chapterFilter, 8.f)) {
             categoryFilter.reset();
             runCategoryFilter.reset();
@@ -146,34 +147,34 @@ void VideoTutorialWindow::DrawFilters(Column& col) {
         const auto& routes = l.routes;
         const auto& restrictions = l.restrictions;
         if (!special.empty()) {
-            FilterLabel(ui, col, L"CATEGORY");
+            FilterLabel(ui, col, Loc::Get("vt_category"));
             if (FilterRow(ui, col, "f-category", special, categoryFilter) && categoryFilter) runCategoryFilter.reset();
         }
         if (runCats.size() > 1) {
-            FilterLabel(ui, col, special.empty() ? L"CATEGORY" : L"RUN CATEGORIES");
+            FilterLabel(ui, col, special.empty() ? Loc::Get("vt_category") : Loc::Get("vt_run_categories"));
             if (FilterRow(ui, col, "f-runcat", runCats, runCategoryFilter) && runCategoryFilter) categoryFilter.reset();
         }
         if (versions.size() > 1) {
-            FilterLabel(ui, col, L"VERSION");
+            FilterLabel(ui, col, Loc::Get("vt_version"));
             FilterRow(ui, col, "f-version", versions, versionFilter);
         }
         if (routes.size() > 1) {
-            FilterLabel(ui, col, L"ROUTE");
+            FilterLabel(ui, col, Loc::Get("vt_route"));
             FilterRow(ui, col, "f-route", routes, routeFilter);
         }
         if (!restrictions.empty()) {
-            FilterLabel(ui, col, L"RESTRICTIONS");
+            FilterLabel(ui, col, Loc::Get("vt_restrictions"));
             FilterRow(ui, col, "f-restrictions", restrictions, restrictionsFilter);
         }
     } else {
         const auto& categories = l.categories;
         const auto& runCats = l.runCats;
         if (!VT::FlatList && categories.size() > 1) {
-            FilterLabel(ui, col, L"CATEGORY");
+            FilterLabel(ui, col, Loc::Get("vt_category"));
             FilterRow(ui, col, "f-category", categories, categoryFilter);
         }
         if (!runCats.empty()) {
-            FilterLabel(ui, col, L"RUN CATEGORY");
+            FilterLabel(ui, col, Loc::Get("vt_run_category"));
             FilterRow(ui, col, "f-runcat", runCats, runCategoryFilter);
         }
     }
@@ -277,7 +278,7 @@ void VideoTutorialWindow::DrawVideoItem(Column& col, const Video& video, int ind
         g.Text(tags[i].first, t, fg, Mono(8.f, true).Center());
     }
     if (isLoading)
-        g.Text(L"Loading...", { textX, top + titleH + tagsH + 2.f, textW, loadingH - 2.f }, Rgba(255, 170, 0, 200), Mono(9.f));
+        g.Text(Loc::Get("vt_loading"), { textX, top + titleH + tagsH + 2.f, textW, loadingH - 2.f }, Rgba(255, 170, 0, 200), Mono(9.f));
     if (proac) {
         const Rect a{ r.R() - 8.f - 28.f, r.CY() - 14.f, 28.f, 28.f };
         if (auto img = Images::Load(Paths::Asset(L"Images\\proacventure.png"))) g.DrawImageRounded(*img, a, 14.f);
@@ -295,7 +296,7 @@ void VideoTutorialWindow::DrawVideoList(const Rect& area) {
     const auto& filtered = Filtered();
     if (filtered.empty()) {
         col.Gap(8.f);
-        col.Gap(Paragraph(ui, col.x, col.y, col.w, VT::All().empty() ? L"No videos configured." : L"No results.", Mono(10.f), Rgba(100, 140, 160, 120)));
+        col.Gap(Paragraph(ui, col.x, col.y, col.w, VT::All().empty() ? Loc::Get("vt_no_videos") : Loc::Get("vt_no_results"), Mono(10.f), Rgba(100, 140, 160, 120)));
         scroll.SetContentSize(col.Height() + 10.f);
         return;
     }
@@ -367,7 +368,7 @@ void VideoTutorialWindow::DrawSidebar(const Rect& area) {
     s.selection = Rgba(0, 204, 170, 100);
     s.padding = { 28.f, 7.f, 8.f, 7.f };
     s.radius = 4.f;
-    s.placeholder = L"Search videos... (@author)";
+    s.placeholder = Loc::Get("vt_search_placeholder");
     s.placeholderColor = Hex(0x1A3A55);
     const Rect box{ area.x + 10.f, area.y + 10.f, area.w - 21.f, TextBoxHeight(ui, s) };
     TextBox(ui, ui.MakeId("search"), box, search, s);

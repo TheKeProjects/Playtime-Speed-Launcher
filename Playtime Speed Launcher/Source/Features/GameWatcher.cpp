@@ -53,6 +53,14 @@ void GameWatcher::Tick() {
     }
     l.PublishRunningGames();   // for the input hook thread
 
+    // Multiplayer games: only the PLAYING status and the resting scenery follow them
+    for (size_t i = 0; i < l.multiplayers.size(); ++i) {
+        const auto& exe = l.multiplayers[i].gameExePath;
+        const bool running = exe && !Process::FindByName(processes, Files::FileNameWithoutExtension(*exe)).empty();
+        if (running != static_cast<bool>(l.multiplayerRunning[i])) stateChanged = true;
+        l.multiplayerRunning[i] = running;
+    }
+
     // Discord always reflects what's selected in the launcher once the game closes
     if (initialized && !anyRunning && stateChanged && l.discord)
         l.discord->SetChapterSelected(l.Selected(), l.VersionLabel(l.Selected()));

@@ -14,6 +14,7 @@
 #include "Services/App/ResourceExtractor.h"
 #include "Services/Fps/GameFpsService.h"
 #include "Windows/Main/MainWindow.h"
+#include "Windows/Splash/LoadingScreen.h"
 
 using namespace SpeedrunLauncher;
 
@@ -43,15 +44,17 @@ int WINAPI wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ PWSTR, _In_ int) {
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     Async::Initialize();
     Device::Get().Init();
-    Services::ResourceExtractor::Extract();
-    Loc::LoadSaved();
-    Fonts::Initialize(Paths::Asset(L"Fonts\\Poppy Playtime.ttf"));
 
     int code = 0;
     if (args.Is(1, App::SteamShortcutHelperArg)) {
+        Services::ResourceExtractor::Extract();
+        Loc::LoadSaved();
+        Fonts::Initialize(Paths::Asset(L"Fonts\\Poppy Playtime.ttf"));
         code = App::RunSteamShortcutHelper(args.count, args.values);
     } else {
-        App::L().Initialize();
+        Fonts::Initialize(L"");   // system fonts for the loading screen; the Poppy font once it's unpacked
+        // Unpacks the assets, loads the translations, the font, the main screen's pictures and the launcher data
+        Splash::RunLoadingScreen();
         {
             Main::MainWindow window;
             if (window.Open()) code = App::RunMessageLoop();

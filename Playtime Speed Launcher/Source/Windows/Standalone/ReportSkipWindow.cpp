@@ -18,6 +18,7 @@
 #include "Windows/Dialogs/DialogParts.h"
 #include "Windows/Popups/TutorialWindows.h"
 #include "Windows/Standalone/Common/Pills.h"
+#include "Localization/Localization.h"
 
 namespace SpeedrunLauncher::Windows {
 
@@ -77,7 +78,7 @@ constexpr float kCardPad = 14.f;
 bool ReportSkipWindow::Open(HWND owner) {
     ownerWindow = owner;
     UI::Window::Options o;
-    o.title = L"Report a Skip";
+    o.title = Loc::Get("rs_window_title");
     o.style = WS_POPUP;
     o.owner = owner;
     o.transparent = true;
@@ -115,12 +116,12 @@ void ReportSkipWindow::BeginClose() {
 void ReportSkipWindow::Send() {
     const std::wstring skip = Text::Trim(name);
     if (skip.empty()) {
-        status = L"Please enter the skip's name.";
+        status = Loc::Get("rs_err_name");
         statusKind = Form::Status::Warning;
         return;
     }
     if (!Services::SkipReport::IsConfigured()) {
-        status = L"Reporting isn't configured yet. Try again later.";
+        status = Loc::Get("rs_err_config");
         statusKind = Form::Status::Warning;
         return;
     }
@@ -143,7 +144,7 @@ void ReportSkipWindow::Send() {
         sending = false;
         if (error.empty()) {
             sent = true;
-            status = L"Report sent! Thank you.";
+            status = Loc::Get("rs_sent_message");
             statusKind = Form::Status::Success;
             Async::After(1800, [this, guard] {
                 if (*guard) BeginClose();
@@ -179,7 +180,7 @@ void ReportSkipWindow::RefreshOptions() {
     options.built = true;
 }
 
-void ReportSkipWindow::SectionCard(Column& col, int index, wchar_t glyph, const wchar_t* title, const std::function<void(Column&)>& draw) {
+void ReportSkipWindow::SectionCard(Column& col, int index, wchar_t glyph, const std::wstring& title, const std::function<void(Column&)>& draw) {
     // The card's height comes from the previous frame (the rows decide it), so draw the
     // background first and measure while drawing the rows
     const Id id = ui.MakeId("section", index);
@@ -241,8 +242,8 @@ void ReportSkipWindow::OnFrame() {
     g.FillEllipse(row.x + 18.f, row.CY(), 19.f, 19.f, Rgba(0, 204, 170, 26));
     g.Border({ row.x + 2.f, row.CY() - 16.f, 32.f, 32.f }, 16.f, Rgba(0, 204, 170, 36), Rgba(0, 204, 170, 120), 1.f);
     Glyph(ui, 0xEA80, { row.x + 2.f, row.CY() - 16.f, 32.f, 32.f }, 14.f, Palette::Teal);   // light bulb
-    g.Text(L"REPORT A SKIP", { row.x + 46.f, row.y + 13.f, row.w - 90.f, 20.f }, Palette::Teal, Mono(14.f, true));
-    g.Text(L"Suggest a skip or glitch for the list", { row.x + 46.f, row.y + 33.f, row.w - 90.f, 16.f }, Rgba(90, 130, 160), Mono(10.f));
+    g.Text(Loc::Get("rs_title"), { row.x + 46.f, row.y + 13.f, row.w - 90.f, 20.f }, Palette::Teal, Mono(14.f, true));
+    g.Text(Loc::Get("rs_subtitle"), { row.x + 46.f, row.y + 33.f, row.w - 90.f, 16.f }, Rgba(90, 130, 160), Mono(10.f));
     if (TextButton(ui, ui.MakeId("close"), { row.R() - 30.f, row.CY() - 15.f, 30.f, 30.f }, L"\x2715", Mono(12.f, true).WithFont(Font::Ui).Center(),
                    Palette::Dim, { Palette::ButtonBg, Palette::ButtonBorder, 1.f, 6.f, { 0.f }, 0.f, 30.f }))
         BeginClose();
@@ -254,7 +255,7 @@ void ReportSkipWindow::OnFrame() {
     if (statusH > 0.f) Form::StatusBannerAt(ui, ui.MakeId("status"), { content.x, send.y - 12.f - statusH, content.w, statusH }, status, statusKind);
     else Form::StatusBannerAt(ui, ui.MakeId("status"), {}, status, statusKind);
     const Form::SendState state = sent ? Form::SendState::Sent : sending ? Form::SendState::Sending : Form::SendState::Idle;
-    if (Form::SendButton(ui, ui.MakeId("send"), send, sent ? L"Sent" : sending ? L"Sending..." : L"Send Report", Palette::Teal, Rgba(3, 17, 13), state))
+    if (Form::SendButton(ui, ui.MakeId("send"), send, sent ? Loc::Get("rs_sent") : sending ? Loc::Get("rs_sending") : Loc::Get("rs_send"), Palette::Teal, Rgba(3, 17, 13), state))
         Send();
     const Rect form{ content.x, content.y, content.w, send.y - 14.f - (statusH > 0.f ? statusH + 12.f : 0.f) - content.y };
 
@@ -265,11 +266,11 @@ void ReportSkipWindow::OnFrame() {
         RefreshOptions();
 
         // ── Basics: name, chapter, version ──
-        SectionCard(col, 0, 0xE8EC, L"THE SKIP", [&](Column& c) {
-            Form::Label(ui, c, 0xE70F, L"SKIP NAME", Palette::Teal, true);   // edit
+        SectionCard(col, 0, 0xE8EC, Loc::Get("rs_section_skip"), [&](Column& c) {
+            Form::Label(ui, c, 0xE70F, Loc::Get("rs_skip_name"), Palette::Teal, true);   // edit
             Form::Field(ui, ui.MakeId("name"), c.Next(TextBoxHeight(ui, FieldStyle()), 18.f), name, FieldStyle(false, 80), Palette::Teal);
 
-            Form::Label(ui, c, 0xE8F1, L"CHAPTER", Palette::Teal);   // library
+            Form::Label(ui, c, 0xE8F1, Loc::Get("rs_chapter"), Palette::Teal);   // library
             const auto& chapters = options.chapters;
             const int clicked = Pills::Wrap(ui, c, "chapter", chapters, [&](size_t i) { return chapter && *chapter == chapters[i]; });
             if (clicked >= 0) {
@@ -282,15 +283,15 @@ void ReportSkipWindow::OnFrame() {
             c.Gap(10.f);
             RefreshOptions();   // the chapter may have just changed
 
-            Form::Label(ui, c, 0xE81C, L"VERSION", Palette::Teal);   // history
+            Form::Label(ui, c, 0xE81C, Loc::Get("rs_version"), Palette::Teal);   // history
             const auto& versionOptions = options.versions;
             const int version = Pills::Wrap(ui, c, "version", versionOptions, [&](size_t i) { return Has(versions, versionOptions[i]); });
             if (version >= 0) Toggle(versions, versionOptions[static_cast<size_t>(version)]);
         });
 
         // ── Categories: run category (+ custom), route, restrictions, cores ──
-        SectionCard(col, 1, 0xE71D, L"CATEGORIES", [&](Column& c) {
-            Form::Label(ui, c, 0xE7C1, L"RUN CATEGORY", Palette::Teal);   // flag
+        SectionCard(col, 1, 0xE71D, Loc::Get("rs_section_categories"), [&](Column& c) {
+            Form::Label(ui, c, 0xE7C1, Loc::Get("rs_run_category"), Palette::Teal);   // flag
             const auto runOptions = options.runCategories;   // copy: adding a custom category rebuilds the cache
             Rect trailing{};
             const int clicked = Pills::Wrap(ui, c, "runcat", runOptions, [&](size_t i) { return Has(runCategories, runOptions[i]); },
@@ -328,7 +329,7 @@ void ReportSkipWindow::OnFrame() {
                 const Interaction it = ui.Interact(ui.MakeId("add-runcat"), trailing);
                 const float hover = ui.Animate(ui.MakeId("add-runcat-hover"), it.hovered ? 1.f : 0.f, 18.f);
                 if (it.hovered) ui.SetCursor(IDC_HAND);
-                ui.Tooltip(ui.MakeId("add-runcat"), L"Add a custom run category");
+                ui.Tooltip(ui.MakeId("add-runcat"), Loc::Get("rs_add_run_category"));
                 g.Border(trailing, 12.f, Lerp(Rgba(255, 255, 255, 20), Rgba(0, 204, 170, 40), hover), Rgba(0, 204, 170, static_cast<int>(90 + 80 * hover)), 1.f);
                 g.Text(L"+", trailing, Rgba(0, 204, 170, 200), Mono(11.f, true).Center());
                 if (it.clicked) {
@@ -339,27 +340,27 @@ void ReportSkipWindow::OnFrame() {
             }
             c.Gap(10.f);
 
-            Form::Label(ui, c, 0xE81E, L"ROUTE", Palette::Teal);   // map pin
+            Form::Label(ui, c, 0xE81E, Loc::Get("rs_route"), Palette::Teal);   // map pin
             const auto& routeOptions = options.routes;
             const int route = Pills::Wrap(ui, c, "route", routeOptions, [&](size_t i) { return Has(routes, routeOptions[i]); });
             if (route >= 0) Toggle(routes, routeOptions[static_cast<size_t>(route)]);
             c.Gap(10.f);
 
-            Form::Label(ui, c, 0xE72E, L"RESTRICTIONS", Palette::Teal);   // lock
+            Form::Label(ui, c, 0xE72E, Loc::Get("rs_restrictions"), Palette::Teal);   // lock
             const auto& restrictionOptions = options.restrictions;
             const int restriction = Pills::Wrap(ui, c, "restrictions", restrictionOptions, [&](size_t i) { return Has(restrictions, restrictionOptions[i]); });
             if (restriction >= 0) Toggle(restrictions, restrictionOptions[static_cast<size_t>(restriction)]);
             c.Gap(8.f);
-            Dialogs::Parts::CheckBox(ui, ui.MakeId("cores"), c, L"Uses core / hardware exploit", cores, 10.f, Hex(0x8AABBD));
+            Dialogs::Parts::CheckBox(ui, ui.MakeId("cores"), c, Loc::Get("rs_cores"), cores, 10.f, Hex(0x8AABBD));
         });
 
         // ── Details: video, author, description ──
-        SectionCard(col, 2, 0xE8A5, L"DETAILS", [&](Column& c) {
-            Form::Label(ui, c, 0xE714, L"VIDEO URL", Palette::Teal);   // video
+        SectionCard(col, 2, 0xE8A5, Loc::Get("rs_section_details"), [&](Column& c) {
+            Form::Label(ui, c, 0xE714, Loc::Get("rs_video_url"), Palette::Teal);   // video
             Form::Field(ui, ui.MakeId("url"), c.Next(TextBoxHeight(ui, FieldStyle()), 18.f), videoUrl, FieldStyle(false, 200), Palette::Teal);
-            Form::Label(ui, c, 0xE77B, L"AUTHOR / DISCOVERED BY", Palette::Teal);   // person
+            Form::Label(ui, c, 0xE77B, Loc::Get("rs_author"), Palette::Teal);   // person
             Form::Field(ui, ui.MakeId("author"), c.Next(TextBoxHeight(ui, FieldStyle()), 18.f), author, FieldStyle(false, 60), Palette::Teal);
-            Form::Label(ui, c, 0xE8BD, L"DESCRIPTION", Palette::Teal);   // message
+            Form::Label(ui, c, 0xE8BD, Loc::Get("rs_description"), Palette::Teal);   // message
             Form::Field(ui, ui.MakeId("description"), c.Next(80.f, 18.f), description, FieldStyle(true, 400), Palette::Teal);
         });
         scroll.SetContentSize(col.Height());

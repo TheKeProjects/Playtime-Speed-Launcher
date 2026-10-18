@@ -1,29 +1,25 @@
-4.1.0
+4.1.1
 ## Novedades
-Leaderboards: el vídeo de YouTube de una run ahora se reproduce dentro del launcher, como en los tutoriales de skips y glitches (los de otras webs se abren en el navegador)
-Leaderboards: haz clic en un runner para ver la fecha de la run, su país, su comentario y enlaces a la run y a su perfil
-Nueva vista previa de los mods de manos: una imagen grande por mano, navega con las flechas o con las teclas de dirección e instálala desde ahí mismo
-El menú de checkpoints se puede usar con el teclado (flechas para elegir, Enter para cargar), un doble clic carga un checkpoint y confirma cuando se ha cargado o borrado algo
-La descarga de SteamCMD muestra cada paso y una barra de progreso con el tamaño descargado, y se puede cancelar
-Los tutoriales para principiantes recuerdan qué vídeos has visto y tienen un botón Siguiente para pasar al próximo
+Nueva pantalla de carga: una imagen de un capítulo al azar y una barra de progreso mientras el launcher lo prepara todo, para que la pantalla principal se abra con todas sus imágenes ya cargadas
+Nuevas pestañas Capítulos / Multijugador encima de las tarjetas: Project Playtime se puede abrir desde el launcher, y Escape From Playtime aparece bloqueado hasta que salga
+Leaderboards: el podio muestra la foto de perfil de speedrun.com de cada runner
+Leaderboards: las imágenes del comentario de una run ahora aparecen debajo de él (haz clic en una para abrirla a tamaño completo)
 
 ## Rediseños
-Leaderboards: pestañas de capítulo y categoría, un podio para el top 3 y el top 10 completo con la bandera de cada runner, el color de su nombre, la diferencia con el récord y hace cuánto se hizo la run
-Mods de manos: tarjetas de capítulo y versión, una barra de pasos, pantallas que entran y salen deslizándose, marcadores de carga, un botón de reintentar y una nueva pantalla de instalación con un anillo de progreso
-Mods de manos: el menú de manos individuales ahora es una cuadrícula de tarjetas con imagen, y el aviso de conflicto de manos muestra qué se instala y qué mods se quitarán antes
-Menú de checkpoints (atajo): nuevo aspecto, con animaciones al abrirse y cerrarse y los checkpoints apareciendo uno a uno
-Tutoriales para principiantes: un recorrido de 4 pasos, tarjetas que explican cada vídeo y la lista de pasos junto al vídeo mientras lo ves
-Ventana de instalación de SteamCMD: explica qué es SteamCMD y las dos formas de conseguirlo
+Epic Games: al cambiar a Epic aparece una pantalla de búsqueda con el logo de Epic dentro de un anillo de progreso, la unidad y la carpeta que se están revisando, y una animación de éxito cuando se encuentra el juego
+Epic Games: nueva ventana de "no encontrado" que muestra qué carpeta hay que seleccionar, con un botón para volver a buscar
 
 ## Temas de temporada
-Los menús de checkpoints, skips y glitches, reportar skips, leaderboards, tutoriales para principiantes y mods de manos ahora siguen los temas de temporada (Halloween, Verano y Navidad)
-Esos menús llevan las decoraciones de la temporada en su borde superior y sus propias partículas: nieve, brasas con un murciélago o burbujas y destellos
+Las ventanas de instalación de SteamCMD y de versiones ahora siguen los temas de temporada, con las decoraciones y partículas de la temporada
 
 ## Rendimiento
-Los menús que reproducen vídeos ya no se redibujan a la tasa de refresco completa de tu monitor mientras hay un vídeo cargado
-Los menús nuevos solo se siguen redibujando mientras algo se está moviendo, y sus animaciones decorativas se detienen pasados unos segundos
-El menú de mods de manos ya no comprueba los archivos de los mods en el disco en cada frame, y las imágenes de las manos se cargan en segundo plano
+La pantalla de carga procesa varias imágenes a la vez, así que el launcher se abre antes en los PCs más lentos
+La búsqueda de Epic Games revisa primero las carpetas principales de todas las unidades y se salta las carpetas y enlaces del sistema, así que la mayoría de instalaciones se encuentran mucho antes
+Las actualizaciones reinician el launcher unos 2 segundos antes
+Las tarjetas de capítulos y multijugador ya no comprueban archivos en el disco en cada frame
+Las imágenes de internet (banderas, miniaturas de vídeos y fotos de perfil) se descargan y cargan en segundo plano sin tirones, las fotos de perfil se guardan en tu PC para que aparezcan al instante la próxima vez, y si speedrun.com rechaza una imagen se vuelve a intentar
 
 ## Correcciones
-Corregido que un vídeo de tutorial se quedara en pantalla al volver a la lista
-Corregido que el estado de la descarga de SteamCMD siempre apareciera en español
+Corregido que las actualizaciones automáticas fallaran en algunos PCs: el actualizador ahora espera a que el launcher se cierre del todo y lo vuelve a intentar si los archivos siguen en uso
+Corregido que el launcher se congelara mientras buscaba la instalación de Epic Games en tus unidades
+Corregido que los leaderboards siempre aparecieran en español, y que los tutoriales para principiantes, reportar skips, skips y glitches, los mods de manos y la pantalla de carga siempre aparecieran en inglés: ahora siguen el idioma del launcher

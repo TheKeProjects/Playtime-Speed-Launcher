@@ -1,10 +1,33 @@
 // Launcher changelog. Add new versions at the TOP (newest first).
 #include "Services/App/ChangelogData.h"
+#include "Core/Text.h"
 
 namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
+        { L"4.1.1", L"18/10/2026", {
+            L"## Additions",
+            L"New loading screen: a picture from a random chapter and a progress bar while the launcher gets everything ready, so the main screen opens with all its pictures already loaded",
+            L"New Chapters / Multiplayers tabs above the cards: Project Playtime can be launched from the launcher, and Escape From Playtime shows up locked until it comes out",
+            L"Leaderboards: the podium shows each runner's speedrun.com profile picture",
+            L"Leaderboards: pictures in a run's comment now show up under it (click one to open it full size)",
+            L"## Redesigns",
+            L"Epic Games: switching to Epic shows a searching screen with the Epic logo in a progress ring, the drive and folder being checked, and a success animation when the game is found",
+            L"Epic Games: new \"not found\" window that shows which folder to select, with a button to search again",
+            L"## Seasonal Themes",
+            L"The SteamCMD and version install windows now follow the seasonal themes, with the season's decorations and particles",
+            L"## Performance",
+            L"The loading screen decodes several pictures at once, so the launcher opens sooner on slower PCs",
+            L"The Epic Games search checks the top folders of every drive first and skips system links and folders, so most installs are found much sooner",
+            L"Updates restart the launcher about 2 seconds sooner",
+            L"The chapter and multiplayer cards no longer check files on disk every frame",
+            L"Pictures from the internet (flags, video thumbnails, profile pictures) download and load in the background without stuttering, profile pictures are kept on your PC so they show up instantly the next time, and a picture that speedrun.com refuses is tried again",
+            L"## Bug Fixes",
+            L"Fixed automatic updates failing on some PCs: the updater now waits for the launcher to fully close and retries if the files are still in use",
+            L"Fixed the launcher freezing while it searched your drives for the Epic Games install",
+            L"Fixed the leaderboards always showing in Spanish, and the beginner tutorials, skip report, skips and glitches, Hand Mods menus and the loading screen always showing in English: they now follow the launcher's language",
+        } },
         { L"4.1.0", L"18/10/2026", {
             L"## Additions",
             L"Leaderboards: a run's YouTube video now plays inside the launcher, like the skips and glitches tutorials (other sites open in the browser)",
@@ -307,6 +330,41 @@ const std::vector<Entry>& Entries() {
             L"Initial release",
         } },
     };
+    return entries;
+}
+
+namespace {
+
+// "4.1.1", "v4.1.1" or "4.1.1 | 18/10/2026": digits and dots (at least one dot) before any " | "
+bool ParseVersionLine(const std::wstring& line, std::wstring& version, std::wstring& date) {
+    const size_t bar = line.find(L'|');
+    std::wstring head = Text::Trim(line.substr(0, bar));
+    if (!head.empty() && (head[0] == L'v' || head[0] == L'V')) head.erase(0, 1);
+    if (head.empty() || head.find(L'.') == std::wstring::npos) return false;
+    for (wchar_t c : head)
+        if (!((c >= L'0' && c <= L'9') || c == L'.')) return false;
+    version = head;
+    date = bar == std::wstring::npos ? L"" : Text::Trim(line.substr(bar + 1));
+    return true;
+}
+
+} // namespace
+
+std::vector<Entry> Parse(const std::wstring& text, const std::wstring& fallbackVersion) {
+    std::vector<Entry> entries;
+    for (const auto& raw : Text::SplitLines(text)) {
+        const std::wstring line = Text::Trim(raw);
+        if (line.empty()) continue;
+        std::wstring version, date;
+        if (ParseVersionLine(line, version, date)) {
+            entries.push_back({ version, date, {} });
+            continue;
+        }
+        if (entries.empty()) entries.push_back({ fallbackVersion, L"", {} });
+        std::wstring change = line;
+        if (Text::StartsWith(change, L"- ") || Text::StartsWith(change, L"* ")) change = Text::Trim(change.substr(2));
+        entries.back().changes.push_back(change);
+    }
     return entries;
 }
 

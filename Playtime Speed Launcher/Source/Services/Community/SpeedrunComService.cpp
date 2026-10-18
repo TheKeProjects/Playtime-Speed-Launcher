@@ -21,6 +21,25 @@ Json::Value GetJson(const std::wstring& url) {
     return Json::Parse(std::string_view(r.body));
 }
 
+// Pictures in a run comment (speedrun.com markdown, "![alt](/static/blob/x.jpg)"): takes them out of
+// the text and returns their absolute URLs
+std::vector<std::wstring> TakeCommentImages(std::wstring& comment) {
+    std::vector<std::wstring> urls;
+    for (size_t start; (start = comment.find(L"![")) != std::wstring::npos;) {
+        const size_t open = comment.find(L"](", start);
+        const size_t close = open == std::wstring::npos ? std::wstring::npos : comment.find(L')', open);
+        if (close == std::wstring::npos) break;
+        std::wstring url = Text::Trim(comment.substr(open + 2, close - open - 2));
+        url = url.substr(0, url.find(L' '));   // drops an optional "title"
+        if (Text::StartsWith(url, L"//")) url = L"https:" + url;
+        else if (Text::StartsWith(url, L"/")) url = L"https://www.speedrun.com" + url;
+        if (Text::StartsWith(url, L"http", true)) urls.push_back(url);
+        comment.erase(start, close + 1 - start);
+    }
+    comment = Text::Trim(comment);
+    return urls;
+}
+
 std::vector<VariableValue> Values(const Json::Value& valuesObj) {
     std::vector<VariableValue> out;
     for (const auto& [id, value] : valuesObj["values"].Items()) {
@@ -125,7 +144,7 @@ std::vector<LeaderboardEntry> GetTopRunners(const RunType& runType) {
                                     L"?top=10&embed=players" + (query.empty() ? L"" : L"&" + query));
     const Json::Value& data = doc["data"];
     struct Player {
-        std::wstring name, weblink, country, countryName;
+        std::wstring name, weblink, country, countryName, avatar;
         uint32_t color = 0;
     };
     std::map<std::wstring, Player> players;
@@ -137,6 +156,8 @@ std::vector<LeaderboardEntry> GetTopRunners(const RunType& runType) {
         info.weblink = p["weblink"].WStr();
         info.country = p["location"]["country"]["code"].WStr();
         info.countryName = p["location"]["country"]["names"]["international"].WStr();
+        const Json::Value& image = p["assets"]["image"]["uri"];
+        info.avatar = image.IsString() ? image.WStr() : L"";
         // Name style: a solid colour, or the start of a gradient ("dark" reads best on the dark UI)
         const Json::Value& style = p["name-style"];
         const Json::Value& color = style["style"].Str() == "gradient" ? style["color-from"] : style["color"];
@@ -166,6 +187,7 @@ std::vector<LeaderboardEntry> GetTopRunners(const RunType& runType) {
                     e.country = found->second.country;
                     e.countryName = found->second.countryName;
                     e.nameColor = found->second.color;
+                    e.avatarUrl = found->second.avatar;
                 }
             }
         }
@@ -174,6 +196,7 @@ std::vector<LeaderboardEntry> GetTopRunners(const RunType& runType) {
         e.runWeblink = run["weblink"].WStr();
         e.date = run["date"].IsString() ? run["date"].WStr() : L"";
         e.comment = run["comment"].IsString() ? Text::Trim(run["comment"].WStr()) : L"";
+        e.commentImages = TakeCommentImages(e.comment);
         for (const auto& link : run["videos"]["links"].Elements()) {
             const std::wstring uri = link["uri"].WStr();
             if (!uri.empty()) {
@@ -189,7 +212,7 @@ std::vector<LeaderboardEntry> GetTopRunners(const RunType& runType) {
             e.videoSite = lower.find(L"youtu") != std::wstring::npos      ? L"YouTube"
                           : lower.find(L"twitch") != std::wstring::npos   ? L"Twitch"
                           : lower.find(L"bilibili") != std::wstring::npos ? L"Bilibili"
-                                                                          : L"el navegador";
+                                                                          : L"";   // unknown site: the window says "the browser" in the launcher's language
         }
         if (!e.country.empty())
             e.flagUrl = L"https://www.speedrun.com/images/flags/" + Text::Lower(e.country.substr(0, e.country.find(L'/'))) + L".png";   // "ca/qc" → ca

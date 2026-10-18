@@ -36,13 +36,15 @@ struct LeaderboardEntry {
     std::wstring country;         // ISO code of the (first) runner's country, "us"; empty for guests / unset
     std::wstring countryName;     // "United States"
     std::wstring playerWeblink;   // speedrun.com profile of the (first) runner
+    std::wstring avatarUrl;       // the (first) runner's speedrun.com profile picture, may be empty
     uint32_t nameColor = 0;       // 0xRRGGBB of the runner's name style on speedrun.com (0 = none)
 
     // Derived once when fetched (the window draws these every frame)
     int daysAgo = -1;             // days since `date` (-1 = unknown)
     std::wstring youtubeId;       // the video's YouTube id when it's on YouTube (plays inside the launcher)
-    std::wstring videoSite;       // "YouTube" / "Twitch" / ... for labels
+    std::wstring videoSite;       // "YouTube" / "Twitch" / ... for labels (empty for other sites)
     std::wstring flagUrl;         // speedrun.com picture of `country`'s flag
+    std::vector<std::wstring> commentImages;   // pictures in the comment ("![](/static/blob/...)"), taken out of `comment`
 };
 
 const std::map<int, std::wstring>& ChapterGameIds();

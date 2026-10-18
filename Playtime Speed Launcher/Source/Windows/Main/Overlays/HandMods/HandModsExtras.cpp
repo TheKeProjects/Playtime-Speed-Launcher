@@ -14,6 +14,7 @@
 #include "Windows/Main/MainWindow.h"
 #include "Windows/Main/Overlays/HandMods/HandModsKit.h"
 #include "Windows/Main/Overlays/HandMods/HandModsOverlay.h"
+#include "Localization/Localization.h"
 
 namespace SpeedrunLauncher::Main {
 
@@ -65,7 +66,7 @@ void HandModsOverlay::UninstallExtra(int index) {
     Async::Run([dir, baseName] {
         HM::UninstallByBaseName(dir, baseName);
         return 0;
-    }, [this, generation, color](int) { FinishExtra(generation, -1, true, color + L" removed"); });
+    }, [this, generation, color](int) { FinishExtra(generation, -1, true, Loc::Fmt("hm_color_removed", color)); });
 }
 
 void HandModsOverlay::InstallExtra(int index) {
@@ -78,7 +79,7 @@ void HandModsOverlay::InstallExtra(int index) {
     // Extract the nested zip, then resolve hand-colour conflicts like a normal install
     Async::Run([parent, e, ch] { return HM::ExtractExtra(parent, e, ch); }, [this, e, generation, index](std::optional<std::wstring> extraZip) {
         if (!extraZip || !paks) {
-            FinishExtra(generation, index, false, L"Couldn't extract " + e.color);
+            FinishExtra(generation, index, false, Loc::Fmt("hm_color_extract_failed", e.color));
             return;
         }
         const std::vector<std::wstring> hands{ e.color };
@@ -91,7 +92,7 @@ void HandModsOverlay::InstallExtra(int index) {
                 for (const auto& c : conflicting) HM::UninstallByBaseName(dir, c);
                 return HM::Install(dir, zipPath, e.baseName, hands);
             }, [this, e, generation, index](bool ok) {
-                FinishExtra(generation, index, ok, ok ? e.color + L" installed" : L"Couldn't install " + e.color);
+                FinishExtra(generation, index, ok, ok ? Loc::Fmt("hm_color_installed", e.color) : Loc::Fmt("hm_color_install_failed", e.color));
             });
         };
         if (conflicting.empty()) {
@@ -176,13 +177,13 @@ void HandModsOverlay::DrawExtras(Ui& ui, const Rect& screenRect) {
         CloseExtras();
     right -= 12.f;
     if (installedCount > 0) {
-        const std::wstring text = std::to_wstring(installedCount) + L" INSTALLED";
+        const std::wstring text = Loc::Fmt("hm_installed_count", installedCount);
         right -= PillWidth(g, text);
         Pill(g, right, header.CY(), text, kGreen, true);
         right -= 12.f;
     }
-    g.Text(L"INDIVIDUAL HANDS", { tx, header.y + 12.f, right - tx, 20.f }, Palette::Teal, Mono(13.f, true));
-    g.Text(p.mod.name + L"  \x00B7  " + std::to_wstring(n) + (n == 1 ? L" hand" : L" hands"), { tx, header.y + 32.f, right - tx, 16.f }, kSub,
+    g.Text(Loc::Get("hm_extras_title"), { tx, header.y + 12.f, right - tx, 20.f }, Palette::Teal, Mono(13.f, true));
+    g.Text(p.mod.name + L"  \x00B7  " + Loc::Fmt(n == 1 ? "hm_hand_count_one" : "hm_hand_count", n), { tx, header.y + 32.f, right - tx, 16.f }, kSub,
            Mono(9.f).Ellipsis());
 
     // ── Grid ────────────────────────────────────────────────────────────────
@@ -250,25 +251,25 @@ void HandModsOverlay::DrawExtras(Ui& ui, const Rect& screenRect) {
             const Rect info{ c.r.x + 12.f, pic.B() + 1.f, c.r.w - 24.f, kInfoH - 1.f };
             g.Text(Text::FileSize(extra.size), { info.x, info.y + 8.f, info.w, 16.f }, kSub, Mono(9.f));
             if (lit > 0.01f) {
-                const float pw = PillWidth(g, L"INSTALLED");
+                const float pw = PillWidth(g, Loc::Get("hm_installed"));
                 const bool fading = lit < 0.999f;
                 if (fading) g.PushOpacity(lit);
-                Pill(g, info.R() - pw, info.y + 16.f, L"INSTALLED", kGreen, true);
+                Pill(g, info.R() - pw, info.y + 16.f, Loc::Get("hm_installed"), kGreen, true);
                 if (fading) g.PopLayer();
             }
             const Rect b{ info.x, info.B() - 10.f - 30.f, info.w, 30.f };
             const bool enabled = interactive && p.busy < 0;
             if (!paks) {
-                g.Text(L"unavailable", b, Rgba(160, 180, 200, 140), Mono(10.f).Center());
+                g.Text(Loc::Get("hm_unavailable"), b, Rgba(160, 180, 200, 140), Mono(10.f).Center());
             } else if (isInstalled) {
                 const ButtonStyle s{ Palette::DangerBg, Palette::DangerBorder, 1.f, 6.f, { 0.f }, 0.f, 30.f };
-                if (GlyphTextButton(ui, ui.MakeId("uninstall"), b, Glyphs::Delete, 11.f, kRemove, busy ? L"Removing\x2026" : L"Uninstall",
+                if (GlyphTextButton(ui, ui.MakeId("uninstall"), b, Glyphs::Delete, 11.f, kRemove, busy ? Loc::Get("hm_removing") : Loc::Get("hm_uninstall"),
                                     Mono(10.f, true), kRemove, s, 7.f, enabled))
                     UninstallExtra(index);
             } else {
                 const ButtonStyle s{ Palette::ConfirmBg, Palette::ConfirmBorder, 1.f, 6.f, { 0.f }, 0.f, 30.f };
                 if (c.hover > 0.01f && enabled) g.GlowRound(b, 6.f, Palette::Teal, 12.f, 0.35f * c.hover);
-                if (GlyphTextButton(ui, ui.MakeId("install"), b, Glyphs::Download, 11.f, Palette::Teal, busy ? L"Installing\x2026" : L"Install",
+                if (GlyphTextButton(ui, ui.MakeId("install"), b, Glyphs::Download, 11.f, Palette::Teal, busy ? Loc::Get("hm_installing") : Loc::Get("hm_install"),
                                     Mono(10.f, true), Palette::Teal, s, 7.f, enabled))
                     InstallExtra(index);
             }
@@ -292,11 +293,11 @@ void HandModsOverlay::DrawExtras(Ui& ui, const Rect& screenRect) {
         g.Text(p.message, { row.x + 24.f, row.y + rise, row.w - 170.f, row.h }, color.WithAlpha(note), Mono(10.f, true).Ellipsis());
         anyMoving = true;
     } else {
-        g.Text(L"Each one only replaces its own hand colour", { row.x, row.y, row.w - 170.f, row.h }, kFaint, Mono(9.f));
+        g.Text(Loc::Get("hm_extras_hint"), { row.x, row.y, row.w - 170.f, row.h }, kFaint, Mono(9.f));
     }
     const TextStyle text = Mono(11.f, true).Center();
-    const float closeW = ButtonWidth(ui, L"Close", text, Styles::Footer());
-    if (TextButton(ui, ui.MakeId("hand-extras-footer-close"), { row.R() - closeW, row.CY() - 18.f, closeW, 36.f }, L"Close", text, Palette::Dim,
+    const float closeW = ButtonWidth(ui, Loc::Get("close"), text, Styles::Footer());
+    if (TextButton(ui, ui.MakeId("hand-extras-footer-close"), { row.R() - closeW, row.CY() - 18.f, closeW, 36.f }, Loc::Get("close"), text, Palette::Dim,
                    Styles::Footer()) &&
         interactive)
         CloseExtras();

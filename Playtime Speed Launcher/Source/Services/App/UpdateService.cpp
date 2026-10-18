@@ -74,6 +74,19 @@ std::wstring FindExecutable(const std::wstring& dir) {
     return any.empty() ? std::wstring() : any.front();
 }
 
+// Batch lines that wait (up to ~30 s) until this process is gone. `timeout` returns at once when
+// cmd runs hidden without a console input on some PCs, so the copy hit the still-locked exe;
+// ping is the delay instead. No extra pause once it's gone: the copy / move retries cover a file
+// still held for a moment (antivirus scan...).
+std::wstring WaitForExitLines() {
+    const std::wstring pid = std::to_wstring(GetCurrentProcessId());
+    return L"set WAITS=30\r\n:wait\r\n"
+           // Full paths: a Git / MSYS folder on PATH brings its own (Unix) find
+           L"\"%SystemRoot%\\System32\\tasklist.exe\" /FI \"PID eq " + pid + L"\" /NH 2>nul | \"%SystemRoot%\\System32\\find.exe\" /I \".exe\" >nul\r\n"
+           L"if not errorlevel 1 (\r\n    set /a WAITS-=1\r\n    if %WAITS% GTR 0 (\r\n"
+           L"        ping -n 2 127.0.0.1 >nul\r\n        goto wait\r\n    )\r\n)\r\n";
+}
+
 [[noreturn]] void RunBatchAndExit(const std::wstring& batchPath, const std::string& content) {
     Files::WriteBytes(batchPath, content);
     SHELLEXECUTEINFOW info{ sizeof(info) };
@@ -83,8 +96,7 @@ std::wstring FindExecutable(const std::wstring& dir) {
     info.lpParameters = args.c_str();
     info.nShow = SW_HIDE;
     ShellExecuteExW(&info);
-    Sleep(1000);
-    ExitProcess(0);
+    ExitProcess(0);   // the batch waits for this process to be gone
 }
 
 } // namespace
@@ -162,10 +174,15 @@ bool DownloadAndInstall(const UpdateInfo& info, const Progress& progress) {
     const std::wstring currentExe = Files::ExecutablePath();
     const std::wstring currentDir = Files::DirectoryName(currentExe);
     const std::wstring extractedDir = Files::DirectoryName(newExe);
+    const std::wstring log = Files::Combine(tempDir, L"update.log");
     const std::string batch = Text::Narrow(
-        L"@echo off\r\nchcp 65001 >nul\r\ntimeout /t 2 /nobreak >nul\r\n"
-        L"xcopy \"" + extractedDir + L"\\*\" \"" + currentDir + L"\" /E /Y /I /Q\r\n"
-        L"if %ERRORLEVEL% NEQ 0 exit /b 1\r\n"
+        L"@echo off\r\nchcp 65001 >nul\r\n" + WaitForExitLines() +
+        // Retried while the exe is still locked (antivirus scan, a helper process closing...)
+        L"set RETRIES=15\r\n:copy\r\n"
+        L"xcopy \"" + extractedDir + L"\\*\" \"" + currentDir + L"\" /E /Y /I /Q >> \"" + log + L"\" 2>&1\r\n"
+        L"if not errorlevel 1 goto copied\r\n"
+        L"set /a RETRIES-=1\r\nif %RETRIES% LEQ 0 exit /b 1\r\n"
+        L"ping -n 2 127.0.0.1 >nul\r\ngoto copy\r\n:copied\r\n"
         L"start \"\" \"" + currentExe + L"\"\r\n"
         L"rd /s /q \"" + tempDir + L"\"\r\nexit");
     RunBatchAndExit(Files::Combine(tempDir, L"update.bat"), batch);
@@ -193,10 +210,10 @@ bool DownloadAndInstallLauncherExe(const Progress& progress) {
     Files::DeleteDirectory(tempDir);
     Files::CreateDirectories(tempDir);
     const std::string batch = Text::Narrow(
-        L"@echo off\r\nchcp 65001 >nul\r\ntimeout /t 2 /nobreak >nul\r\nset RETRIES=10\r\n:retry\r\n"
+        L"@echo off\r\nchcp 65001 >nul\r\n" + WaitForExitLines() + L"set RETRIES=15\r\n:retry\r\n"
         L"move /y \"" + staging + L"\" \"" + currentExe + L"\" >nul 2>&1\r\n"
         L"if exist \"" + staging + L"\" (\r\n    set /a RETRIES-=1\r\n    if %RETRIES% GTR 0 (\r\n"
-        L"        timeout /t 1 /nobreak >nul\r\n        goto retry\r\n    )\r\n)\r\n"
+        L"        ping -n 2 127.0.0.1 >nul\r\n        goto retry\r\n    )\r\n)\r\n"
         L"start \"\" \"" + currentExe + L"\"\r\n"
         L"rd /s /q \"" + tempDir + L"\"\r\nexit");
     RunBatchAndExit(Files::Combine(tempDir, L"update.bat"), batch);

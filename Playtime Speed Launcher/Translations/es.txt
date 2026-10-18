@@ -2,6 +2,7 @@
 
 # Botones principales
 play_button = JUGAR CAPÍTULO
+play_button_mp = JUGAR
 settings_tooltip = Configuración
 back = VOLVER
 add_install = AÑADIR
@@ -33,6 +34,14 @@ ch5_title = COSAS ROTAS
 ch5_desc = Adentrate aún más en las horripilantes profundidades de la fábrica mientras te persigue Huggy Wuggy, el sistema de seguridad de Playtime.
 ch6_title = PRÓXIMAMENTE
 ch6_desc = Próximamente
+
+# Pestañas de la pantalla principal / juegos multijugador
+section_chapters = CAPÍTULOS
+section_multiplayers = MULTIJUGADOR
+mp_pp_title = PROJECT PLAYTIME
+mp_pp_desc = Terror multijugador gratuito: seis jugadores se unen para fabricar un juguete gigante en la fábrica mientras un séptimo jugador los caza como uno de los monstruos.
+mp_efp_title = ESCAPE FROM PLAYTIME
+mp_efp_desc = El próximo juego multijugador de Poppy Playtime. Todavía no ha salido.
 patch = Parche
 
 # Overlay de versiones
@@ -219,7 +228,9 @@ updates_details_label = DETALLES DE LA NUEVA VERSIÓN
 updates_latest_version = Última versión:
 updates_file_name = Archivo:
 updates_file_size = Tamaño:
-updates_whats_new = NOVEDADES:
+updates_whats_new = NOVEDADES
+updates_news_latest = NUEVA
+updates_news_summary = {0} versiones nuevas  ·  {1}  →  {2}
 updates_install_ready = Versión {0} lista para instalar
 updates_install_subtitle = {0}  |  {1}
 updates_download_btn = DESCARGAR Y ACTUALIZAR
@@ -413,7 +424,21 @@ livesplit_tcp_step2 = 2.  Cambia  'Startup Behavior'  a  'Start TCP Server'
 livesplit_tcp_reminder = Solo necesitas hacer esto una vez. LiveSplit iniciará el servidor automáticamente de ahora en adelante.
 
 # Epic Games
-epic_not_found_content = No se encontró la instalación de Poppy Playtime en Epic Games.\n\nSelecciona la carpeta PoppyPlaytimeChapterOne dentro de tu instalación de Epic Games.
+epic_not_found_content = No encontramos la instalación de Poppy Playtime de Epic Games en este PC.
+epic_not_found_heading = NO ENCONTRADO
+epic_not_found_sub = Poppy Playtime · Epic Games
+epic_not_found_pick = SELECCIONA ESTA CARPETA
+epic_not_found_hint = También vale la carpeta que la contiene.
+epic_search_heading = BUSCANDO EN EPIC GAMES
+epic_search_sub = Buscando PoppyPlaytimeChapterOne...
+epic_search_step_manifests = Biblioteca del launcher de Epic Games
+epic_search_step_drives = Explorando tus discos
+epic_search_current = LEYENDO AHORA
+epic_search_folders = carpetas revisadas
+epic_search_again = Buscar de nuevo
+epic_search_found = ¡ENCONTRADO!
+epic_search_found_sub = Poppy Playtime está listo en Epic Games
+epic_search_found_label = INSTALADO EN
 epic_no_exe_error = No se encontraron ejecutables de Poppy Playtime en la carpeta seleccionada.
 version_auto_epic = Versión automática de Epic Games
 
@@ -539,3 +564,178 @@ bug_report_err_discord_required = Conecta tu cuenta de Discord primero — ya no
 # UE4SS
 ue4ss_remap_hint = UE4SS activo — teclas reasignadas temporalmente:
 ue4ss_remap_keys = F1 → Tutoriales      F2 → Checkpoints
+
+# Leaderboards
+lb_title = LEADERBOARDS
+lb_subtitle = top 10 por categoría
+lb_loading_categories = Cargando categorías desde speedrun.com…
+lb_load_failed = No se pudieron cargar los datos de speedrun.com.
+lb_no_runs = Sin runs registradas todavía.
+lb_world_record = RÉCORD MUNDIAL
+lb_behind_record = +{0} del récord
+lb_date = FECHA
+lb_country = PAÍS
+lb_no_comment = Sin comentario.
+lb_no_video_btn = SIN VÍDEO
+lb_watch_video_btn = VER VÍDEO
+lb_open_in_btn = ABRIR EN {0}
+lb_profile = PERFIL
+lb_no_video_tip = Esta run no tiene vídeo
+lb_watch_video = Ver vídeo
+lb_open_in = Abrir en {0}
+lb_browser = el navegador
+lb_loading_video = Cargando vídeo…
+lb_video_failed = No se pudo reproducir este vídeo.
+lb_chapter = Capítulo {0}
+lb_today = hoy
+lb_yesterday = ayer
+lb_days_ago = hace {0} días
+lb_month_ago = hace 1 mes
+lb_months_ago = hace {0} meses
+lb_year_ago = hace 1 año
+lb_years_ago = hace {0} años
+
+# Shared by the new windows
+video_loading = CARGANDO, ESPERA
+
+# Beginner tutorials
+bt_window_title = Tutoriales para principiantes
+bt_title = TUTORIALES PARA PRINCIPIANTES
+bt_subtitle = Empieza aquí si eres nuevo  ·  4 vídeos cortos
+bt_step_of = Paso {0} de {1}  ·  Esc para volver
+bt_path = RUTA PARA PRINCIPIANTES
+bt_step = PASO {0}
+bt_next_step = SIGUIENTE: PASO {0}
+bt_watched = VISTO
+bt_up_next = EL SIGUIENTE
+bt_watch = VER
+bt_watch_again = VER DE NUEVO
+bt_all_watched = TODO VISTO
+bt_watched_count = {0} / {1} VISTOS
+bt_card1_title = AÑADIR UNA VERSIÓN INSTALADA
+bt_card1_desc = Registra una versión del juego que ya tienes en tu PC para que el launcher pueda abrirla.
+bt_card2_title = INSTALAR UN DEPOT AUTOMÁTICAMENTE
+bt_card2_desc = Descarga una versión antigua con SteamCMD: el launcher hace todos los pasos por ti.
+bt_card3_title = INSTALAR UN DEPOT MANUALMENTE
+bt_card3_desc = Descarga tú mismo una versión antigua desde la consola de Steam y luego añádela aquí.
+bt_card4_title = ABRIR EL CARGADOR DE CHECKPOINTS
+bt_card4_desc = Carga cualquier checkpoint en el juego con un atajo para practicar una parte una y otra vez.
+
+# Report a skip
+rs_window_title = Reportar un skip
+rs_title = REPORTAR UN SKIP
+rs_subtitle = Sugiere un skip o glitch para la lista
+rs_err_name = Escribe el nombre del skip.
+rs_err_config = Los reportes aún no están configurados. Inténtalo más tarde.
+rs_sent_message = ¡Reporte enviado! Gracias.
+rs_send = Enviar reporte
+rs_sending = Enviando...
+rs_sent = Enviado
+rs_section_skip = EL SKIP
+rs_skip_name = NOMBRE DEL SKIP
+rs_chapter = CAPÍTULO
+rs_version = VERSIÓN
+rs_section_categories = CATEGORÍAS
+rs_run_category = CATEGORÍA DE RUN
+rs_add_run_category = Añadir una categoría de run personalizada
+rs_route = RUTA
+rs_restrictions = RESTRICCIONES
+rs_cores = Usa un exploit de núcleos / hardware
+rs_section_details = DETALLES
+rs_video_url = URL DEL VÍDEO
+rs_author = AUTOR / DESCUBIERTO POR
+rs_description = DESCRIPCIÓN
+
+# Skips and glitches
+vt_window_title = Skips y glitches
+vt_title = SKIPS Y GLITCHES
+vt_report_tip = Reporta un skip que falte en esta lista
+vt_select_video = Selecciona un vídeo
+vt_bad_url = No se pudo leer la URL de este vídeo.
+vt_no_video = Ningún vídeo seleccionado
+vt_video_by = Vídeo de {0}
+vt_all = Todo
+vt_chapter = CAPÍTULO
+vt_category = CATEGORÍA
+vt_run_categories = CATEGORÍAS DE RUN
+vt_run_category = CATEGORÍA DE RUN
+vt_version = VERSIÓN
+vt_route = RUTA
+vt_restrictions = RESTRICCIONES
+vt_loading = Cargando...
+vt_no_videos = No hay vídeos configurados.
+vt_no_results = Sin resultados.
+vt_search_placeholder = Buscar vídeos... (@autor)
+
+# Hand Mods (menu)
+hm_step_chapter = CAPÍTULO
+hm_step_chapter_n = CAPÍTULO {0}
+hm_step_version = VERSIÓN
+hm_step_install = INSTALAR
+hm_step_mod = MOD
+hm_mod_count = {0} MODS
+hm_mod_count_one = {0} MOD
+hm_installed_count = {0} INSTALADOS
+hm_installed = INSTALADO
+hm_install = Instalar
+hm_uninstall = Desinstalar
+hm_installing = Instalando…
+hm_removing = Quitando…
+hm_unavailable = no disponible
+hm_retry = Reintentar
+hm_done = Listo
+hm_continue = Continuar
+hm_submit_card_sub = Comparte tus propias manos — se revisan antes de aparecer aquí
+hm_no_paks = No se encontró la carpeta Content\Paks de esta versión.
+hm_which_version = ¿QUÉ VERSIÓN RECIBE LAS MANOS?
+hm_no_version = No hay ninguna versión instalada de este capítulo.
+hm_no_version_hint = Instala una desde el menú de versiones primero.
+hm_hint_hub = Elige un capítulo para ver sus mods de manos
+hm_hint_versions = Los mods se instalan en la carpeta Paks de esa versión
+hm_hint_submit = Cada envío se revisa a mano
+hm_legend_info = info
+hm_legend_preview = vista previa
+hm_legend_single = manos sueltas
+hm_load_failed = No se pudieron cargar los mods
+hm_fetching = CARGANDO MODS…
+hm_none = Aún no hay mods de manos para este capítulo
+hm_none_hint = ¿Hiciste uno? Compártelo desde el menú con Enviar un Hand Mod.
+hm_info_failed = No se pudo ver la info de {0}:\nLa descarga falló.
+hm_info_changes = {0} cambia: {1}
+hm_info_no_color = {0} aún no ha indicado el color de su mano.
+hm_preview_failed = No se pudo cargar la vista previa de {0}:\nLa descarga falló.
+hm_extras_failed = No se pudieron cargar los extras de {0}:\nLa descarga falló.
+hm_extras_none = {0} no incluye opciones de manos sueltas.
+hm_downloading = Descargando… {0}%
+hm_installing_files = Instalando archivos…
+hm_install_success = {0} se instaló correctamente.
+hm_install_download_failed = Error al instalar el mod:\nLa descarga falló.
+hm_install_extract_failed = Error al instalar el mod:\nNo se pudieron extraer los archivos.
+hm_extras_title = MANOS SUELTAS
+hm_extras_hint = Cada una solo reemplaza el color de su propia mano
+hm_hand_count = {0} manos
+hm_hand_count_one = {0} mano
+hm_hand_count_caps = {0} MANOS
+hm_hand_count_one_caps = {0} MANO
+hm_color_installed = {0} instalada
+hm_color_removed = {0} quitada
+hm_color_install_failed = No se pudo instalar {0}
+hm_color_extract_failed = No se pudo extraer {0}
+hm_no_preview = Sin vista previa
+hm_esc_close = Esc  cerrar
+hm_conflict_title = CONFLICTO DE MANOS
+hm_conflict_sub_one = Solo un mod puede cambiar cada mano
+hm_conflict_sub = Solo un mod puede cambiar cada una de estas manos
+hm_conflict_installing = SE INSTALA
+hm_conflict_removed_one = SE QUITARÁ PRIMERO
+hm_conflict_removed = ESTOS SE QUITARÁN PRIMERO
+hm_conflict_keys = Enter  continuar    Esc  cancelar
+hm_mod_files = Archivos del mod
+
+# Loading screen
+loading_unpacking = Desempaquetando los archivos del launcher
+loading_translations = Cargando traducciones
+loading_fonts = Cargando fuentes
+loading_images = Cargando imágenes
+loading_data = Cargando datos del launcher
+loading_ready = Listo

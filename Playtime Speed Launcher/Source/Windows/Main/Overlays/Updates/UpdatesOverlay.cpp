@@ -1,12 +1,16 @@
 #include "Windows/Main/Overlays/Updates/UpdatesOverlay.h"
 #include <algorithm>
+#include <cmath>
 #include "Core/Async.h"
 #include "Core/Text.h"
 #include "Localization/Localization.h"
 #include "Services/App/AppVersion.h"
+#include "Services/App/VersionCompare.h"
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/Controls.h"
 #include "UI/Widgets/ScrollArea.h"
+#include "UI/Widgets/Stagger.h"
+#include "Windows/Main/Common/ChangelogLook.h"
 #include "Windows/Main/Common/MentionText.h"
 #include "Windows/Main/MainWindow.h"
 #include "Windows/Standalone/StandaloneWindows.h"
@@ -17,6 +21,11 @@ using namespace UI;
 namespace U = Services::Updates;
 
 namespace {
+
+// What's new cards
+constexpr float kNewsPadX = 16.f, kNewsHeaderH = 46.f, kNewsGap = 10.f;
+constexpr float kNewsTagH = 22.f, kNewsIndent = 18.f, kNewsLineGap = 6.f, kNewsSectionGap = 14.f;
+constexpr float kNewsText = 12.f;
 
 // Big "icon + title + message" banner button (status, GameBanana).
 bool Banner(Ui& ui, Id id, Column& col, wchar_t glyph, const std::wstring& title, const std::wstring& message, Color background,
@@ -43,6 +52,12 @@ bool Banner(Ui& ui, Id id, Column& col, wchar_t glyph, const std::wstring& title
 void UpdatesOverlay::Open() {
     installView = false;
     popup.Open();
+}
+
+void UpdatesOverlay::ShowInstall(bool gameBanana) {
+    installView = true;
+    installGb = gameBanana;
+    newsSource.clear();   // rebuilt (and folded back to "newest open") on the next frame
 }
 
 void UpdatesOverlay::Check() {
@@ -102,8 +117,7 @@ void UpdatesOverlay::DrawCheckView(Ui& ui, Column& col) {
         if (info->isUpdateAvailable) {
             if (Banner(ui, ui.MakeId("updates-status"), col, 0xE896, Loc::Get("updates_available_title"),
                        Loc::Fmt("updates_available_msg", L"v" + info->latestVersion), Rgba(46, 125, 50), true)) {
-                installView = true;
-                installGb = false;
+                ShowInstall(false);
             }
         } else if (!info->latestVersion.empty() && info->latestVersion == AppVersion::CurrentVersion) {
             Banner(ui, ui.MakeId("updates-status"), col, 0xE930, Loc::Get("updates_up_to_date_title"), Loc::Get("updates_up_to_date_msg"),
@@ -115,8 +129,7 @@ void UpdatesOverlay::DrawCheckView(Ui& ui, Column& col) {
         if (!info->isUpdateAvailable && gb && gb->isUpdateAvailable) {
             if (Banner(ui, ui.MakeId("updates-gb"), col, 0xE774, Loc::Get("updates_gb_title"), Loc::Fmt("updates_gb_msg", L"v" + gb->latestVersion),
                        Hex(0xF4821A), true, false)) {
-                installView = true;
-                installGb = true;
+                ShowInstall(true);
             }
         }
         if (info->isUpdateAvailable) {
@@ -169,15 +182,196 @@ void UpdatesOverlay::DrawInstallView(Ui& ui, const Rect& body) {
     g.Text(Loc::Fmt("updates_install_subtitle", file, Text::FileSize(fileSize)), { x, top + titleH, head.R() - x - 16.f, subH }, Palette::Muted,
            Mono(11.f).Ellipsis());
 
-    // What's new (Margin 12,8,12,4, Padding 12)
-    const Rect box{ body.x + 12.f, head.B() + 8.f, body.w - 24.f, body.B() - head.B() - 12.f };
-    g.FillRound(box, 4.f, Palette::HeaderBg);
-    g.FillRect({ box.x + 4.f, box.B() - 1.f, box.w - 8.f, 1.f }, Palette::Divider);
+    // What's new: "NOVEDADES" · "3 new versions · v4.0.0 → v4.1.1", then one folding card per version
     const float labelH = g.Measure(L"Ag", Mono(10.f, true)).h;
-    g.Text(Loc::Get("updates_whats_new"), { box.x + 12.f, box.y + 12.f, box.w - 24.f, labelH }, Palette::Teal, Mono(10.f, true));
-    const Rect text{ box.x + 12.f, box.y + 12.f + labelH + 8.f, box.w - 24.f, box.B() - 12.f - (box.y + 12.f + labelH + 8.f) };
-    ScrollArea scroll(ui, ui.MakeId("updates-changelog"), text, false, 48.f, ScrollArea::Bar::Classic);
-    scroll.SetContentSize(MentionText(ui, ui.MakeId("updates-mentions"), text.x, text.y, scroll.ContentWidth(), changelog, 12.f, Palette::Label));
+    const Rect label{ body.x + 16.f, head.B() + 12.f, body.w - 32.f, labelH };
+    g.Text(Loc::Get("updates_whats_new"), label, Palette::Teal, Mono(10.f, true));
+    const Rect list{ body.x + 12.f, label.B() + 10.f, body.w - 24.f, body.B() - label.B() - 14.f };
+    const Id scrollId = ui.MakeId("updates-changelog");
+    if (changelog != newsSource) ScrollArea::ScrollTo(ui, scrollId, 0.f);
+    ScrollArea scroll(ui, scrollId, list, false, 48.f, ScrollArea::Bar::Classic);
+    const float listW = scroll.ContentWidth() - 4.f;
+    if (changelog != newsSource || std::abs(listW - newsWidth) > 0.5f || newsLang != Loc::Revision())
+        BuildNews(ui, changelog, useGb ? gb->latestVersion : info->latestVersion, listW);
+    if (!news.empty()) {
+        const std::wstring from = L"v" + AppVersion::CurrentVersion, to = L"v" + news.front().entry.version;
+        const std::wstring summary = news.size() > 1 ? Loc::Fmt("updates_news_summary", static_cast<int>(news.size()), from, to)
+                                                     : from + L"  \x2192  " + to;
+        g.Text(summary, label, Palette::Muted, Mono(10.f).Right());
+    }
+    float y = list.y;
+    for (size_t i = 0; i < news.size(); ++i) {
+        StaggerItem in(ui, newsShownAt, static_cast<int>(i), 0.f, 14.f);
+        y += DrawNewsCard(ui, i, list.x, y, listW) + kNewsGap;
+    }
+    scroll.SetContentSize(y - list.y);
+}
+
+// Only the versions after the installed one (up to the one being installed). A changelog without
+// version lines, or one that doesn't list them, still shows: as the new version's notes.
+void UpdatesOverlay::BuildNews(Ui& ui, const std::wstring& text, const std::wstring& latest, float width) {
+    const auto all = Services::Changelog::Parse(text, latest);
+    std::vector<Services::Changelog::Entry> kept;
+    for (const auto& e : all)
+        if (Versions::IsNewer(AppVersion::CurrentVersion, e.version) && !Versions::IsNewer(latest, e.version)) kept.push_back(e);
+    // Versions the published file doesn't list (an older single-version changelog.txt) come from
+    // the changelog built into this launcher, when it has them
+    for (const auto& e : Services::Changelog::Entries()) {
+        if (!Versions::IsNewer(AppVersion::CurrentVersion, e.version) || Versions::IsNewer(latest, e.version)) continue;
+        if (std::none_of(kept.begin(), kept.end(), [&](const auto& k) { return k.version == e.version; })) kept.push_back(e);
+    }
+    std::sort(kept.begin(), kept.end(), [](const auto& a, const auto& b) { return Versions::IsNewer(b.version, a.version); });
+    if (kept.empty())
+        for (const auto& e : all)
+            if (e.version == latest) kept.push_back(e);
+    if (kept.empty() && !all.empty()) kept.push_back(all.front());
+
+    const float textW = width - kNewsPadX * 2.f - kNewsIndent;
+    news.clear();
+    for (auto& entry : kept) {
+        NewsCard card;
+        card.entry = std::move(entry);
+        float cy = 12.f;
+        for (const auto& change : card.entry.changes) {
+            if (change.rfind(L"## ", 0) == 0) {
+                if (!card.sections.empty()) cy += kNewsSectionGap - kNewsLineGap;
+                card.sections.push_back({ change.substr(3), cy, {} });
+                cy += kNewsTagH + 8.f;
+                continue;
+            }
+            if (card.sections.empty()) card.sections.push_back({ L"", cy, {} });
+            NewsLine line;
+            line.text = change;
+            line.mentions = change.find(L'@') != std::wstring::npos;
+            line.y = cy;
+            line.h = line.mentions ? MentionText(ui, 0, 0.f, 0.f, textW, change, kNewsText, Palette::Label, false)
+                                   : ui.g.Measure(change, Mono(kNewsText).Wrap().Top(), textW).h;
+            cy += line.h + kNewsLineGap;
+            card.sections.back().lines.push_back(std::move(line));
+        }
+        card.bodyH = cy - kNewsLineGap + 16.f;
+        news.push_back(std::move(card));
+    }
+    // A new changelog: only the newest version starts open
+    if (text != newsSource) {
+        newsOpen.assign(news.size(), false);
+        if (!newsOpen.empty()) newsOpen[0] = true;
+        newsShownAt = ui.Time();
+    }
+    newsSource = text;
+    newsWidth = width;
+    newsLang = Loc::Revision();
+}
+
+// Header (chevron · version · NEW · per-section counts ······ date), click to fold / unfold; the
+// body grows open with the sections and their changes. Returns the card's current height.
+float UpdatesOverlay::DrawNewsCard(Ui& ui, size_t index, float x, float y, float w) {
+    auto& g = ui.g;
+    const NewsCard& card = news[index];
+    const bool newest = index == 0;
+    const int id = static_cast<int>(index);
+    const float open = ui.Animate(ui.MakeId("upd-news-open", id), newsOpen[index] ? 1.f : 0.f, 12.f);
+    const float h = kNewsHeaderH + card.bodyH * open;
+    const Rect r{ x, y, w, h };
+    const Rect header{ x, y, w, kNewsHeaderH };
+
+    const Interaction it = ui.Interact(ui.MakeId("upd-news-head", id), header);
+    if (it.hovered) ui.SetCursor(IDC_HAND);
+    if (it.clicked) newsOpen[index] = !newsOpen[index];
+    const float hover = ui.Animate(ui.MakeId("upd-news-hover", id), it.hovered ? 1.f : 0.f, 14.f);
+    const Color accent = newest ? Hex(0x00CCAA) : Hex(0x3A6A8A);
+    const Color bg = newest ? Lerp(Rgba(0, 38, 34), Rgba(0, 48, 42), hover) : Lerp(Rgba(9, 20, 30), Rgba(13, 28, 42), hover);
+    const Color border = newest ? Rgba(0, 204, 170, static_cast<int>(110 + 70 * hover)) : Lerp(Rgba(19, 44, 64), Rgba(40, 80, 110), hover);
+    if (newest) g.GlowRound(r, 8.f, Hex(0x00CCAA), 18.f, 0.2f + 0.12f * hover);
+    g.Border(r, 8.f, bg, border, 1.f);
+
+    // ── Header ──
+    const float cy = header.CY();
+    {
+        const float cx = x + 22.f;
+        g.PushTransform(D2D1::Matrix3x2F::Rotation(90.f * open, D2D1::Point2F(cx, cy)));
+        Glyph(ui, 0xE76C, { cx - 8.f, cy - 8.f, 16.f, 16.f }, 10.f, Lerp(accent, Colors::White, 0.2f * hover));   // chevron right
+        g.PopTransform();
+    }
+    float px = x + 40.f;
+    const std::wstring version = L"v" + card.entry.version;
+    const TextStyle versionStyle = Mono(15.f, true);
+    const float versionW = g.Measure(version, versionStyle).w + 2.f;
+    g.Text(version, { px, header.y, versionW, header.h }, newest ? Hex(0x00CCAA) : Rgba(200, 220, 235), versionStyle);
+    px += versionW + 10.f;
+    if (newest) {
+        const std::wstring pill = Loc::Get("updates_news_latest");
+        const TextStyle pillStyle = Mono(9.f, true);
+        const float pw = g.Measure(pill, pillStyle).w + 16.f;
+        const Rect pr{ px, cy - 10.f, pw, 20.f };
+        g.Border(pr, 10.f, Rgba(0, 204, 170, 40), Rgba(0, 204, 170, 140), 1.f);
+        g.Text(pill, pr, Hex(0x00CCAA), TextStyle(pillStyle).Center());
+        px += pw + 10.f;
+    }
+    // Date on the right (calendar glyph before it)
+    float right = header.R() - kNewsPadX;
+    if (!card.entry.date.empty()) {
+        const TextStyle dateStyle = Mono(11.f);
+        const float dateW = g.Measure(card.entry.date, dateStyle).w + 2.f;
+        g.Text(card.entry.date, { right - dateW, header.y, dateW, header.h }, Rgba(90, 130, 160), dateStyle);
+        Glyph(ui, 0xE787, { right - dateW - 22.f, header.y, 16.f, header.h }, 12.f, Rgba(90, 130, 160));
+        right -= dateW + 30.f;
+    }
+    // How many changes of each kind (+6  ✎3  🔧2 ...), as far as they fit
+    const TextStyle countStyle = Mono(10.f, true);
+    for (const auto& section : card.sections) {
+        if (section.title.empty() || section.lines.empty()) continue;
+        const auto look = ChangelogLook::ForSection(section.title);
+        const std::wstring count = std::to_wstring(section.lines.size());
+        const float cw = 8.f + 12.f + 4.f + g.Measure(count, countStyle).w + 8.f;
+        if (px + cw > right) break;
+        const Rect chip{ px, cy - 10.f, cw, 20.f };
+        g.Border(chip, 10.f, look.color.WithAlpha(0.1f), look.color.WithAlpha(0.35f), 1.f);
+        Glyph(ui, look.glyph, { chip.x + 7.f, chip.y, 12.f, chip.h }, 9.f, look.color);
+        g.Text(count, { chip.x + 23.f, chip.y, cw - 23.f, chip.h }, look.color, countStyle);
+        ui.Tooltip(ui.MakeId("upd-news-chip", id * 64 + static_cast<int>(&section - card.sections.data())), section.title);
+        px += cw + 6.f;
+    }
+
+    // ── Body (clipped while it folds) ──
+    if (open > 0.01f) {
+        const Rect bodyR{ x, header.B(), w, h - kNewsHeaderH };
+        g.PushClip(bodyR);
+        g.PushOpacity(std::min(1.f, open * 1.4f));
+        g.FillRect({ x + kNewsPadX, header.B(), w - kNewsPadX * 2.f, 1.f }, accent.WithAlpha(0.18f));
+        const float textX = x + kNewsPadX + kNewsIndent;
+        const float textW = w - kNewsPadX * 2.f - kNewsIndent;
+        const float lineH = g.Measure(L"Ag", Mono(kNewsText)).h;
+        for (size_t s = 0; s < card.sections.size(); ++s) {
+            const auto& section = card.sections[s];
+            const auto look = ChangelogLook::ForSection(section.title);
+            if (!section.title.empty()) {
+                const TextStyle tagStyle = Mono(9.5f, true);
+                std::wstring tagText = section.title;
+                std::transform(tagText.begin(), tagText.end(), tagText.begin(), ::towupper);
+                const float tw = g.Measure(tagText, tagStyle).w;
+                const Rect tag{ x + kNewsPadX, header.B() + section.y, tw + 34.f, kNewsTagH };
+                g.Border(tag, 5.f, look.color.WithAlpha(0.14f), look.color.WithAlpha(0.45f), 1.f);
+                Glyph(ui, look.glyph, { tag.x + 8.f, tag.y, 14.f, tag.h }, 10.f, look.color);
+                g.Text(tagText, { tag.x + 25.f, tag.y, tw + 4.f, tag.h }, look.color, tagStyle);
+            }
+            for (size_t i = 0; i < section.lines.size(); ++i) {
+                const auto& line = section.lines[i];
+                const float ly = header.B() + line.y;
+                if (ly > bodyR.B()) break;
+                g.FillEllipse(x + kNewsPadX + 5.f, ly + lineH * 0.5f + 0.5f, 2.6f, 2.6f, look.color.WithAlpha(0.85f));
+                if (line.mentions)
+                    MentionText(ui, HashId(static_cast<int64_t>(s * 1000 + i), ui.MakeId("upd-news-line", id)), textX, ly, textW, line.text,
+                                kNewsText, Palette::Label);
+                else
+                    ChangelogLook::DrawLine(g, line.text, { textX, ly, textW, line.h + 2.f }, kNewsText, look.color);
+            }
+        }
+        g.PopLayer();
+        g.PopClip();
+    }
+    if (open > 0.001f && open < 0.999f) ui.KeepAnimating();
+    return h;
 }
 
 void UpdatesOverlay::DrawFooter(Ui& ui, const Rect& footer) {

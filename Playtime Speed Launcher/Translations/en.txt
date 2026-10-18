@@ -2,6 +2,7 @@
 
 # Main buttons
 play_button = PLAY CHAPTER
+play_button_mp = PLAY
 settings_tooltip = Settings
 back = BACK
 add_install = ADD
@@ -33,6 +34,14 @@ ch5_title = BROKEN THINGS
 ch5_desc = Venture even deeper into the horrifying depths of the factory as Huggy Wuggy, Playtime's security system, hunts you down.
 ch6_title = COMING SOON
 ch6_desc = Coming Soon
+
+# Main screen tabs / multiplayer games
+section_chapters = CHAPTERS
+section_multiplayers = MULTIPLAYERS
+mp_pp_title = PROJECT PLAYTIME
+mp_pp_desc = Free multiplayer horror: six players team up to build a giant toy in the factory while a seventh player hunts them down as one of the monsters.
+mp_efp_title = ESCAPE FROM PLAYTIME
+mp_efp_desc = The next Poppy Playtime multiplayer game. It isn't out yet.
 patch = Patch
 
 # Versions overlay
@@ -219,7 +228,9 @@ updates_details_label = NEW VERSION DETAILS
 updates_latest_version = Latest version:
 updates_file_name = File name:
 updates_file_size = File size:
-updates_whats_new = WHAT'S NEW:
+updates_whats_new = WHAT'S NEW
+updates_news_latest = NEW
+updates_news_summary = {0} new versions  ·  {1}  →  {2}
 updates_install_ready = Version {0} ready to install
 updates_install_subtitle = {0}  |  {1}
 updates_download_btn = DOWNLOAD & UPDATE
@@ -417,7 +428,21 @@ legacy_hours_title = Sorry about this
 legacy_hours_message = We moved your per-chapter hours to the cloud so they can no longer be wiped by an interrupted update or a bad write. Unfortunately your previously tracked hours couldn't be carried over and will be reset to zero. We're sorry for the inconvenience.
 
 # Epic Games
-epic_not_found_content = Could not find the Poppy Playtime Epic Games installation.\n\nSelect the PoppyPlaytimeChapterOne folder inside your Epic Games installation.
+epic_not_found_content = We couldn't find the Epic Games install of Poppy Playtime on this PC.
+epic_not_found_heading = NOT FOUND
+epic_not_found_sub = Poppy Playtime · Epic Games
+epic_not_found_pick = SELECT THIS FOLDER
+epic_not_found_hint = The folder that contains it works too.
+epic_search_heading = SEARCHING EPIC GAMES
+epic_search_sub = Looking for PoppyPlaytimeChapterOne...
+epic_search_step_manifests = Epic Games Launcher library
+epic_search_step_drives = Scanning your drives
+epic_search_current = NOW READING
+epic_search_folders = folders checked
+epic_search_again = Search again
+epic_search_found = FOUND!
+epic_search_found_sub = Poppy Playtime is ready on Epic Games
+epic_search_found_label = INSTALLED IN
 epic_no_exe_error = No Poppy Playtime executables were found in the selected folder.
 version_auto_epic = Automatic Epic Games version
 
@@ -543,3 +568,178 @@ bug_report_err_discord_required = Connect your Discord account first — anonymo
 # UE4SS
 ue4ss_remap_hint = UE4SS active — temporary key remapping:
 ue4ss_remap_keys = F1 → Tutorials      F2 → Checkpoints
+
+# Leaderboards
+lb_title = LEADERBOARDS
+lb_subtitle = top 10 per category
+lb_loading_categories = Loading categories from speedrun.com…
+lb_load_failed = Couldn't load the speedrun.com data.
+lb_no_runs = No runs submitted yet.
+lb_world_record = WORLD RECORD
+lb_behind_record = +{0} behind the record
+lb_date = DATE
+lb_country = COUNTRY
+lb_no_comment = No comment.
+lb_no_video_btn = NO VIDEO
+lb_watch_video_btn = WATCH VIDEO
+lb_open_in_btn = OPEN IN {0}
+lb_profile = PROFILE
+lb_no_video_tip = This run has no video
+lb_watch_video = Watch video
+lb_open_in = Open in {0}
+lb_browser = the browser
+lb_loading_video = Loading video…
+lb_video_failed = This video couldn't be played.
+lb_chapter = Chapter {0}
+lb_today = today
+lb_yesterday = yesterday
+lb_days_ago = {0} days ago
+lb_month_ago = 1 month ago
+lb_months_ago = {0} months ago
+lb_year_ago = 1 year ago
+lb_years_ago = {0} years ago
+
+# Shared by the new windows
+video_loading = LOADING, PLEASE WAIT
+
+# Beginner tutorials
+bt_window_title = Beginner Tutorials
+bt_title = BEGINNER TUTORIALS
+bt_subtitle = Start here if you're new  ·  4 short videos
+bt_step_of = Step {0} of {1}  ·  Esc to go back
+bt_path = BEGINNER PATH
+bt_step = STEP {0}
+bt_next_step = NEXT: STEP {0}
+bt_watched = WATCHED
+bt_up_next = UP NEXT
+bt_watch = WATCH
+bt_watch_again = WATCH AGAIN
+bt_all_watched = ALL WATCHED
+bt_watched_count = {0} / {1} WATCHED
+bt_card1_title = ADD AN INSTALLED VERSION
+bt_card1_desc = Register a game version you already have on your PC so the launcher can play it.
+bt_card2_title = INSTALL A DEPOT AUTOMATICALLY
+bt_card2_desc = Download an old version with SteamCMD: the launcher does every step for you.
+bt_card3_title = INSTALL A DEPOT MANUALLY
+bt_card3_desc = Download an old version yourself from the Steam console, then add it here.
+bt_card4_title = OPEN THE CHECKPOINT LOADER
+bt_card4_desc = Load any checkpoint in-game with a hotkey to practise a section again and again.
+
+# Report a skip
+rs_window_title = Report a Skip
+rs_title = REPORT A SKIP
+rs_subtitle = Suggest a skip or glitch for the list
+rs_err_name = Please enter the skip's name.
+rs_err_config = Reporting isn't configured yet. Try again later.
+rs_sent_message = Report sent! Thank you.
+rs_send = Send Report
+rs_sending = Sending...
+rs_sent = Sent
+rs_section_skip = THE SKIP
+rs_skip_name = SKIP NAME
+rs_chapter = CHAPTER
+rs_version = VERSION
+rs_section_categories = CATEGORIES
+rs_run_category = RUN CATEGORY
+rs_add_run_category = Add a custom run category
+rs_route = ROUTE
+rs_restrictions = RESTRICTIONS
+rs_cores = Uses core / hardware exploit
+rs_section_details = DETAILS
+rs_video_url = VIDEO URL
+rs_author = AUTHOR / DISCOVERED BY
+rs_description = DESCRIPTION
+
+# Skips and glitches
+vt_window_title = Skips and Glitches
+vt_title = SKIPS AND GLITCHES
+vt_report_tip = Report a skip that's missing from this list
+vt_select_video = Select a video
+vt_bad_url = Could not read this video's URL.
+vt_no_video = No video selected
+vt_video_by = Video by {0}
+vt_all = All
+vt_chapter = CHAPTER
+vt_category = CATEGORY
+vt_run_categories = RUN CATEGORIES
+vt_run_category = RUN CATEGORY
+vt_version = VERSION
+vt_route = ROUTE
+vt_restrictions = RESTRICTIONS
+vt_loading = Loading...
+vt_no_videos = No videos configured.
+vt_no_results = No results.
+vt_search_placeholder = Search videos... (@author)
+
+# Hand Mods (menu)
+hm_step_chapter = CHAPTER
+hm_step_chapter_n = CHAPTER {0}
+hm_step_version = VERSION
+hm_step_install = INSTALL
+hm_step_mod = MOD
+hm_mod_count = {0} MODS
+hm_mod_count_one = {0} MOD
+hm_installed_count = {0} INSTALLED
+hm_installed = INSTALLED
+hm_install = Install
+hm_uninstall = Uninstall
+hm_installing = Installing…
+hm_removing = Removing…
+hm_unavailable = unavailable
+hm_retry = Retry
+hm_done = Done
+hm_continue = Continue
+hm_submit_card_sub = Share your own hands — they're reviewed before showing up here
+hm_no_paks = No Content\Paks folder found for this version.
+hm_which_version = WHICH VERSION GETS THE HANDS?
+hm_no_version = No installed version found for this chapter.
+hm_no_version_hint = Install one from the versions menu first.
+hm_hint_hub = Pick a chapter to browse its hand mods
+hm_hint_versions = Mods are installed into that version's Paks folder
+hm_hint_submit = Every submission is reviewed by hand
+hm_legend_info = info
+hm_legend_preview = preview
+hm_legend_single = single hands
+hm_load_failed = Failed to load mods
+hm_fetching = FETCHING MODS…
+hm_none = No hand mods for this chapter yet
+hm_none_hint = Made one? Share it from the hub with Submit a Hand Mod.
+hm_info_failed = Couldn't check {0}'s info:\nThe download failed.
+hm_info_changes = {0} changes: {1}
+hm_info_no_color = {0} hasn't declared its hand color yet.
+hm_preview_failed = Couldn't load {0}'s preview:\nThe download failed.
+hm_extras_failed = Couldn't load {0}'s extras:\nThe download failed.
+hm_extras_none = {0} doesn't ship any individual hand options.
+hm_downloading = Downloading… {0}%
+hm_installing_files = Installing files…
+hm_install_success = {0} installed successfully.
+hm_install_download_failed = Error installing mod:\nThe download failed.
+hm_install_extract_failed = Error installing mod:\nCould not extract the files.
+hm_extras_title = INDIVIDUAL HANDS
+hm_extras_hint = Each one only replaces its own hand colour
+hm_hand_count = {0} hands
+hm_hand_count_one = {0} hand
+hm_hand_count_caps = {0} HANDS
+hm_hand_count_one_caps = {0} HAND
+hm_color_installed = {0} installed
+hm_color_removed = {0} removed
+hm_color_install_failed = Couldn't install {0}
+hm_color_extract_failed = Couldn't extract {0}
+hm_no_preview = No preview available
+hm_esc_close = Esc  close
+hm_conflict_title = HAND CONFLICT
+hm_conflict_sub_one = Only one mod can change each hand
+hm_conflict_sub = Only one mod can change each of these hands
+hm_conflict_installing = INSTALLING
+hm_conflict_removed_one = WILL BE REMOVED FIRST
+hm_conflict_removed = THESE WILL BE REMOVED FIRST
+hm_conflict_keys = Enter  continue    Esc  cancel
+hm_mod_files = Mod files
+
+# Loading screen
+loading_unpacking = Unpacking launcher files
+loading_translations = Loading translations
+loading_fonts = Loading fonts
+loading_images = Loading images
+loading_data = Loading launcher data
+loading_ready = Ready

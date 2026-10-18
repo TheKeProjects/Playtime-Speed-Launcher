@@ -30,7 +30,7 @@ std::wstring CurrentStamp() {
 
 } // namespace
 
-void Extract() {
+void Extract(const std::function<void(size_t done, size_t total)>& progress) {
     const std::wstring temp = Paths::TempDir();
     const std::wstring stampFile = Files::Combine(temp, L".extracted");
     const std::wstring stamp = CurrentStamp();
@@ -38,7 +38,11 @@ void Extract() {
     if (!sameBuild) Files::DeleteDirectory(temp);
     Files::CreateDirectories(temp);
 
+    const size_t total = std::size(kEmbeddedAssets);
+    size_t done = 0;
     for (const auto& asset : kEmbeddedAssets) {
+        if (progress) progress(done, total);
+        ++done;
         const void* data = nullptr;
         DWORD size = 0;
         if (!ResourceBytes(asset.id, data, size)) continue;
@@ -64,6 +68,18 @@ void Extract() {
         Files::WriteBytes(dest, data, size);
     }
     Files::WriteText(stampFile, stamp);
+    if (progress) progress(total, total);
+}
+
+std::optional<std::string> ReadEmbedded(const std::wstring& root, const std::wstring& path) {
+    for (const auto& asset : kEmbeddedAssets) {
+        if (!Text::Equals(asset.root, root, true) || !Text::Equals(asset.path, path, true)) continue;
+        const void* data = nullptr;
+        DWORD size = 0;
+        if (!ResourceBytes(asset.id, data, size)) return std::nullopt;
+        return std::string(static_cast<const char*>(data), size);
+    }
+    return std::nullopt;
 }
 
 void CleanupSaves() { Files::DeleteDirectory(Paths::SavesDir()); }

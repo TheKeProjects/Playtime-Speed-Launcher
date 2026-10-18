@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include "Core/Async.h"
+#include "Seasonal/SeasonalCardArt.h"
 #include "Seasonal/SeasonalTheme.h"
 #include "UI/Style.h"
 #include "UI/Widgets/Button.h"
@@ -15,6 +16,7 @@ namespace SpeedrunLauncher::Dialogs {
 namespace {
 
 constexpr float kTitleH = 48.f, kButtonsH = 52.f;
+constexpr float kDecorH = 36.f;   // transparent strip above seasonal dialogs for the edge decorations
 constexpr Edges kContentPadding{ 20.f, 16.f, 20.f, 16.f };
 
 class DialogWindow : public UI::Window {
@@ -23,7 +25,6 @@ public:
         : owner(ownerWindow), options(std::move(opts)), content(std::move(drawContent)), done(std::move(onDone)) {}
 
     bool Open() {
-        Dialogs::Options o = options;
         UI::Window::Options w;
         w.title = options.title;
         w.style = WS_POPUP;
@@ -32,9 +33,21 @@ public:
         w.width = static_cast<int>(options.contentWidth + kContentPadding.H() + 2.f);
         w.height = 200;
         w.showCommand = SW_HIDE;
+        // Seasonal decorations rest on the dialog's top edge and stick out above it: a transparent
+        // strip on top of the window holds them
+        decor = options.seasonal && Seasonal::IsSeasonal() ? kDecorH : 0.f;
+        w.transparent = decor > 0.f;
         if (!Create(w)) return false;
         if (owner) EnableWindow(owner, FALSE);
         SetContinuous(options.live);
+        if (options.seasonal) {
+            g.SetColorFilter(&Seasonal::Filter);   // follows the seasonal theme like the main window
+            // Seasonal particles: idle frames at 30 fps (input / live dialogs still at full rate)
+            if (decor > 0.f && !options.live) {
+                SetContinuous(true, true);
+                SetIdleFps(30.0);
+            }
+        }
         Layout(200.f);
         Show(SW_SHOW);
         Activate();
@@ -42,10 +55,15 @@ public:
     }
 
 protected:
-    Color ClearColor() const override { return Hex(0x09141E); }
+    Color ClearColor() const override { return decor > 0.f ? Colors::Transparent : Hex(0x09141E); }
 
     void OnFrame() override {
-        const float w = g.Width(), h = g.Height();
+        if (decor > 0.f) ui.PushTranslate(0.f, decor);
+        DrawDialog(g.Width(), g.Height() - decor);
+        if (decor > 0.f) ui.PopTransform();
+    }
+
+    void DrawDialog(float w, float h) {
         const bool hasButtons = !options.primary.empty() || !options.secondary.empty() || !options.close.empty();
         g.FillRect({ 0, 0, w, h }, Hex(0x09141E));
 
@@ -54,6 +72,10 @@ protected:
         g.FillRect(title, Hex(0x060F18));
         g.FillRect({ title.x, title.B() - 1.f, title.w, 1.f }, Hex(0x0D2030));
         g.Text(options.title, title.Inset(Edges{ 20.f, 0.f }), Hex(0x00CCAA), UI::Mono(14.f, true));
+
+        // Seasonal particles behind the content
+        const Rect body{ 1.f, title.B(), w - 2.f, h - title.B() - 1.f - (hasButtons ? kButtonsH : 0.f) };
+        if (decor > 0.f) Seasonal::CardArt::DrawPanelParticles(g, body, 0.f, ui.Time(), 0.5f);
 
         // Content
         const Rect area{ kContentPadding.l, kTitleH + 1.f + kContentPadding.t, options.contentWidth, 10000.f };
@@ -96,8 +118,10 @@ protected:
         }
         // Outer border
         g.StrokeRect({ 0, 0, w, h }, Rgba(21, 48, 72), 1.f);
+        // Season decorations resting on the dialog's top edge
+        if (decor > 0.f) Seasonal::CardArt::DrawPanelEdge(g, { 0.f, 0.f, w, h }, ui.Time());
 
-        const float wanted = kTitleH + 1.f + kContentPadding.V() + contentH + (hasButtons ? kButtonsH : 0.f) + 2.f;
+        const float wanted = decor + kTitleH + 1.f + kContentPadding.V() + contentH + (hasButtons ? kButtonsH : 0.f) + 2.f;
         if (std::abs(wanted - g.Height()) > 0.5f) {
             Layout(wanted);
             Invalidate();
@@ -162,6 +186,7 @@ private:
     Content content;
     std::function<void(Result)> done;
     bool finished = false;
+    float decor = 0.f;   // height of the transparent decorations strip (0 = none)
 };
 
 std::vector<std::unique_ptr<DialogWindow>>& Open() {

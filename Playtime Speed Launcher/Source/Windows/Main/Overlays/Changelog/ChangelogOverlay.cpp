@@ -8,6 +8,7 @@
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/ScrollArea.h"
 #include "UI/Widgets/Stagger.h"
+#include "Windows/Main/Common/ChangelogLook.h"
 #include "Windows/Main/Common/MentionText.h"
 #include "Windows/Main/MainWindow.h"
 
@@ -33,23 +34,6 @@ constexpr float kTextSize = 12.f;
 
 TextStyle LineStyle() { return Mono(kTextSize).Wrap().Top(); }
 
-struct SectionLook {
-    Color color;
-    wchar_t glyph;   // Segoe MDL2 Assets
-};
-
-SectionLook Look(int kind) {
-    switch (kind) {
-        case 0: return { Rgba(46, 204, 140), 0xE710 };    // Additions: + (Add)
-        case 1: return { Rgba(255, 152, 72), 0xE90F };    // Bug Fixes: wrench (Repair)
-        case 2: return { Rgba(110, 168, 240), 0xE946 };   // Other: (i) (Info)
-        case 3: return { Rgba(186, 140, 255), 0xE790 };   // Redesigns: palette (Color)
-        case 4: return { Rgba(255, 196, 64), 0xE706 };    // Seasonal Themes: sun (Brightness)
-        case 5: return { Rgba(80, 206, 236), 0xE945 };    // Performance: lightning bolt
-        default: return { Hex(0x00CCAA), 0xE73E };        // anything else: check mark
-    }
-}
-
 } // namespace
 
 void ChangelogOverlay::Open() {
@@ -72,13 +56,6 @@ void ChangelogOverlay::BuildLayout(Ui& ui, float width) {
             if (change.rfind(L"## ", 0) == 0) {
                 Section s;
                 s.title = change.substr(3);
-                s.kind = s.title == L"Additions" ? SectionKind::Additions
-                         : s.title == L"Bug Fixes" ? SectionKind::Fixes
-                         : s.title == L"Other" ? SectionKind::Other
-                         : s.title == L"Redesigns" ? SectionKind::Redesigns
-                         : s.title == L"Seasonal Themes" ? SectionKind::Themes
-                         : s.title == L"Performance" ? SectionKind::Performance
-                                                     : SectionKind::Generic;
                 if (!card.sections.empty()) cy += kSectionGap - kLineGap;
                 s.y = cy;
                 cy += kTagH + 8.f;
@@ -143,7 +120,7 @@ void ChangelogOverlay::DrawCard(Ui& ui, const Card& card, float x, float y, floa
     const float textW = r.w - kCardPadX * 2.f - kBulletIndent;
     for (size_t s = 0; s < card.sections.size(); ++s) {
         const auto& section = card.sections[s];
-        const SectionLook look = Look(static_cast<int>(section.kind));
+        const auto look = ChangelogLook::ForSection(section.title);
         if (!section.title.empty()) {
             const TextStyle tagStyle = Mono(9.5f, true);
             std::wstring label = section.title;
@@ -163,7 +140,7 @@ void ChangelogOverlay::DrawCard(Ui& ui, const Card& card, float x, float y, floa
                 MentionText(ui, HashId(static_cast<int64_t>(s * 1000 + i), ui.MakeId("changelog-line", index)), textX, ly, textW, line.text,
                             kTextSize, Palette::Label);
             else
-                g.Text(line.text, { textX, ly, textW, line.h + 2.f }, Palette::Label, LineStyle());
+                ChangelogLook::DrawLine(g, line.text, { textX, ly, textW, line.h + 2.f }, kTextSize, look.color);
         }
     }
 }

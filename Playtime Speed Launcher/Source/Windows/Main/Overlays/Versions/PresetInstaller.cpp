@@ -199,6 +199,7 @@ void PresetInstaller::ShowError(const std::wstring& message) {
     Dialogs::Options o;
     o.title = Loc::Get("error_title");
     o.close = Loc::Get("close");
+    o.seasonal = true;
     Dialogs::ShowText(Owner(), o, message, Rgba(160, 180, 200));
 }
 
@@ -224,6 +225,7 @@ void PresetInstaller::Install(const Models::ChapterPreset& preset, int chapterNu
     o.secondary = Loc::Get("install_mode_manual_btn");
     o.close = Loc::Get("cancel");
     o.contentWidth = 420.f;
+    o.seasonal = true;
     const std::wstring command = preset.Command();
     Dialogs::Show(Owner(), o, [command](Ui& ui, const Rect& area) {
         Column col(area);
@@ -269,6 +271,7 @@ void PresetInstaller::StartManual(const Models::ChapterPreset& preset, int chapt
     o.primaryMinWidth = 160.f;
     o.close = Loc::Get("cancel");
     o.contentWidth = 480.f;
+    o.seasonal = true;
     o.primaryEnabled = [accepted] { return *accepted; };
     Dialogs::Show(Owner(), o, [=](Ui& ui, const Rect& area) {
         Column col(area);
@@ -302,6 +305,7 @@ void PresetInstaller::StartManual(const Models::ChapterPreset& preset, int chapt
         wait.primary = Loc::Get("steamguard_phone_continue");
         wait.close = Loc::Get("cancel");
         wait.contentWidth = 360.f;
+        wait.seasonal = true;
         Dialogs::ShowText(Owner(), wait, Loc::Get("install_manual_waiting"), text, [=](Dialogs::Result w) {
             if (w == Dialogs::Result::Primary) LocateDepot(preset, chapterNumber, std::nullopt);
         });
@@ -318,6 +322,7 @@ void PresetInstaller::AcquireSteamCmd(std::function<void(std::optional<std::wstr
     o.secondary = Loc::Get("steamcmd_find");
     o.close = Loc::Get("cancel");
     o.contentWidth = 440.f;
+    o.seasonal = true;
     Dialogs::Show(Owner(), o, [](Ui& ui, const Rect& area) {
         Column col(area);
         SteamCmdHero(ui, col, Glyphs::Download, Loc::Get("steamcmd_hero_sub"), 14.f);
@@ -343,6 +348,7 @@ void PresetInstaller::AcquireSteamCmd(std::function<void(std::optional<std::wstr
         p.title = Loc::Get("downloading_steamcmd_title");
         p.close = Loc::Get("cancel");
         p.contentWidth = 400.f;
+        p.seasonal = true;
         p.live = true;
         const int progress = Dialogs::Show(Owner(), p, [state](Ui& ui, const Rect& area) { return DrawSteamCmdDownload(ui, area, *state); },
                                            [state](Dialogs::Result) { state->cancel.Request(); });
@@ -415,6 +421,7 @@ void PresetInstaller::PromptCredentials(const Models::ChapterPreset& preset,
     o.primary = Loc::Get("start_download");
     o.close = Loc::Get("cancel");
     o.contentWidth = 440.f;
+    o.seasonal = true;
     Dialogs::Show(Owner(), o, [state, command, suggested](Ui& ui, const Rect& area) {
         Column col(area);
         P::Label(ui, col, Loc::Get("credentials_version_label"), 11.f, kDim, false, 6.f);
@@ -507,6 +514,7 @@ void PresetInstaller::RunSteamCmd(const Models::ChapterPreset& preset, int chapt
         o.primary = Loc::Get("understood");
         o.close = Loc::Get("cancel");
         o.contentWidth = 300.f;
+        o.seasonal = true;
         const auto result = Dialogs::ShowBlocking(dialogOwner, o, [code](Ui& ui, const Rect& area) {
             Column col(area);
             P::Label(ui, col, Loc::Get("steamguard_code_label"), 11.f, Rgba(160, 190, 220, 200), false, 8.f);

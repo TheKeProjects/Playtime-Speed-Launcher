@@ -19,7 +19,6 @@ public:
     void Open();
 
 private:
-    enum class SectionKind { Additions, Fixes, Other, Redesigns, Themes, Performance, Generic };
     struct Line {
         std::wstring text;
         bool mentions = false;
@@ -27,7 +26,6 @@ private:
     };
     struct Section {
         std::wstring title;       // empty: lines before any "## " header
-        SectionKind kind = SectionKind::Generic;
         float y = 0.f;            // tag position, relative to the card
         std::vector<Line> lines;
     };

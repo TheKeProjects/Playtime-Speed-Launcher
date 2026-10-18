@@ -30,6 +30,19 @@ TextStyle DescriptionStyle() {
 
 void ChapterInfoPanel::Refresh() {
     auto& l = App::L();
+    if (l.InMultiplayers()) {
+        // Multiplayer games: Steam only, no versions
+        const auto& game = l.SelectedMultiplayer();
+        title = Loc::Get("mp_" + game.key + "_title");
+        description = Loc::Get("mp_" + game.key + "_desc");
+        version.clear();
+        canPlay = game.IsInstalled();
+        running = canPlay && !Process::FindByName(Files::FileNameWithoutExtension(*game.gameExePath)).empty();
+        status = running ? Loc::Get("status_playing")
+                 : canPlay ? Loc::Get("status_installed")
+                 : game.isAvailable ? Loc::Get("status_not_found") : Loc::Get("status_coming_soon");
+        return;
+    }
     const auto& ch = l.Selected();
     const std::string n = std::to_string(ch.number);
     title = Loc::Get("ch" + n + "_title");
@@ -103,11 +116,13 @@ void ChapterInfoPanel::DrawContent(UI::Ui& ui, const Rect& area, const Seasonal:
     const float titleW = g.Measure(title, titleStyle).w;
     const float statusW = g.Measure(status, statusStyle).w;
     const float versionW = g.Measure(version, versionStyle).w + 6.f + 10.f + 20.f + 2.f;   // text + chevron + Padding 10,4 + border
-    const float platformW = g.Measure(platformText, platformStyle).w + 20.f + 2.f;
+    // Multiplayer games are Steam only: no version or platform buttons
+    const bool multiplayer = l.InMultiplayers();
+    const float platformW = multiplayer ? 0.f : g.Measure(platformText, platformStyle).w + 20.f + 2.f;
     const float rowH = std::max(g.Measure(L"Ag", titleStyle).h, 30.f);
     // Chapters that aren't out yet (chapter 6) have no versions to pick: no button
-    const bool canPickVersion = l.Selected().isAvailable;
-    const float total = titleW + 14.f + statusW + 14.f + (canPickVersion ? versionW + 8.f : 0.f) + platformW;
+    const bool canPickVersion = !multiplayer && l.Selected().isAvailable;
+    const float total = titleW + 14.f + statusW + (multiplayer ? 0.f : 14.f) + (canPickVersion ? versionW + 8.f : 0.f) + platformW;
     float x = area.CX() - total * 0.5f;
     const float y = area.y + 10.f;
     const float cy = y + rowH * 0.5f;
@@ -130,7 +145,7 @@ void ChapterInfoPanel::DrawContent(UI::Ui& ui, const Rect& area, const Seasonal:
         if (b.Clicked()) main.OpenVersions();
         x += versionW + 8.f;
     }
-    {
+    if (!multiplayer) {
         const float h = g.Measure(L"Ag", platformStyle).h + 8.f + 2.f;
         UI::ButtonStyle style{ Colors::Transparent, epic ? Rgba(150, 60, 0, 180) : Rgba(26, 58, 85), 1.f, 3.f, { 10.f, 4.f }, 0.f, h };
         if (UI::TextButton(ui, ui.MakeId("platformBtn"), { x, cy - h * 0.5f, platformW, h }, platformText, platformStyle,

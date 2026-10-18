@@ -28,7 +28,7 @@ private:
     void Send();
     void BeginClose();
     // A section card: caption on top, rows drawn by `draw` into the card's column.
-    void SectionCard(UI::Column& col, int index, wchar_t glyph, const wchar_t* title, const std::function<void(UI::Column&)>& draw);
+    void SectionCard(UI::Column& col, int index, wchar_t glyph, const std::wstring& title, const std::function<void(UI::Column&)>& draw);
     void RefreshOptions();
 
     // The pill options come from the ~200-video catalogue: built once, and again only when the

@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "App/Launcher.h"
 #include "UI/Window.h"
 #include "Windows/Main/MainScreen/ChapterCards.h"
 #include "Windows/Main/MainScreen/ChapterInfoPanel.h"
@@ -48,6 +49,8 @@ public:
 
     // ── Actions used by the screen and the overlays ──
     void SelectChapter(int index);
+    void SelectMultiplayer(int index);
+    void SelectSection(App::Launcher::Section section);   // Chapters / Multiplayers tabs
     void RefreshInfo();                 // status / version / mod buttons after anything changed
     void ApplyLanguage();
     void ApplySeasonalPalette();        // after the icon theme changes

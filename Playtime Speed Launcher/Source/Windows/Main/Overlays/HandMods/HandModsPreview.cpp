@@ -9,6 +9,7 @@
 #include "UI/Widgets/Stagger.h"
 #include "Windows/Main/Overlays/HandMods/HandModsKit.h"
 #include "Windows/Main/Overlays/HandMods/HandModsOverlay.h"
+#include "Localization/Localization.h"
 
 namespace SpeedrunLauncher::Main {
 
@@ -111,7 +112,7 @@ void HandModsOverlay::DrawPreview(Ui& ui, const Rect& screenRect) {
     Badge(ui, header.x + 32.f, header.CY(), 17.f, L"\x270B", Mono(15.f).WithFont(Font::Ui).Center(), Palette::Teal);
     const float tx = header.x + 60.f;
     g.Text(viewer.mod.name, { tx, header.y + 10.f, header.w - 140.f, 20.f }, kText, Mono(13.f, true).Ellipsis());
-    g.Text(std::to_wstring(n) + (n == 1 ? L" HAND" : L" HANDS") + L"  \x00B7  " + Text::FileSize(viewer.mod.size),
+    g.Text(Loc::Fmt(n == 1 ? "hm_hand_count_one_caps" : "hm_hand_count_caps", n) + L"  \x00B7  " + Text::FileSize(viewer.mod.size),
            { tx, header.y + 30.f, header.w - 140.f, 16.f }, kSub, Mono(9.f, true));
     const ButtonStyle round{ Palette::ButtonBg, Palette::ButtonBorder, 1.f, 16.f, { 0.f }, 0.f, 32.f };
     if (TextButton(ui, ui.MakeId("hand-viewer-close"), { header.R() - 16.f - 32.f, header.CY() - 16.f, 32.f, 32.f }, L"\x2715",
@@ -128,7 +129,7 @@ void HandModsOverlay::DrawPreview(Ui& ui, const Rect& screenRect) {
     if (sw < 1.f) ui.KeepAnimating();
     if (n == 0) {
         g.Text(std::wstring(1, Glyphs::Image), stageR.Offset(0.f, -16.f), Palette::Muted, IconFont(34.f));
-        g.Text(L"No preview available", stageR.Offset(0.f, 30.f), kSub, Mono(11.f, true).Center());
+        g.Text(Loc::Get("hm_no_preview"), stageR.Offset(0.f, 30.f), kSub, Mono(11.f, true).Center());
     } else {
         // Hovering the stage zooms the picture in a little
         const bool overStage = interactive && ui.MouseOver(stageR);
@@ -204,11 +205,11 @@ void HandModsOverlay::DrawPreview(Ui& ui, const Rect& screenRect) {
     g.FillRect({ footer.x, footer.y, footer.w, 1.f }, Palette::Divider);
     const Rect row = footer.Inset(16.f, 0.f);
     if (n > 1) g.Text(L"\x2190 \x2192  browse    Esc  close", { row.x, row.y, 260.f, row.h }, kFaint, Mono(9.f));
-    else g.Text(L"Esc  close", { row.x, row.y, 260.f, row.h }, kFaint, Mono(9.f));
+    else g.Text(Loc::Get("hm_esc_close"), { row.x, row.y, 260.f, row.h }, kFaint, Mono(9.f));
     const TextStyle text = Mono(11.f, true).Center();
-    const float closeW = ButtonWidth(ui, L"Close", text, Styles::Footer());
+    const float closeW = ButtonWidth(ui, Loc::Get("close"), text, Styles::Footer());
     float bx = row.R() - closeW;
-    if (TextButton(ui, ui.MakeId("hand-viewer-footer-close"), { bx, row.CY() - 18.f, closeW, 36.f }, L"Close", text, Palette::Dim, Styles::Footer()) &&
+    if (TextButton(ui, ui.MakeId("hand-viewer-footer-close"), { bx, row.CY() - 18.f, closeW, 36.f }, Loc::Get("close"), text, Palette::Dim, Styles::Footer()) &&
         interactive)
         ClosePreview();
     // Installed already? Install straight from here otherwise
@@ -219,14 +220,14 @@ void HandModsOverlay::DrawPreview(Ui& ui, const Rect& screenRect) {
             if ((*mods)[i].baseName == viewer.mod.baseName) installedNow = flags[i];
     }
     if (installedNow) {
-        const float w = PillWidth(g, L"INSTALLED");
-        Pill(g, bx - 12.f - w, row.CY(), L"INSTALLED", kGreen, true);
+        const float w = PillWidth(g, Loc::Get("hm_installed"));
+        Pill(g, bx - 12.f - w, row.CY(), Loc::Get("hm_installed"), kGreen, true);
     } else if (paks) {
         const ButtonStyle s = Styles::Confirm(120.f);
-        const float w = ButtonWidth(ui, L"Install", text, s);
+        const float w = ButtonWidth(ui, Loc::Get("hm_install"), text, s);
         const Rect b{ bx - 10.f - w, row.CY() - 18.f, w, 36.f };
         g.GlowRound(b, 3.f, Palette::Teal, 14.f, 0.25f);
-        if (TextButton(ui, ui.MakeId("hand-viewer-install"), b, L"Install", text, Palette::Teal, s) && interactive) {
+        if (TextButton(ui, ui.MakeId("hand-viewer-install"), b, Loc::Get("hm_install"), text, Palette::Teal, s) && interactive) {
             const HM::Mod mod = viewer.mod;
             ClosePreview();
             StartInstall(mod);

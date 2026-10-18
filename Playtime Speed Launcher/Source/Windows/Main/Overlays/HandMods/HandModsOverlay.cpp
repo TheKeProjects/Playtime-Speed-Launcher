@@ -60,8 +60,8 @@ void HandModsOverlay::ShowMessage(const std::wstring& message) {
 void HandModsOverlay::DrawSteps(Ui& ui, const Rect& r) {
     auto& g = ui.g;
     const int active = screen == Screen::Hub ? 0 : screen == Screen::Versions ? 1 : 2;
-    const std::wstring labels[] = { chapter > 0 && active > 0 ? L"CHAPTER " + std::to_wstring(chapter) : L"CHAPTER", L"VERSION",
-                                    screen == Screen::Installing ? L"INSTALL" : L"MOD" };
+    const std::wstring labels[] = { chapter > 0 && active > 0 ? Loc::Fmt("hm_step_chapter_n", chapter) : Loc::Get("hm_step_chapter"), Loc::Get("hm_step_version"),
+                                    screen == Screen::Installing ? Loc::Get("hm_step_install") : Loc::Get("hm_step_mod") };
     g.FillRect({ r.x, r.B() - 1.f, r.w, 1.f }, Palette::Divider);
 
     const float x0 = r.x + 70.f, x1 = r.R() - 70.f, cy = r.y + 16.f;
@@ -117,7 +117,7 @@ void HandModsOverlay::DrawHub(Ui& ui, Column& col) {
         const float tx = num.R() + 20.f + 3.f * c.hover;
         float right = c.r.R() - 30.f;
         if (auto it = cache.find(n); it != cache.end()) {
-            const std::wstring count = std::to_wstring(it->second.size()) + (it->second.size() == 1 ? L" MOD" : L" MODS");
+            const std::wstring count = Loc::Fmt(it->second.size() == 1 ? "hm_mod_count_one" : "hm_mod_count", it->second.size());
             right -= PillWidth(g, count);
             Pill(g, right, c.r.CY(), count, Palette::Teal);
             right -= 8.f;
@@ -148,7 +148,7 @@ void HandModsOverlay::DrawHub(Ui& ui, Column& col) {
     if (!text.empty() && text[0] == L'\x2795') text = text.substr(text.size() > 1 && text[1] == L' ' ? 2 : 1);   // the badge already is the "+"
     const float tx = bx + 30.f;
     g.Text(text, { tx, c.r.y + 14.f, c.r.R() - tx - 30.f, 18.f }, kGreen, Mono(11.f, true));
-    g.Text(L"Share your own hands \x2014 they're reviewed before showing up here", { tx, c.r.y + 33.f, c.r.R() - tx - 30.f, 16.f }, kSub,
+    g.Text(Loc::Get("hm_submit_card_sub"), { tx, c.r.y + 33.f, c.r.R() - tx - 30.f, 16.f }, kSub,
            Mono(9.f).Ellipsis());
     Chevron(g, c.r, c.hover, kGreen);
     if (c.it.clicked) OpenSubmit();
@@ -159,7 +159,7 @@ void HandModsOverlay::DrawHub(Ui& ui, Column& col) {
 void HandModsOverlay::SelectVersion(const std::wstring& exePath) {
     const auto found = App::Launcher::FindWin64Dir(Files::DirectoryName(exePath));
     if (!found) {
-        ShowMessage(L"No Content\\Paks folder found for this version.");
+        ShowMessage(Loc::Get("hm_no_paks"));
         return;
     }
     win64 = found;
@@ -187,14 +187,14 @@ void HandModsOverlay::DrawVersions(Ui& ui, Column& col) {
     const float labelH = g.Measure(L"Ag", Mono(10.f, true)).h;
     {
         StaggerItem in(ui, screenChangedAt, 0, 0.f, 8.f, 0.0, 0.3);
-        g.Text(L"WHICH VERSION GETS THE HANDS?  \x00B7  " + ChapterName(chapter), col.Next(labelH, 10.f), kSub, Mono(10.f, true).Ellipsis());
+        g.Text(Loc::Get("hm_which_version") + L"  \x00B7  " + ChapterName(chapter), col.Next(labelH, 10.f), kSub, Mono(10.f, true).Ellipsis());
     }
     if (rows.empty()) {
         StaggerItem in(ui, screenChangedAt + 0.06, 0, 0.f, 12.f, 0.0, 0.4);
         const Rect r = col.Next(120.f);
         Badge(ui, r.CX(), r.y + 34.f, 22.f, std::wstring(1, Glyphs::Warning), IconFont(16.f), Palette::Warning);
-        g.Text(L"No installed version found for this chapter.", { r.x, r.y + 68.f, r.w, 18.f }, kSub, Mono(11.f).Center());
-        g.Text(L"Install one from the versions menu first.", { r.x, r.y + 88.f, r.w, 16.f }, kFaint, Mono(9.f).Center());
+        g.Text(Loc::Get("hm_no_version"), { r.x, r.y + 68.f, r.w, 18.f }, kSub, Mono(11.f).Center());
+        g.Text(Loc::Get("hm_no_version_hint"), { r.x, r.y + 88.f, r.w, 16.f }, kFaint, Mono(9.f).Center());
         return;
     }
     for (size_t i = 0; i < rows.size(); ++i) {
@@ -296,14 +296,14 @@ void HandModsOverlay::Draw(Ui& ui, const Rect& screenRect) {
 
         // Footer: a hint on the left, Close on the right
         const Rect row = frame.footer.Inset(16.f, 0.f);
-        const wchar_t* hint = screen == Screen::Hub         ? L"Pick a chapter to browse its hand mods"
-                              : screen == Screen::Versions  ? L"Mods are installed into that version's Paks folder"
-                              : screen == Screen::Submit    ? L"Every submission is reviewed by hand"
-                                                            : L"";
+        const std::wstring hint = screen == Screen::Hub         ? Loc::Get("hm_hint_hub")
+                                  : screen == Screen::Versions  ? Loc::Get("hm_hint_versions")
+                                  : screen == Screen::Submit    ? Loc::Get("hm_hint_submit")
+                                                                : std::wstring();
         if (screen == Screen::Mods) {
             // Legend with the real icons
             float x = row.x;
-            const struct { wchar_t glyph; const wchar_t* label; } legend[] = { { 0xE946, L"info" }, { 0xEB9F, L"preview" }, { 0xE8B7, L"single hands" } };
+            const struct { wchar_t glyph; std::wstring label; } legend[] = { { 0xE946, Loc::Get("hm_legend_info") }, { 0xEB9F, Loc::Get("hm_legend_preview") }, { 0xE8B7, Loc::Get("hm_legend_single") } };
             for (const auto& item : legend) {
                 g.Text(std::wstring(1, item.glyph), { x, row.y, 14.f, row.h }, kFaint, IconFont(10.f));
                 x += 18.f;
@@ -311,12 +311,12 @@ void HandModsOverlay::Draw(Ui& ui, const Rect& screenRect) {
                 g.Text(item.label, { x, row.y, w, row.h }, kFaint, Mono(9.f));
                 x += w + 14.f;
             }
-        } else if (*hint) {
+        } else if (!hint.empty()) {
             g.Text(hint, { row.x, row.y, row.w - 140.f, row.h }, kFaint, Mono(9.f).Ellipsis());
         }
         const TextStyle text = Mono(11.f, true).Center();
-        const float w = ButtonWidth(ui, L"Close", text, Styles::Footer());
-        if (TextButton(ui, ui.MakeId("hand-close"), { row.R() - w, row.CY() - 18.f, w, 36.f }, L"Close", text, Palette::Dim, Styles::Footer())) {
+        const float w = ButtonWidth(ui, Loc::Get("close"), text, Styles::Footer());
+        if (TextButton(ui, ui.MakeId("hand-close"), { row.R() - w, row.CY() - 18.f, w, 36.f }, Loc::Get("close"), text, Palette::Dim, Styles::Footer())) {
             discord.CancelAuth();
             infoOpen = false;
             viewer = {};

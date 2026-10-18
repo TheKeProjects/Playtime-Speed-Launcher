@@ -34,7 +34,7 @@ void Draw(UI::Ui& ui, MainWindow& main, const Rect& area) {
     const float top = area.y + 4.f;
     const float cy = top + kSize * 0.5f;
 
-    const std::wstring playText = Loc::Get("play_button");
+    const std::wstring playText = Loc::Get(App::L().InMultiplayers() ? "play_button_mp" : "play_button");
     const TextStyle playStyle = UI::Mono(15.f, true);
     const float playContentW = 16.f + 10.f + g.Measure(playText, playStyle).w;
     const float playW = std::max(260.f, playContentW + 40.f);

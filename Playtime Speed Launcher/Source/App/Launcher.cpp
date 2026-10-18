@@ -21,6 +21,8 @@ Launcher& Launcher::Get() {
 
 void Launcher::Initialize() {
     chapters = Models::Chapter::All();
+    multiplayers = Models::MultiplayerGame::All();
+    multiplayerRunning.assign(multiplayers.size(), false);
     store = Services::InstallationsStore::Load();
     gameRunning.assign(chapters.size(), false);
     runningPid.assign(chapters.size(), 0);
@@ -72,6 +74,12 @@ const Models::Chapter* Launcher::RunningChapter() const {
 
 bool Launcher::AnyGameRunning() const {
     for (bool running : gameRunning)
+        if (running) return true;
+    return false;
+}
+
+bool Launcher::AnyMultiplayerRunning() const {
+    for (bool running : multiplayerRunning)
         if (running) return true;
     return false;
 }

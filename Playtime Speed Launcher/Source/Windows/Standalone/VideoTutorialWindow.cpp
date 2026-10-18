@@ -10,6 +10,7 @@
 #include "UI/Widgets/Controls.h"
 #include "Windows/Standalone/ReportSkipWindow.h"
 #include "UI/Widgets/Panel.h"
+#include "Localization/Localization.h"
 
 namespace SpeedrunLauncher::Windows {
 
@@ -23,7 +24,7 @@ bool VideoTutorialWindow::Open() {
     MONITORINFO mi{ sizeof(mi) };
     GetMonitorInfoW(MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY), &mi);
     UI::Window::Options o;
-    o.title = L"Skips and Glitches";
+    o.title = Loc::Get("vt_window_title");
     o.style = WS_POPUP | WS_CLIPCHILDREN;
     o.exStyle = WS_EX_TOOLWINDOW;
     o.transparent = true;
@@ -38,7 +39,7 @@ bool VideoTutorialWindow::Open() {
     }
     SetWindowPos(hwnd, HWND_TOPMOST, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left,
                  mi.rcMonitor.bottom - mi.rcMonitor.top, 0);
-    player.Create(hwnd, { true, L"Select a video", Rgba(26, 58, 85) });
+    player.Create(hwnd, { true, Loc::Get("vt_select_video"), Rgba(26, 58, 85) });
     player.onOpened = [this] { loadingId.clear(); };
     player.onFailed = [this] {
         loadingId.clear();
@@ -55,7 +56,7 @@ void VideoTutorialWindow::Select(const Video& video) {
     current = nullptr;
     const auto id = VT::ExtractVideoId(video.url);
     if (!id) {
-        player.ShowError(L"Could not read this video's URL.");
+        player.ShowError(Loc::Get("vt_bad_url"));
         return;
     }
     current = &video;
@@ -68,7 +69,7 @@ float VideoTutorialWindow::DrawInfo(const Rect& area) {
     const Video* v = nullptr;
     for (const auto& video : VT::All())
         if (video.id == selectedId) v = &video;
-    std::wstring title = L"No video selected", category, description;
+    std::wstring title = Loc::Get("vt_no_video"), category, description;
     if (v) {
         title = v->title;
         if (!v->runCategories.empty()) {
@@ -76,8 +77,8 @@ float VideoTutorialWindow::DrawInfo(const Rect& area) {
             const std::wstring rest = v->restrictions.empty() ? L"" : L"  \x00B7  " + v->restrictions;
             category = Text::Upper(v->chapter + L"  \x00B7  " + Text::Join(v->runCategories, L", ") + ver + rest);
             description = v->author.empty() ? v->description
-                          : v->description.empty() ? L"Video by " + v->author
-                                                   : L"Video by " + v->author + L"  \x00B7  " + v->description;
+                          : v->description.empty() ? Loc::Fmt("vt_video_by", v->author)
+                                                   : Loc::Fmt("vt_video_by", v->author) + L"  \x00B7  " + v->description;
         } else {
             category = Text::Upper(v->chapter + L"  \x00B7  " + v->category);
             description = v->description;
@@ -120,7 +121,7 @@ void VideoTutorialWindow::OnFrame() {
     g.FillRect({ header.x, header.B(), header.w, 1.f }, Palette::Divider);
     const Rect row = header.Inset(16.f, 0.f);
     g.FillRound({ row.x, row.CY() - 4.f, 8.f, 8.f }, 4.f, Palette::Teal);
-    g.Text(L"SKIPS AND GLITCHES", row.CutLeft(18.f), Palette::Teal, Mono(13.f, true));
+    g.Text(Loc::Get("vt_title"), row.CutLeft(18.f), Palette::Teal, Mono(13.f, true));
     const ButtonStyle smallButton{ Palette::ButtonBg, Palette::ButtonBorder, 1.f, 4.f, { 0.f }, 0.f, 28.f };
     if (TextButton(ui, ui.MakeId("close"), { row.R() - 28.f, row.CY() - 14.f, 28.f, 28.f }, L"\x2715", Mono(12.f, true).WithFont(Font::Ui).Center(),
                    Palette::Dim, smallButton)) {
@@ -129,7 +130,7 @@ void VideoTutorialWindow::OnFrame() {
     }
     const bool reportClicked = TextButton(ui, ui.MakeId("report"), { row.R() - 28.f - 8.f - 28.f, row.CY() - 14.f, 28.f, 28.f }, L"+",
                                           Mono(14.f, true).WithFont(Font::Ui).Center(), Palette::Teal, smallButton);
-    ui.Tooltip(ui.MakeId("report"), L"Report a skip that's missing from this list");
+    ui.Tooltip(ui.MakeId("report"), Loc::Get("vt_report_tip"));
     if (reportClicked) {
         report = std::make_unique<ReportSkipWindow>();
         auto* raw = report.get();

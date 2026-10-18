@@ -11,6 +11,7 @@
 #include "Windows/Main/MainWindow.h"
 #include "Windows/Main/Overlays/HandMods/HandModsKit.h"
 #include "Windows/Main/Overlays/HandMods/HandModsOverlay.h"
+#include "Localization/Localization.h"
 
 namespace SpeedrunLauncher::Main {
 
@@ -23,7 +24,7 @@ namespace {
 constexpr double kDownloadFloor = 1.5;     // seconds
 constexpr unsigned kInstallHoldMs = 700;   // extraction is near-instant: keep the text readable
 
-std::wstring Downloading(int percent) { return L"Downloading\x2026 " + std::to_wstring(percent) + L"%"; }
+std::wstring Downloading(int percent) { return Loc::Fmt("hm_downloading", percent); }
 
 } // namespace
 
@@ -46,7 +47,7 @@ void HandModsOverlay::StartInstall(const HM::Mod& mod) {
     }, [this, mod, started](std::optional<std::wstring> zip) {
         if (!zip) {
             install.error = true;
-            install.text = L"Error installing mod:\nThe download failed.";
+            install.text = Loc::Get("hm_install_download_failed");
             install.done = true;
             install.doneAt = Async::Now();
             return;
@@ -76,7 +77,7 @@ void HandModsOverlay::InstallDownloaded(const HM::Mod& mod, const std::wstring& 
         if (_wcsicmp(marker.first.c_str(), mod.baseName.c_str()) != 0 && HM::HandsConflict(hands, marker.second)) conflicting.push_back(marker);
 
     const auto doInstall = [this, dir, zipPath, mod, conflicting] {
-        install.text = L"Installing files\x2026";
+        install.text = Loc::Get("hm_installing_files");
         Async::Run([dir, zipPath, mod, conflicting] {
             for (const auto& c : conflicting) HM::UninstallByBaseName(dir, c.first);
             return HM::Install(dir, zipPath, mod.baseName);
@@ -85,7 +86,7 @@ void HandModsOverlay::InstallDownloaded(const HM::Mod& mod, const std::wstring& 
             Async::After(kInstallHoldMs, [this, mod, ok] {
                 install.progress = 100.f;
                 install.error = !ok;
-                install.text = ok ? L"\x2714 " + mod.name + L" installed successfully." : L"Error installing mod:\nCould not extract the files.";
+                install.text = ok ? L"\x2714 " + Loc::Fmt("hm_install_success", mod.name) : Loc::Get("hm_install_extract_failed");
                 install.done = true;
                 install.doneAt = Async::Now();
             });
@@ -214,10 +215,10 @@ void HandModsOverlay::DrawInstalling(Ui& ui, const Rect& body) {
         y += 22.f + (1.f - rise) * 12.f;
         g.PushOpacity(Anim::Clamp01((since - 0.25f) / 0.25f));
         const ButtonStyle s{ Palette::ConfirmBg, Palette::ConfirmBorder, 1.f, 6.f, { 0.f }, 130.f, 34.f };
-        const float w = ButtonWidth(ui, L"Done", Mono(11.f, true), s);
+        const float w = ButtonWidth(ui, Loc::Get("hm_done"), Mono(11.f, true), s);
         const Rect b{ body.CX() - w * 0.5f, y, w, 34.f };
         if (success) g.GlowRound(b, 6.f, kGreen, 14.f, 0.25f + 0.15f * Anim::PingPong(now, 1.6) * Calm(since, 2.0));
-        const bool clicked = TextButton(ui, ui.MakeId("hand-done"), b, L"Done", Mono(11.f, true).Center(), Palette::Teal, s);
+        const bool clicked = TextButton(ui, ui.MakeId("hand-done"), b, Loc::Get("hm_done"), Mono(11.f, true).Center(), Palette::Teal, s);
         g.PopLayer();
         if (clicked) GoTo(Screen::Mods, -1);
     }

@@ -9,6 +9,7 @@
 #include "UI/Widgets/Stagger.h"
 #include "Windows/Main/Overlays/HandMods/HandModsKit.h"
 #include "Windows/Main/Overlays/HandMods/HandModsOverlay.h"
+#include "Localization/Localization.h"
 
 namespace SpeedrunLauncher::Main {
 
@@ -138,9 +139,9 @@ void HandModsOverlay::DrawConflict(Ui& ui, const Rect& screenRect) {
     }
     {
         NoColorFilter keep(g);
-        g.Text(L"HAND CONFLICT", { header.x + 64.f, header.y + 12.f, header.w - 80.f, 20.f }, kAmber, Mono(13.f, true));
+        g.Text(Loc::Get("hm_conflict_title"), { header.x + 64.f, header.y + 12.f, header.w - 80.f, 20.f }, kAmber, Mono(13.f, true));
     }
-    g.Text(c.hands.size() == 1 ? L"Only one mod can change each hand" : L"Only one mod can change each of these hands",
+    g.Text(c.hands.size() == 1 ? Loc::Get("hm_conflict_sub_one") : Loc::Get("hm_conflict_sub"),
            { header.x + 64.f, header.y + 32.f, header.w - 80.f, 16.f }, kSub, Mono(9.f));
 
     // ── Body ────────────────────────────────────────────────────────────────
@@ -149,7 +150,7 @@ void HandModsOverlay::DrawConflict(Ui& ui, const Rect& screenRect) {
     {
         // What goes in: ✋ name + its hand colours
         StaggerItem in(ui, c.openedAt + 0.08, 0, -16.f, 0.f, 0.0, 0.34);
-        g.Text(L"INSTALLING", { x, y, w, kLabelH }, kGreen, Mono(8.f, true));
+        g.Text(Loc::Get("hm_conflict_installing"), { x, y, w, kLabelH }, kGreen, Mono(8.f, true));
         const Rect r{ x, y + kLabelH + 6.f, w, kRowH };
         g.Border(r, 8.f, kGreen.WithAlpha(0.08f), kGreen.WithAlpha(0.45f), 1.f);
         g.Text(L"\x270B", { r.x + 8.f, r.y, 28.f, r.h }, kGreen, Mono(14.f).WithFont(Font::Ui).Center());
@@ -170,7 +171,7 @@ void HandModsOverlay::DrawConflict(Ui& ui, const Rect& screenRect) {
         g.Text(L"\x2191\x2193", { card.CX() - 24.f, y + bob, 48.f, 26.f }, kAmber, Mono(13.f, true).Center());
     }
     y += 26.f + 10.f;
-    g.Text(removedN == 1 ? L"WILL BE REMOVED FIRST" : L"THESE WILL BE REMOVED FIRST", { x, y, w, kLabelH }, kRemove, Mono(8.f, true));
+    g.Text(removedN == 1 ? Loc::Get("hm_conflict_removed_one") : Loc::Get("hm_conflict_removed"), { x, y, w, kLabelH }, kRemove, Mono(8.f, true));
     y += kLabelH + 6.f;
     for (size_t i = 0; i < removedN; ++i) {
         // What goes out: crossed out one after another
@@ -192,15 +193,15 @@ void HandModsOverlay::DrawConflict(Ui& ui, const Rect& screenRect) {
     g.FillRound(footer, 0.f, 0.f, kRadius - 1.f, kRadius - 1.f, Palette::HeaderBg);
     g.FillRect({ footer.x, footer.y, footer.w, 1.f }, Palette::Divider);
     const Rect row = footer.Inset(16.f, 0.f);
-    g.Text(L"Enter  continue    Esc  cancel", { row.x, row.y, 200.f, row.h }, kFaint, Mono(9.f));
+    g.Text(Loc::Get("hm_conflict_keys"), { row.x, row.y, 200.f, row.h }, kFaint, Mono(9.f));
     const TextStyle text = Mono(11.f, true).Center();
     const ButtonStyle go = Styles::Confirm(120.f);
-    const float goW = ButtonWidth(ui, L"Continue", text, go);
+    const float goW = ButtonWidth(ui, Loc::Get("hm_continue"), text, go);
     const Rect goR{ row.R() - goW, row.CY() - 18.f, goW, 36.f };
     g.GlowRound(goR, 3.f, Palette::Teal, 14.f, 0.22f);
-    if (TextButton(ui, ui.MakeId("hand-conflict-continue"), goR, L"Continue", text, Palette::Teal, go) && interactive) AnswerConflict(true);
-    const float cancelW = ButtonWidth(ui, L"Cancel", text, Styles::Footer());
-    if (TextButton(ui, ui.MakeId("hand-conflict-cancel"), { goR.x - 10.f - cancelW, row.CY() - 18.f, cancelW, 36.f }, L"Cancel", text, Palette::Dim,
+    if (TextButton(ui, ui.MakeId("hand-conflict-continue"), goR, Loc::Get("hm_continue"), text, Palette::Teal, go) && interactive) AnswerConflict(true);
+    const float cancelW = ButtonWidth(ui, Loc::Get("cancel"), text, Styles::Footer());
+    if (TextButton(ui, ui.MakeId("hand-conflict-cancel"), { goR.x - 10.f - cancelW, row.CY() - 18.f, cancelW, 36.f }, Loc::Get("cancel"), text, Palette::Dim,
                    Styles::Footer()) &&
         interactive)
         AnswerConflict(false);

@@ -22,6 +22,8 @@ ImagePtr Load(const std::wstring& path, unsigned maxSide = 2048);
 ImagePtr FromMemory(const std::string& bytes, unsigned maxSide = 2048);
 // Premultiplied BGRA pixels (0xAARRGGBB in memory order B,G,R,A)
 ImagePtr FromPixels(unsigned width, unsigned height, const uint32_t* bgra);
+// Puts an image decoded elsewhere (a worker thread) in the cache, as Load(path, maxSide) would.
+void Store(const std::wstring& path, unsigned maxSide, ImagePtr image);
 void Forget(const std::wstring& path);
 void Clear();
 

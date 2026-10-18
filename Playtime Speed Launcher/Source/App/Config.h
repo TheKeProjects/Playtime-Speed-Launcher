@@ -35,7 +35,7 @@ inline constexpr const wchar_t* Branch = L"main";
 namespace Discord {
 // Application used for Rich Presence and for "Connect with Discord" (OAuth)
 inline constexpr const wchar_t* ClientId = L"ClientId";
-inline constexpr const char* ClientIdUtf8 = "ClientIdUtf8";
+inline constexpr const char* ClientIdUtf8 = "ClientId";
 // OAuth implicit flow: the browser comes back to a local listener
 inline constexpr int OAuthPort = 45678;
 inline constexpr const wchar_t* OAuthRedirectUri = L"http://localhost:45678/callback";

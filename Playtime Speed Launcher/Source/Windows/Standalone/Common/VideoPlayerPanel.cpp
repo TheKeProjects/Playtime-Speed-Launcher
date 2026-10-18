@@ -4,6 +4,7 @@
 #include <cstring>
 #include "UI/Style.h"
 #include "UI/Widgets/Button.h"
+#include "Localization/Localization.h"
 
 namespace SpeedrunLauncher::Windows {
 
@@ -70,7 +71,7 @@ void VideoPlayerPanel::Load(const std::wstring& videoId) {
     hasVideo = true;
     loading = true;
     playing = false;
-    message = L"LOADING, PLEASE WAIT";
+    message = Loc::Get("video_loading");
     messageColor = Rgba(0, 204, 170, 200);
     player.LoadVideo(videoId);
 }

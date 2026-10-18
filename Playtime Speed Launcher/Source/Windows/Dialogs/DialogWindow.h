@@ -21,6 +21,7 @@ struct Options {
     float primaryMinWidth = 100.f;
     std::function<bool()> primaryEnabled;   // e.g. gated by a checkbox in the content
     bool live = false;                      // redraw continuously (progress text / bars)
+    bool seasonal = false;                  // seasonal re-tint, particles and top-edge decorations
 };
 
 // Draws the content inside `area` (top-left anchored) and returns the height it used.

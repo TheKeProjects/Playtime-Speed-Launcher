@@ -4,11 +4,14 @@
 #include <string>
 #include <vector>
 #include "Models/Chapter.h"
+#include "Models/MultiplayerGame.h"
 
 namespace SpeedrunLauncher::Services::SteamDetector {
 
 // Finds each chapter's Steam install (fills gameExePath / detectedVersion). Slow: run on a worker.
 void DetectAll(std::vector<Models::Chapter>& chapters);
+// Same for the multiplayer games (their exe at a fixed path inside each Steam library). Slow too.
+void DetectMultiplayers(std::vector<Models::MultiplayerGame>& games);
 
 // Folder produced by SteamCMD's download_depot (steamapps\content\app_X\depot_Y), or nullopt.
 std::optional<std::wstring> FindDepotDownloadPath(int appId, int depotId, const std::optional<std::wstring>& steamCmdPath);

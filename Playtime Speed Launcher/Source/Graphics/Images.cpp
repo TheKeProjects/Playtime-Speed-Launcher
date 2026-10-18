@@ -98,6 +98,8 @@ ImagePtr FromMemory(const std::string& bytes, unsigned maxSide) {
     return FromPixels(w, h, pixels.data());
 }
 
+void Store(const std::wstring& path, unsigned maxSide, ImagePtr image) { cache[CacheKey(path, maxSide)] = std::move(image); }
+
 void Forget(const std::wstring& path) {
     // Every size of that file
     const std::wstring prefix = path + L'|';

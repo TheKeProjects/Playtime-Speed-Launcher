@@ -35,6 +35,7 @@
 #include "Windows/Main/Overlays/BugReport/BugReportOverlay.h"
 #include "Windows/Main/Overlays/Changelog/ChangelogOverlay.h"
 #include "Windows/Main/Overlays/EasterEgg/EasterEggOverlay.h"
+#include "Windows/Main/Overlays/Epic/EpicLocator.h"
 #include "Windows/Main/Overlays/HandMods/HandModsOverlay.h"
 #include "Windows/Main/Overlays/LiveSplit/LiveSplitOverlay.h"
 #include "Windows/Main/Overlays/Mods/ModPopups.h"
@@ -151,6 +152,15 @@ void MainWindow::StartBackgroundWork() {
         }
         RefreshInfo();
     });
+    Async::Run([] {
+        auto games = App::L().multiplayers;
+        Services::SteamDetector::DetectMultiplayers(games);
+        return games;
+    }, [this](std::vector<Models::MultiplayerGame> detected) {
+        auto& games = App::L().multiplayers;
+        for (size_t i = 0; i < games.size() && i < detected.size(); ++i) games[i].gameExePath = detected[i].gameExePath;
+        RefreshInfo();
+    });
     updates->StartupCheck();
     liveSplit->StartupCheck();
     if (!intro.Start()) HideIntro();
@@ -171,6 +181,21 @@ void MainWindow::SelectChapter(int index) {
     if (index != l.selected) Services::Sfx::Play(Services::Sfx::Chapter);
     l.selected = index;
     if (!l.AnyGameRunning()) l.discord->SetChapterSelected(l.Selected(), l.VersionLabel(l.Selected()));
+    RefreshInfo();
+}
+
+void MainWindow::SelectMultiplayer(int index) {
+    auto& l = App::L();
+    if (index != l.selectedMultiplayer) Services::Sfx::Play(Services::Sfx::Chapter);
+    l.selectedMultiplayer = index;
+    RefreshInfo();
+}
+
+void MainWindow::SelectSection(App::Launcher::Section section) {
+    auto& l = App::L();
+    if (section == l.section) return;
+    Services::Sfx::Play(Services::Sfx::Chapter);
+    l.section = section;
     RefreshInfo();
 }
 
@@ -205,6 +230,12 @@ void MainWindow::ApplyWindowMode() { Invalidate(); }
 
 void MainWindow::PlaySelected() {
     auto& l = App::L();
+    if (l.InMultiplayers()) {
+        const auto& exe = l.SelectedMultiplayer().gameExePath;
+        if (!exe || !Files::Exists(*exe) || !Process::FindByName(Files::FileNameWithoutExtension(*exe)).empty()) return;
+        Process::Open(*exe, L"", Files::DirectoryName(*exe));
+        return;
+    }
     auto& ch = l.Selected();
     auto exe = l.ActiveExePath(ch);
     if (!exe || exe->empty() || !Files::Exists(*exe)) return;
@@ -242,26 +273,8 @@ void MainWindow::TogglePlatform() {
         enable();
         return;
     }
-    if (auto detected = l.epic.TryAutoDetect()) {
-        l.epic.SetBasePath(detected);
-        enable();
-        return;
-    }
-    Dialogs::Options options;
-    options.title = L"Epic Games";
-    options.primary = Loc::Get("select_folder");
-    options.close = Loc::Get("cancel");
-    options.contentWidth = 380.f;
-    Dialogs::Show(hwnd, options, Dialogs::Text(Loc::Get("epic_not_found_content"), Rgba(160, 190, 220, 220), 11.f),
-                  [this, enable](Dialogs::Result result) {
-                      if (result != Dialogs::Result::Primary) return;
-                      const std::wstring picked = System::PickFolder(hwnd, L"");
-                      if (picked.empty()) return;
-                      // Accept PoppyPlaytimeChapterOne itself or its parent folder
-                      const std::wstring sub = Files::Combine(picked, L"PoppyPlaytimeChapterOne");
-                      App::L().epic.SetBasePath(Files::DirectoryExists(sub) ? sub : picked);
-                      enable();
-                  });
+    // Not set up yet: search the drives on a worker behind a "searching" dialog
+    EpicLocator::Start(hwnd, enable);
 }
 
 void MainWindow::Quit() {
@@ -450,7 +463,7 @@ void MainWindow::DrawMainScreen(const Rect& screen) {
     const bool seasonal = Seasonal::IsSeasonal();
     // The seasonal scenery, card decorations and particles animate at ~60 fps. While a game is
     // running they slow down to a stop (and pick up again when it closes).
-    const bool gameRunning = App::L().AnyGameRunning();
+    const bool gameRunning = App::L().AnyGameRunning() || App::L().AnyMultiplayerRunning();
     // Another launcher window on top (skips, tutorials, a report, a dialog): the scenery behind it
     // rests too, so all the drawing time goes to the window being used
     bool ownWindowOnTop = false;

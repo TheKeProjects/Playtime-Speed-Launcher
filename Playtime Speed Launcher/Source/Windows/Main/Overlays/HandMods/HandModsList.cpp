@@ -99,10 +99,10 @@ void HandModsOverlay::DrawMods(Ui& ui, Column& col) {
         const float msgH = g.Measure(loadError, Mono(9.f).Wrap().Center(), col.w - 40.f).h;
         const Rect r = col.Next(150.f + msgH);
         Badge(ui, r.CX(), r.y + 34.f, 22.f, std::wstring(1, Glyphs::Warning), IconFont(16.f), Palette::DangerText);
-        g.Text(L"Failed to load mods", { r.x, r.y + 68.f, r.w, 18.f }, Palette::DangerText, Mono(11.f, true).Center());
+        g.Text(Loc::Get("hm_load_failed"), { r.x, r.y + 68.f, r.w, 18.f }, Palette::DangerText, Mono(11.f, true).Center());
         g.Text(loadError, { r.x + 20.f, r.y + 90.f, r.w - 40.f, msgH }, kSub, Mono(9.f).Wrap().Center());
-        const float w = P::SmallButtonWidth(ui, L"Retry", 90.f);
-        if (P::SmallButton(ui, ui.MakeId("hand-retry"), { r.CX() - w * 0.5f, r.y + 102.f + msgH, w, 28.f }, L"Retry", Palette::Teal)) {
+        const float w = P::SmallButtonWidth(ui, Loc::Get("hm_retry"), 90.f);
+        if (P::SmallButton(ui, ui.MakeId("hand-retry"), { r.CX() - w * 0.5f, r.y + 102.f + msgH, w, 28.f }, Loc::Get("hm_retry"), Palette::Teal)) {
             cache.erase(chapter);
             LoadMods();
             screenChangedAt = now;   // cascade the skeleton in again
@@ -111,7 +111,7 @@ void HandModsOverlay::DrawMods(Ui& ui, Column& col) {
     }
     // Loading: placeholder cards with a light sweeping over them
     if (!mods) {
-        g.Text(L"FETCHING MODS\x2026", col.Next(labelH, 10.f), kSub.Fade(0.6f + 0.4f * Anim::PingPong(now, 1.2)), Mono(10.f, true));
+        g.Text(Loc::Get("hm_fetching"), col.Next(labelH, 10.f), kSub.Fade(0.6f + 0.4f * Anim::PingPong(now, 1.2)), Mono(10.f, true));
         for (int i = 0; i < 4; ++i) {
             StaggerItem in(ui, screenChangedAt + 0.05, i, 0.f, 10.f, 0.06, 0.4);
             const Rect r = col.Next(64.f, 8.f);
@@ -135,8 +135,8 @@ void HandModsOverlay::DrawMods(Ui& ui, Column& col) {
         g.PushTransform(D2D1::Matrix3x2F::Rotation(wave, D2D1::Point2F(r.CX(), r.y + 48.f)));
         g.Text(L"\x270B", { r.CX() - 24.f, r.y + 12.f, 48.f, 48.f }, Palette::Teal, Mono(24.f).WithFont(Font::Ui).Center());
         g.PopTransform();
-        g.Text(L"No hand mods for this chapter yet", { r.x, r.y + 72.f, r.w, 18.f }, kText, Mono(11.f, true).Center());
-        g.Text(L"Made one? Share it from the hub with Submit a Hand Mod.", { r.x, r.y + 94.f, r.w, 16.f }, kSub, Mono(9.f).Center());
+        g.Text(Loc::Get("hm_none"), { r.x, r.y + 72.f, r.w, 18.f }, kText, Mono(11.f, true).Center());
+        g.Text(Loc::Get("hm_none_hint"), { r.x, r.y + 94.f, r.w, 16.f }, kSub, Mono(9.f).Center());
         if (calm > 0.f) ui.KeepAnimatingThrottled();
         return;
     }
@@ -149,10 +149,10 @@ void HandModsOverlay::DrawMods(Ui& ui, Column& col) {
     {
         StaggerItem in(ui, screenChangedAt, 0, 0.f, 8.f, 0.0, 0.3);
         const Rect r = col.Next(labelH, 10.f);
-        const std::wstring summary = std::to_wstring(list.size()) + (list.size() == 1 ? L" MOD" : L" MODS") + L"  \x00B7  " + ChapterTitle(chapter);
+        const std::wstring summary = Loc::Fmt(list.size() == 1 ? "hm_mod_count_one" : "hm_mod_count", list.size()) + L"  \x00B7  " + ChapterTitle(chapter);
         g.Text(summary, r, kSub, Mono(10.f, true).Ellipsis());
         if (installedCount > 0) {
-            const std::wstring text = std::to_wstring(installedCount) + L" INSTALLED";
+            const std::wstring text = Loc::Fmt("hm_installed_count", installedCount);
             Pill(g, r.R() - PillWidth(g, text), r.CY(), text, kGreen, true);
         }
     }
@@ -184,18 +184,18 @@ void HandModsOverlay::DrawMods(Ui& ui, Column& col) {
         // Actions (right to left): Install / Uninstall / "unavailable", extras, preview, info
         RowFromRight right{ inner.R(), inner.y, inner.h };
         if (installedNow) {
-            const float w = P::SmallButtonWidth(ui, L"Uninstall", 90.f);
+            const float w = P::SmallButtonWidth(ui, Loc::Get("hm_uninstall"), 90.f);
             const Rect b = right.Next(w, 8.f);
-            if (P::SmallButton(ui, ui.MakeId("uninstall"), { b.x, cy - 14.f, w, 28.f }, L"Uninstall", kRemove)) Uninstall(HM::Mod(mod));
+            if (P::SmallButton(ui, ui.MakeId("uninstall"), { b.x, cy - 14.f, w, 28.f }, Loc::Get("hm_uninstall"), kRemove)) Uninstall(HM::Mod(mod));
         } else if (!paks) {
-            const float w = g.Measure(L"unavailable", Mono(10.f)).w + 1.f;
-            g.Text(L"unavailable", right.Next(w, 8.f), Rgba(160, 180, 200, 140), Mono(10.f));
+            const float w = g.Measure(Loc::Get("hm_unavailable"), Mono(10.f)).w + 1.f;
+            g.Text(Loc::Get("hm_unavailable"), right.Next(w, 8.f), Rgba(160, 180, 200, 140), Mono(10.f));
         } else {
-            const float w = P::SmallButtonWidth(ui, L"Install", 90.f);
+            const float w = P::SmallButtonWidth(ui, Loc::Get("hm_install"), 90.f);
             const Rect b = right.Next(w, 8.f);
             // The install button breathes while the card is hovered
             if (c.hover > 0.01f) g.GlowRound({ b.x, cy - 14.f, w, 28.f }, 3.f, Palette::Teal, 12.f, 0.35f * c.hover);
-            if (P::SmallButton(ui, ui.MakeId("install"), { b.x, cy - 14.f, w, 28.f }, L"Install", Palette::Teal)) StartInstall(HM::Mod(mod));
+            if (P::SmallButton(ui, ui.MakeId("install"), { b.x, cy - 14.f, w, 28.f }, Loc::Get("hm_install"), Palette::Teal)) StartInstall(HM::Mod(mod));
         }
         static const struct {
             const char* id;
@@ -232,7 +232,7 @@ void HandModsOverlay::DrawMods(Ui& ui, Column& col) {
         if (lit > 0.01f && sx + 70.f < textX + textW) {
             const bool fading = lit < 0.999f;   // a layer only while it fades
             if (fading) g.PushOpacity(lit);
-            Pill(g, sx, c.r.y + 42.f, L"INSTALLED", kGreen, true);
+            Pill(g, sx, c.r.y + 42.f, Loc::Get("hm_installed"), kGreen, true);
             if (fading) g.PopLayer();
         }
         ui.PopId();
@@ -268,9 +268,9 @@ void HandModsOverlay::ShowInfo(const HM::Mod& mod) {
     const int number = chapter;
     Async::Run([mod, number]() -> std::wstring {
         const auto zip = HM::Download(mod, number, {});
-        if (!zip) return L"Couldn't check " + mod.name + L"'s info:\nThe download failed.";
+        if (!zip) return Loc::Fmt("hm_info_failed", mod.name);
         const auto hands = HM::ReadDeclaredHands(*zip);
-        return hands ? mod.name + L" changes: " + Text::Join(*hands, L", ") : mod.name + L" hasn't declared its hand color yet.";
+        return hands ? Loc::Fmt("hm_info_changes", mod.name, Text::Join(*hands, L", ")) : Loc::Fmt("hm_info_no_color", mod.name);
     }, [this, key](std::wstring message) {
         busyButtons.erase(key);
         ShowMessage(message);
@@ -288,7 +288,7 @@ void HandModsOverlay::ShowPreview(const HM::Mod& mod) {
     }, [this, key, mod](std::optional<std::vector<DecodedHand>> decoded) {
         busyButtons.erase(key);
         if (!decoded) {
-            ShowMessage(L"Couldn't load " + mod.name + L"'s preview:\nThe download failed.");
+            ShowMessage(Loc::Fmt("hm_preview_failed", mod.name));
             return;
         }
         if (!popup.IsOpen()) return;
@@ -320,11 +320,11 @@ void HandModsOverlay::ShowExtras(const HM::Mod& mod) {
     }, [this, key, mod](Loaded loaded) {
         busyButtons.erase(key);
         if (!loaded.zip) {
-            ShowMessage(L"Couldn't load " + mod.name + L"'s extras:\nThe download failed.");
+            ShowMessage(Loc::Fmt("hm_extras_failed", mod.name));
             return;
         }
         if (loaded.extras.empty()) {
-            ShowMessage(mod.name + L" doesn't ship any individual hand options.");
+            ShowMessage(Loc::Fmt("hm_extras_none", mod.name));
             return;
         }
         if (!popup.IsOpen()) return;

@@ -194,6 +194,19 @@ void DetectAll(std::vector<Models::Chapter>& chapters) {
     }
 }
 
+void DetectMultiplayers(std::vector<Models::MultiplayerGame>& games) {
+    const auto bases = CollectSearchBases();
+    for (auto& game : games) {
+        if (!game.isAvailable || game.steamExe.empty()) continue;
+        for (const auto& base : bases) {
+            const std::wstring exe = Files::Combine(base, game.steamExe);
+            if (!Files::Exists(exe)) continue;
+            game.gameExePath = exe;
+            break;
+        }
+    }
+}
+
 std::optional<std::wstring> FindDepotDownloadPath(int appId, int depotId, const std::optional<std::wstring>& steamCmdPath) {
     const std::wstring sub = Files::Combine(L"steamapps", L"content", L"app_" + std::to_wstring(appId), L"depot_" + std::to_wstring(depotId));
     std::vector<std::wstring> roots;

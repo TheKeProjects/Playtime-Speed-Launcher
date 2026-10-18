@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "Models/Chapter.h"
+#include "Models/MultiplayerGame.h"
 #include "Services/Chapters/ChapterPlaytimeStore.h"
 #include "Services/Chapters/InstallationsStore.h"
 #include "Services/Discord/DiscordPresenceService.h"
@@ -42,6 +43,16 @@ public:
     Services::F11RemapService f11;
 
     int selected = 0;
+    // Main screen tab: the chapters or the multiplayer games (with their own selection)
+    enum class Section { Chapters, Multiplayers };
+    Section section = Section::Chapters;
+    std::vector<Models::MultiplayerGame> multiplayers;
+    int selectedMultiplayer = 0;
+    std::vector<bool> multiplayerRunning;   // per multiplayer index (game watcher)
+    bool InMultiplayers() const { return section == Section::Multiplayers; }
+    Models::MultiplayerGame& SelectedMultiplayer() { return multiplayers[static_cast<size_t>(selectedMultiplayer)]; }
+    bool AnyMultiplayerRunning() const;
+
     std::vector<bool> gameRunning;       // per chapter index (refreshed every 2 s by the game watcher)
     std::vector<uint32_t> runningPid;
 

@@ -6,6 +6,7 @@
 #include "Core/Process.h"
 #include "Core/Text.h"
 #include "Graphics/Animation.h"
+#include "Localization/Localization.h"
 #include "Seasonal/SeasonalCardArt.h"
 #include "Seasonal/SeasonalTheme.h"
 #include "UI/Layout.h"
@@ -46,13 +47,16 @@ std::wstring ChapterSubtitle(const Models::Chapter& ch) {
     return colon != std::wstring::npos ? Text::Trim(ch.subTitle.substr(colon + 1)) : ch.subTitle;
 }
 
+// Where a non-YouTube video opens ("Twitch", or "the browser" for unknown sites)
+std::wstring VideoSite(const SC::LeaderboardEntry& e) { return e.videoSite.empty() ? Loc::Get("lb_browser") : e.videoSite; }
+
 std::wstring Ago(int days) {
     if (days < 0) return L"";
-    if (days == 0) return L"hoy";
-    if (days == 1) return L"ayer";
-    if (days < 31) return L"hace " + std::to_wstring(days) + L" días";
-    if (days < 365) return L"hace " + std::to_wstring(days / 30) + (days / 30 == 1 ? L" mes" : L" meses");
-    return L"hace " + std::to_wstring(days / 365) + (days / 365 == 1 ? L" año" : L" años");
+    if (days == 0) return Loc::Get("lb_today");
+    if (days == 1) return Loc::Get("lb_yesterday");
+    if (days < 31) return Loc::Fmt("lb_days_ago", days);
+    if (days < 365) return days / 30 == 1 ? Loc::Get("lb_month_ago") : Loc::Fmt("lb_months_ago", days / 30);
+    return days / 365 == 1 ? Loc::Get("lb_year_ago") : Loc::Fmt("lb_years_ago", days / 365);
 }
 
 // Initials for the podium avatars ("Duck1ng" → "D", "Foo & Bar" → "FB")
@@ -139,8 +143,8 @@ bool LeaderboardWindow::Open() {
     }
     SetWindowPos(hwnd, HWND_TOPMOST, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left,
                  mi.rcMonitor.bottom - mi.rcMonitor.top, 0);
-    player.Create(hwnd, { true, L"Cargando vídeo…", Rgba(200, 80, 60, 200) });
-    player.onFailed = [this] { player.ShowError(L"No se pudo reproducir este vídeo."); };
+    player.Create(hwnd, { true, Loc::Get("lb_loading_video"), Rgba(200, 80, 60, 200) });
+    player.onFailed = [this] { player.ShowError(Loc::Get("lb_video_failed")); };
     openedAt = Async::Now();
     Show(SW_SHOW);
     Activate();
@@ -215,7 +219,7 @@ void LeaderboardWindow::PlayVideo(const Entry& entry) {
     const int cat = category[chapter];
     video.subtitle = L"#" + std::to_wstring(entry.place) + L"  ·  " + SC::FormatTime(entry.timeSeconds) +
                      (cat < static_cast<int>(types.size()) ? L"  ·  " + types[static_cast<size_t>(cat)].label : L"") +
-                     L"  ·  Capítulo " + std::to_wstring(chapter);
+                     L"  ·  " + Loc::Fmt("lb_chapter", chapter);
     video.openedAt = Async::Now();
     player.Load(entry.youtubeId);
 }
@@ -481,7 +485,8 @@ void LeaderboardWindow::DrawPodium(const Rect& r, const std::vector<Entry>* list
             continue;
         }
         const Entry& e = (*list)[idx];
-        // Avatar (initials), name with flag and time above the pedestal; they drop in after it
+        // Avatar (speedrun.com picture, initials meanwhile / without one), name with flag and time above
+        // the pedestal; they drop in after it
         const float appear = Anim::Clamp01(static_cast<float>((now - loadedAt - delay - 0.25) / 0.3));
         if (appear < 1.f) ui.KeepAnimating();
         const bool appearing = appear < 1.f;
@@ -498,9 +503,16 @@ void LeaderboardWindow::DrawPodium(const Rect& r, const std::vector<Entry>* list
             }
             g.GlowRound({ ax - ar, ay - ar, ar * 2.f, ar * 2.f }, ar, medal, 14.f, 0.35f + 0.3f * std::max(hover, chosen ? 1.f : 0.f));
             const Color fill = e.nameColor ? Hex(e.nameColor) : Palette::Teal;
+            const Rect avatar{ ax - ar, ay - ar, ar * 2.f, ar * 2.f };
+            const ImagePtr picture = e.avatarUrl.empty() ? nullptr : RemoteImages::Get(e.avatarUrl, 128);
             g.FillEllipse(ax, ay, ar, ar, Lerp(Rgba(12, 22, 32), fill, 0.35f));
+            if (picture) {
+                g.DrawImageRounded(*picture, avatar, ar, 1.f, Stretch::UniformToFill);
+            } else {
+                g.Text(Initials(e.playerName), avatar, Colors::White, Mono(place == 1 ? 17.f : 14.f, true).Center());
+                if (!e.avatarUrl.empty() && now - openedAt < 20.0) ui.KeepAnimatingThrottled();   // until it arrives (not forever)
+            }
             g.StrokeEllipse(ax, ay, ar, ar, medal, chosen ? 3.f : 2.f);
-            g.Text(Initials(e.playerName), { ax - ar, ay - ar, ar * 2.f, ar * 2.f }, Colors::White, Mono(place == 1 ? 17.f : 14.f, true).Center());
         }
         DrawRunnerName(e, col.x + 4.f, ay + ar + 8.f, col.w - 8.f, 20.f, Mono(11.f, true), hover, true);
         g.Text(SC::FormatTime(e.timeSeconds), { col.x, ay + ar + 30.f, col.w, 18.f }, place == 1 ? Palette::Teal : kText, Mono(12.f).SemiBold().Center());
@@ -524,7 +536,7 @@ void LeaderboardWindow::DrawDetails(const Rect& r, const std::vector<Entry>* lis
     }
     if (list->empty()) {
         g.Text(std::wstring(1, Glyphs::Info), r.Offset(0.f, -14.f), Palette::Muted, IconFont(22.f));
-        g.Text(L"Sin runs registradas todavía.", r.Offset(0.f, 22.f), kSub, Mono(11.f, true).Center());
+        g.Text(Loc::Get("lb_no_runs"), r.Offset(0.f, 22.f), kSub, Mono(11.f, true).Center());
         return;
     }
     selectedRunner = std::clamp(selectedRunner, 0, static_cast<int>(list->size()) - 1);
@@ -550,16 +562,16 @@ void LeaderboardWindow::DrawDetails(const Rect& r, const std::vector<Entry>* lis
     DrawRunnerName(e, in.x + 40.f, in.y, in.w - 200.f, 28.f, Mono(14.f, true));
     const std::wstring time = SC::FormatTime(e.timeSeconds);
     g.Text(time, { in.R() - 160.f, in.y - 2.f, 160.f, 24.f }, Palette::Teal, Mono(17.f, true).Right());
-    g.Text(e.place == 1 ? L"RÉCORD MUNDIAL" : L"+" + SC::FormatTime(e.timeSeconds - record) + L" del récord",
+    g.Text(e.place == 1 ? Loc::Get("lb_world_record") : Loc::Fmt("lb_behind_record", SC::FormatTime(e.timeSeconds - record)),
            { in.R() - 200.f, in.y + 22.f, 200.f, 14.f }, e.place == 1 ? kGold : kSub, Mono(8.f, true).Right());
 
     // Facts: date / country
     float y = in.y + 46.f;
     const struct {
-        const wchar_t* label;
+        std::wstring label;
         std::wstring value;
-    } facts[] = { { L"FECHA", e.date.empty() ? L"—" : e.date + L"  (" + Ago(e.daysAgo) + L")" },
-                  { L"PAÍS", e.countryName.empty() ? L"—" : e.countryName } };
+    } facts[] = { { Loc::Get("lb_date"), e.date.empty() ? L"—" : e.date + L"  (" + Ago(e.daysAgo) + L")" },
+                  { Loc::Get("lb_country"), e.countryName.empty() ? L"—" : e.countryName } };
     float fx = in.x;
     for (const auto& f : facts) {
         const float fw = (in.w - 10.f) * 0.5f;
@@ -570,16 +582,45 @@ void LeaderboardWindow::DrawDetails(const Rect& r, const std::vector<Entry>* lis
     }
     y += 42.f + 12.f;
 
-    // Comment (as much as fits)
+    // Comment (as much as fits), leaving room for its pictures under it
     const float buttonsY = in.B() - 34.f;
+    const bool pictures = !e.commentImages.empty();
+    constexpr float kPictureMinH = 60.f, kPictureMaxH = 130.f;
     if (!e.comment.empty() && buttonsY - y > 30.f) {
-        const float h = std::min(g.Measure(e.comment, Mono(10.f).Wrap().Top(), in.w - 14.f).h, buttonsY - 12.f - y);
+        const float room = buttonsY - 12.f - y - (pictures ? kPictureMinH + 10.f : 0.f);
+        const float h = std::min(g.Measure(e.comment, Mono(10.f).Wrap().Top(), in.w - 14.f).h, std::max(16.f, room));
         g.FillRect({ in.x, y, 2.f, h }, Palette::Teal.WithAlpha(0.5f));
         g.PushClip({ in.x, y, in.w, h });
         g.Text(e.comment, { in.x + 12.f, y, in.w - 14.f, h + 40.f }, Rgba(160, 185, 205), Mono(10.f).Wrap().Top());
         g.PopClip();
-    } else if (e.comment.empty()) {
-        g.Text(L"Sin comentario.", { in.x, y, in.w, 16.f }, kFaint, Mono(9.f).Italic());
+        y += h + 10.f;
+    } else if (e.comment.empty() && !pictures) {
+        g.Text(Loc::Get("lb_no_comment"), { in.x, y, in.w, 16.f }, kFaint, Mono(9.f).Italic());
+    }
+    // Pictures in a row (shimmer while downloading); a click opens the full picture in the browser
+    const float pictureH = std::min(kPictureMaxH, buttonsY - 12.f - y);
+    if (pictures && pictureH >= 40.f) {
+        NoColorFilter keep(g);   // real colours
+        float px = in.x;
+        for (size_t i = 0; i < e.commentImages.size(); ++i) {
+            const std::wstring& url = e.commentImages[i];
+            const ImagePtr img = RemoteImages::Get(url);
+            const float pw = std::min(img && img->h > 0.f ? pictureH * img->w / img->h : pictureH * 16.f / 9.f, in.R() - px);
+            if (pw < 40.f) break;
+            const Rect pic{ px, y, pw, pictureH };
+            const Interaction it = ui.Interact(ui.MakeId("comment-picture", static_cast<int64_t>(i)), pic);
+            if (it.hovered) ui.SetCursor(IDC_HAND);
+            if (it.clicked) Process::OpenUrl(url);
+            if (img) {
+                g.DrawImageRounded(*img, pic, 6.f, 1.f, Stretch::UniformToFill);
+            } else {
+                g.FillRound(pic, 6.f, Rgba(255, 255, 255, 6));
+                Shimmer(g, pic, 6.f, now);
+                if (Async::Now() - openedAt < 20.0) ui.KeepAnimatingThrottled();   // a picture that failed isn't waited for forever
+            }
+            g.StrokeRound(pic, 6.f, it.hovered ? Palette::Teal.WithAlpha(0.7f) : kCardBorder, 1.f);
+            px += pw + 8.f;
+        }
     }
 
     // Links: video (plays here), run, profile
@@ -587,12 +628,12 @@ void LeaderboardWindow::DrawDetails(const Rect& r, const std::vector<Entry>* lis
     const bool youtube = !e.youtubeId.empty();
     {
         NoColorFilter keep(g);
-        const std::wstring videoText = e.videoUrl.empty() ? L"SIN VÍDEO" : youtube ? L"VER VÍDEO" : L"ABRIR EN " + Text::Upper(e.videoSite);
+        const std::wstring videoText = e.videoUrl.empty() ? Loc::Get("lb_no_video_btn") : youtube ? Loc::Get("lb_watch_video_btn") : Loc::Fmt("lb_open_in_btn", Text::Upper(VideoSite(e)));
         if (ActionButton(ui, ui.MakeId("detail-video"), { in.x, buttonsY, bw, 34.f }, 0xE768, videoText, kVideo, true, !e.videoUrl.empty())) PlayVideo(e);
     }
     if (ActionButton(ui, ui.MakeId("detail-run"), { in.x + bw + 8.f, buttonsY, bw, 34.f }, 0xE8A7, L"RUN", Palette::Teal, false, !e.runWeblink.empty()))
         Process::OpenUrl(e.runWeblink);
-    if (ActionButton(ui, ui.MakeId("detail-profile"), { in.x + 2.f * (bw + 8.f), buttonsY, bw, 34.f }, Glyphs::People, L"PERFIL", Palette::Hint, false,
+    if (ActionButton(ui, ui.MakeId("detail-profile"), { in.x + 2.f * (bw + 8.f), buttonsY, bw, 34.f }, Glyphs::People, Loc::Get("lb_profile"), Palette::Hint, false,
                      !e.playerWeblink.empty()))
         Process::OpenUrl(e.playerWeblink);
     if (sliding) {
@@ -658,7 +699,7 @@ void LeaderboardWindow::DrawList(const Rect& r, const std::vector<Entry>* list, 
         {
             NoColorFilter keep(g);
             const bool hasVideo = !e.videoUrl.empty();
-            const std::wstring tip = !hasVideo ? L"Esta run no tiene vídeo" : !e.youtubeId.empty() ? L"Ver vídeo" : L"Abrir en " + e.videoSite;
+            const std::wstring tip = !hasVideo ? Loc::Get("lb_no_video_tip") : !e.youtubeId.empty() ? Loc::Get("lb_watch_video") : Loc::Fmt("lb_open_in", VideoSite(e));
             if (IconButton(ui, ui.MakeId("top-video", static_cast<int64_t>(i)), videoR, 0xE768, kVideo, tip, hasVideo)) PlayVideo(e);
             overButton = ui.MouseOver(videoR);
         }
@@ -746,8 +787,8 @@ void LeaderboardWindow::OnFrame() {
             g.Border(badge, 10.f, kGold.WithAlpha(0.12f), kGold.WithAlpha(0.5f + 0.3f * shine), 1.f);
         }
         g.Text(L"\U0001F3C6", badge, Colors::White, Mono(18.f).WithFont(Font::Ui).Center());
-        g.Text(L"LEADERBOARDS", { badge.R() + 14.f, header.y + 14.f, 400.f, 20.f }, Palette::Teal, Mono(14.f, true));
-        g.Text(L"speedrun.com  ·  PC  ·  top 10 por categoría", { badge.R() + 14.f, header.y + 35.f, 400.f, 16.f }, kSub, Mono(9.f, true));
+        g.Text(Loc::Get("lb_title"), { badge.R() + 14.f, header.y + 14.f, 400.f, 20.f }, Palette::Teal, Mono(14.f, true));
+        g.Text(L"speedrun.com  ·  PC  ·  " + Loc::Get("lb_subtitle"), { badge.R() + 14.f, header.y + 35.f, 400.f, 16.f }, kSub, Mono(9.f, true));
     }
     const ButtonStyle smallButton{ Palette::ButtonBg, Palette::ButtonBorder, 1.f, 16.f, { 0.f }, 0.f, 32.f };
     if (TextButton(ui, ui.MakeId("close"), { header.R() - 16.f - 32.f, header.CY() - 16.f, 32.f, 32.f }, L"\x2715",
@@ -763,11 +804,11 @@ void LeaderboardWindow::OnFrame() {
 
     auto types = runTypes.find(chapter);
     if (types == runTypes.end()) {
-        g.Text(L"Cargando categorías desde speedrun.com…", categoryRow, kDim, Mono(11.f, true));
+        g.Text(Loc::Get("lb_loading_categories"), categoryRow, kDim, Mono(11.f, true));
         ui.KeepAnimatingThrottled();
     } else if (types->second.empty()) {
         g.Text(std::wstring(1, Glyphs::Warning), body.Offset(0.f, -20.f), Palette::DangerText, IconFont(26.f));
-        g.Text(L"No se pudieron cargar los datos de speedrun.com.", body.Offset(0.f, 24.f), Palette::DangerText, Mono(11.f, true).Center());
+        g.Text(Loc::Get("lb_load_failed"), body.Offset(0.f, 24.f), Palette::DangerText, Mono(11.f, true).Center());
     } else {
         DrawCategoryRow(categoryRow);
     }

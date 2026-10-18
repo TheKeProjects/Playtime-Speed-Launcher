@@ -13,6 +13,7 @@
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/Panel.h"
 #include "UI/Widgets/Stagger.h"
+#include "Localization/Localization.h"
 
 namespace SpeedrunLauncher::Windows {
 
@@ -22,14 +23,14 @@ namespace {
 
 struct Card {
     const wchar_t* id;
-    const wchar_t* title;
-    const wchar_t* description;
+    const char* title;         // translation keys
+    const char* description;
 };
 constexpr Card kCards[] = {
-    { L"mNz257eeAec", L"ADD A INSTALLED VERSION", L"Register a game version you already have on your PC so the launcher can play it." },
-    { L"FAOt2QUJIv0", L"INSTALL A DEPOT AUTOMATICALLY", L"Download an old version with SteamCMD: the launcher does every step for you." },
-    { L"Nc4OVsv1cs0", L"INSTALL A DEPOT MANUAL", L"Download an old version yourself from the Steam console, then add it here." },
-    { L"JwE_bhk91Rc", L"OPEN THE CHECKPOINT LOADER", L"Load any checkpoint in-game with a hotkey to practise a section again and again." },
+    { L"mNz257eeAec", "bt_card1_title", "bt_card1_desc" },
+    { L"FAOt2QUJIv0", "bt_card2_title", "bt_card2_desc" },
+    { L"Nc4OVsv1cs0", "bt_card3_title", "bt_card3_desc" },
+    { L"JwE_bhk91Rc", "bt_card4_title", "bt_card4_desc" },
 };
 constexpr int kCount = 4;
 constexpr const wchar_t* kWatchedFile = L"tutorials_watched.cfg";
@@ -63,7 +64,7 @@ bool BeginnerTutorialWindow::Open() {
     MONITORINFO mi{ sizeof(mi) };
     GetMonitorInfoW(MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY), &mi);
     UI::Window::Options o;
-    o.title = L"Beginner Tutorials";
+    o.title = Loc::Get("bt_window_title");
     o.style = WS_POPUP | WS_CLIPCHILDREN;
     o.exStyle = WS_EX_TOOLWINDOW;
     o.transparent = true;
@@ -77,7 +78,7 @@ bool BeginnerTutorialWindow::Open() {
     }
     SetWindowPos(hwnd, HWND_TOPMOST, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left,
                  mi.rcMonitor.bottom - mi.rcMonitor.top, 0);
-    player.Create(hwnd, { false, L"LOADING, PLEASE WAIT", Rgba(200, 80, 60, 200) });
+    player.Create(hwnd, { false, Loc::Get("video_loading"), Rgba(200, 80, 60, 200) });
     if (const auto saved = Config::ReadText(kWatchedFile))
         for (int i = 0; i < kCount && i < static_cast<int>(saved->size()); ++i) watched[static_cast<size_t>(i)] = (*saved)[static_cast<size_t>(i)] == L'1';
     openedAt = Async::Now();
@@ -226,9 +227,9 @@ void BeginnerTutorialWindow::DrawCards(const Rect& area) {
         // Text column: STEP n + state pill, title, what it teaches, action
         const float tx = image.R() + 16.f + 3.f * hover;
         const Rect text{ tx, card.y + 14.f, card.R() - 16.f - tx, card.h - 28.f };
-        g.Text(L"STEP " + std::to_wstring(i + 1), { text.x, text.y, 80.f, 14.f }, done ? kGreen : kFaint, Mono(8.f, true));
+        g.Text(Loc::Fmt("bt_step", i + 1), { text.x, text.y, 80.f, 14.f }, done ? kGreen : kFaint, Mono(8.f, true));
         if (done || upNext) {
-            const std::wstring label = done ? L"WATCHED" : L"UP NEXT";
+            const std::wstring label = done ? Loc::Get("bt_watched") : Loc::Get("bt_up_next");
             const TextStyle style = Mono(7.f, true).Center();
             const float pw = g.Measure(label, style).w + 14.f;
             const Rect pill{ text.R() - pw, text.y - 2.f, pw, 17.f };
@@ -236,10 +237,10 @@ void BeginnerTutorialWindow::DrawCards(const Rect& area) {
             g.Text(label, pill, accent, style);
         }
         TextStyle title = Mono(11.f, true).Wrap().Top();
-        const float titleH = std::min(g.Measure(kCards[i].title, title, text.w).h, 32.f);
-        g.Text(kCards[i].title, { text.x, text.y + 20.f, text.w, titleH }, Lerp(kText, Colors::White, hover), title);
-        g.Text(kCards[i].description, { text.x, text.y + 24.f + titleH, text.w, text.B() - 22.f - (text.y + 24.f + titleH) }, kSub, Mono(9.f).Wrap().Top());
-        g.Text(done ? L"WATCH AGAIN  →" : L"WATCH  →", { text.x + 4.f * hover, text.B() - 14.f, text.w, 14.f },
+        const float titleH = std::min(g.Measure(Loc::Get(kCards[i].title), title, text.w).h, 32.f);
+        g.Text(Loc::Get(kCards[i].title), { text.x, text.y + 20.f, text.w, titleH }, Lerp(kText, Colors::White, hover), title);
+        g.Text(Loc::Get(kCards[i].description), { text.x, text.y + 24.f + titleH, text.w, text.B() - 22.f - (text.y + 24.f + titleH) }, kSub, Mono(9.f).Wrap().Top());
+        g.Text(done ? Loc::Get("bt_watch_again") + L"  →" : Loc::Get("bt_watch") + L"  →", { text.x + 4.f * hover, text.B() - 14.f, text.w, 14.f },
                accent.WithAlpha(0.55f + 0.45f * hover), Mono(9.f, true));
 
         if (it.hovered) ui.SetCursor(IDC_HAND);
@@ -256,7 +257,7 @@ void BeginnerTutorialWindow::DrawPlaylist(const Rect& area) {
     const double now = Async::Now();
     g.FillRect(area, Rgba(5, 10, 18, 120));
     g.FillRect({ area.x, area.y, 1.f, area.h }, Palette::Divider);
-    g.Text(L"BEGINNER PATH", { area.x + 18.f, area.y + 16.f, area.w - 36.f, 14.f }, kSub, Mono(9.f, true));
+    g.Text(Loc::Get("bt_path"), { area.x + 18.f, area.y + 16.f, area.w - 36.f, 14.f }, kSub, Mono(9.f, true));
     float y = area.y + 40.f;
     for (int i = 0; i < kCount; ++i) {
         StaggerItem in(ui, viewChangedAt, i, 18.f, 0.f, 0.05, 0.32);
@@ -279,9 +280,9 @@ void BeginnerTutorialWindow::DrawPlaylist(const Rect& area) {
             ui.KeepAnimatingThrottled();
         }
         const float tx = thumb.R() + 12.f;
-        g.Text(L"STEP " + std::to_wstring(i + 1) + (watched[static_cast<size_t>(i)] && !playing ? L"  \x2713" : L""), { tx, r.y + 12.f, r.R() - tx - 8.f, 14.f },
+        g.Text(Loc::Fmt("bt_step", i + 1) + (watched[static_cast<size_t>(i)] && !playing ? L"  \x2713" : L""), { tx, r.y + 12.f, r.R() - tx - 8.f, 14.f },
                playing ? Palette::Teal : watched[static_cast<size_t>(i)] ? kGreen : kFaint, Mono(8.f, true));
-        g.Text(kCards[i].title, { tx, r.y + 28.f, r.R() - tx - 8.f, 36.f }, Lerp(kSub, kText, std::max(sel, hover)), Mono(9.f, true).Wrap().Top());
+        g.Text(Loc::Get(kCards[i].title), { tx, r.y + 28.f, r.R() - tx - 8.f, 36.f }, Lerp(kSub, kText, std::max(sel, hover)), Mono(9.f, true).Wrap().Top());
         if (it.hovered && !playing) ui.SetCursor(IDC_HAND);
         if (it.clicked && !playing) Play(i);
         y += 74.f + 8.f;
@@ -291,7 +292,7 @@ void BeginnerTutorialWindow::DrawPlaylist(const Rect& area) {
         const Rect b{ area.x + 12.f, area.B() - 16.f - 40.f, area.w - 24.f, 40.f };
         const ButtonStyle s{ Palette::ConfirmBg, Palette::ConfirmBorder, 1.f, 8.f, { 0.f }, 0.f, 40.f };
         g.GlowRound(b, 8.f, Palette::Teal, 14.f, 0.22f);
-        if (TextButton(ui, ui.MakeId("next"), b, L"NEXT: STEP " + std::to_wstring(current + 2) + L"  \x2192", Mono(10.f, true).Center(), Palette::Teal, s))
+        if (TextButton(ui, ui.MakeId("next"), b, Loc::Fmt("bt_next_step", current + 2) + L"  \x2192", Mono(10.f, true).Center(), Palette::Teal, s))
             Play(current + 1);
     }
 }
@@ -367,10 +368,10 @@ void BeginnerTutorialWindow::OnFrame() {
         g.Border(badge, 10.f, Rgba(0, 204, 170, 26), Rgba(0, 204, 170, 130), 1.f);
         g.Text(std::wstring(1, kGraduationCap), badge, Palette::Teal, IconFont(16.f));
         const float tx = badge.R() + 14.f;
-        g.Text(current >= 0 ? kCards[current].title : L"BEGINNER TUTORIALS", { tx, header.y + 14.f, row.w - (tx - row.x) - 260.f, 20.f }, Palette::Teal,
+        g.Text(current >= 0 ? Loc::Get(kCards[current].title) : Loc::Get("bt_title"), { tx, header.y + 14.f, row.w - (tx - row.x) - 260.f, 20.f }, Palette::Teal,
                Mono(14.f, true).Ellipsis());
-        g.Text(current >= 0 ? L"Step " + std::to_wstring(current + 1) + L" of " + std::to_wstring(kCount) + L"  \x00B7  Esc to go back"
-                            : std::wstring(L"Start here if you're new  \x00B7  4 short videos"),
+        g.Text(current >= 0 ? Loc::Fmt("bt_step_of", current + 1, kCount)
+                            : Loc::Get("bt_subtitle"),
                { tx, header.y + 36.f, row.w - (tx - row.x) - 260.f, 16.f }, kSub, Mono(9.f, true));
     }
     if (TextButton(ui, ui.MakeId("close"), { row.R() - 32.f, row.CY() - 16.f, 32.f, 32.f }, L"\x2715", Mono(12.f, true).WithFont(Font::Ui).Center(),
@@ -381,7 +382,7 @@ void BeginnerTutorialWindow::OnFrame() {
         // Progress: "2 / 4 WATCHED" and a bar filling up
         const int count = WatchedCount();
         const Rect bar{ row.R() - 32.f - 20.f - 170.f, row.CY() + 6.f, 170.f, 5.f };
-        const std::wstring label = count == kCount ? L"ALL WATCHED \x2713" : std::to_wstring(count) + L" / " + std::to_wstring(kCount) + L" WATCHED";
+        const std::wstring label = count == kCount ? Loc::Get("bt_all_watched") + L" \x2713" : Loc::Fmt("bt_watched_count", count, kCount);
         g.Text(label, { bar.x, row.CY() - 14.f, bar.w, 14.f }, count == kCount ? kGreen : kSub, Mono(8.f, true).Right());
         const float shown = ui.Animate(ui.MakeId("progress"), static_cast<float>(count) / kCount, 6.f, 0.f);
         g.FillRound(bar, 2.5f, Palette::ButtonBorder);
