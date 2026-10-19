@@ -1,25 +1,3 @@
-4.1.1
-## Novedades
-Nueva pantalla de carga: una imagen de un capítulo al azar y una barra de progreso mientras el launcher lo prepara todo, para que la pantalla principal se abra con todas sus imágenes ya cargadas
-Nuevas pestañas Capítulos / Multijugador encima de las tarjetas: Project Playtime se puede abrir desde el launcher, y Escape From Playtime aparece bloqueado hasta que salga
-Leaderboards: el podio muestra la foto de perfil de speedrun.com de cada runner
-Leaderboards: las imágenes del comentario de una run ahora aparecen debajo de él (haz clic en una para abrirla a tamaño completo)
-
-## Rediseños
-Epic Games: al cambiar a Epic aparece una pantalla de búsqueda con el logo de Epic dentro de un anillo de progreso, la unidad y la carpeta que se están revisando, y una animación de éxito cuando se encuentra el juego
-Epic Games: nueva ventana de "no encontrado" que muestra qué carpeta hay que seleccionar, con un botón para volver a buscar
-
-## Temas de temporada
-Las ventanas de instalación de SteamCMD y de versiones ahora siguen los temas de temporada, con las decoraciones y partículas de la temporada
-
-## Rendimiento
-La pantalla de carga procesa varias imágenes a la vez, así que el launcher se abre antes en los PCs más lentos
-La búsqueda de Epic Games revisa primero las carpetas principales de todas las unidades y se salta las carpetas y enlaces del sistema, así que la mayoría de instalaciones se encuentran mucho antes
-Las actualizaciones reinician el launcher unos 2 segundos antes
-Las tarjetas de capítulos y multijugador ya no comprueban archivos en el disco en cada frame
-Las imágenes de internet (banderas, miniaturas de vídeos y fotos de perfil) se descargan y cargan en segundo plano sin tirones, las fotos de perfil se guardan en tu PC para que aparezcan al instante la próxima vez, y si speedrun.com rechaza una imagen se vuelve a intentar
-
+4.1.2
 ## Correcciones
-Corregido que las actualizaciones automáticas fallaran en algunos PCs: el actualizador ahora espera a que el launcher se cierre del todo y lo vuelve a intentar si los archivos siguen en uso
-Corregido que el launcher se congelara mientras buscaba la instalación de Epic Games en tus unidades
-Corregido que los leaderboards siempre aparecieran en español, y que los tutoriales para principiantes, reportar skips, skips y glitches, los mods de manos y la pantalla de carga siempre aparecieran en inglés: ahora siguen el idioma del launcher
+Se ha solucionado el problema por el que el contador de FPS y la superposición del mando no aparecían en la lista de captura de ventanas de OBS.

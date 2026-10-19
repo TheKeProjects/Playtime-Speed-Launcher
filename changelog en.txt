@@ -1,25 +1,3 @@
-4.1.1
-## Additions
-New loading screen: a picture from a random chapter and a progress bar while the launcher gets everything ready, so the main screen opens with all its pictures already loaded
-New Chapters / Multiplayers tabs above the cards: Project Playtime can be launched from the launcher, and Escape From Playtime shows up locked until it comes out
-Leaderboards: the podium shows each runner's speedrun.com profile picture
-Leaderboards: pictures in a run's comment now show up under it (click one to open it full size)
-
-## Redesigns
-Epic Games: switching to Epic shows a searching screen with the Epic logo in a progress ring, the drive and folder being checked, and a success animation when the game is found
-Epic Games: new "not found" window that shows which folder to select, with a button to search again
-
-## Seasonal Themes
-The SteamCMD and version install windows now follow the seasonal themes, with the season's decorations and particles
-
-## Performance
-The loading screen decodes several pictures at once, so the launcher opens sooner on slower PCs
-The Epic Games search checks the top folders of every drive first and skips system links and folders, so most installs are found much sooner
-Updates restart the launcher about 2 seconds sooner
-The chapter and multiplayer cards no longer check files on disk every frame
-Pictures from the internet (flags, video thumbnails, profile pictures) download and load in the background without stuttering, profile pictures are kept on your PC so they show up instantly the next time, and a picture that speedrun.com refuses is tried again
-
+4.1.2
 ## Bug Fixes
-Fixed automatic updates failing on some PCs: the updater now waits for the launcher to fully close and retries if the files are still in use
-Fixed the launcher freezing while it searched your drives for the Epic Games install
-Fixed the leaderboards always showing in Spanish, and the beginner tutorials, skip report, skips and glitches, Hand Mods menus and the loading screen always showing in English: they now follow the launcher's language
+Fixed the FPS counter and the controller overlay not showing up in OBS's Window Capture list

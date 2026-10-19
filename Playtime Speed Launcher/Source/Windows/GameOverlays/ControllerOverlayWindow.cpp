@@ -119,7 +119,8 @@ bool ControllerOverlayWindow::Open(const std::wstring& corner) {
     UI::Window::Options o;
     o.title = L"Controller Overlay";
     o.style = WS_POPUP;
-    o.exStyle = WS_EX_TOOLWINDOW;
+    // No WS_EX_TOOLWINDOW: OBS Window Capture hides tool windows from its list. noActivate already
+    // keeps it off the taskbar.
     o.transparent = true;
     o.clickThrough = true;   // the game must stay "the window under the cursor"
     o.topmost = true;

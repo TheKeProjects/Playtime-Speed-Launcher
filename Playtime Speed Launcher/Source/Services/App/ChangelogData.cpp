@@ -6,6 +6,10 @@ namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
+        { L"4.1.2", L"19/10/2026", {
+            L"## Bug Fixes",
+            L"Fixed the FPS counter and the controller overlay not showing up in OBS's Window Capture list",
+        } },
         { L"4.1.1", L"18/10/2026", {
             L"## Additions",
             L"New loading screen: a picture from a random chapter and a progress bar while the launcher gets everything ready, so the main screen opens with all its pictures already loaded",
