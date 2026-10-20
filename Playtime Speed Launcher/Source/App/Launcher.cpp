@@ -157,14 +157,14 @@ bool Launcher::HasLoadManipMarker(const std::wstring& win64Dir) { return Files::
 bool Launcher::IsLoadManipInstalled(const std::wstring& paksDir, const std::optional<std::wstring>& zipPath,
                                     const std::optional<std::wstring>& win64Dir, int chapter) {
     if (!zipPath || !Services::LoadManipFiles::IsInstalled(paksDir, *zipPath)) return false;
-    // FullBright lays down the same pak on chapters 1 and 5: Load Manip's marker must be there too
-    if ((chapter == 1 || chapter == 5) && win64Dir) return HasLoadManipMarker(*win64Dir);
+    // FullBright lays down the same pak on chapters 1, 4 and 5: Load Manip's marker must be there too
+    if ((chapter == 1 || chapter == 4 || chapter == 5) && win64Dir) return HasLoadManipMarker(*win64Dir);
     return true;
 }
 
 bool Launcher::IsUe4ssOwnedByMod(const std::wstring& win64Dir, int chapter) {
     return Services::LoadManipFiles::IsUe4ssFromLoadManip(win64Dir) ||
-           ((chapter == 1 || chapter == 5) && Services::FullBrightFiles::IsInstalled(win64Dir));
+           ((chapter == 1 || chapter == 4 || chapter == 5) && Services::FullBrightFiles::IsInstalled(win64Dir));
 }
 
 bool Launcher::IsUe4ssActiveForChapter(const Models::Chapter& chapter) const {

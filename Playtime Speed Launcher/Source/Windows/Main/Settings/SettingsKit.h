@@ -45,7 +45,7 @@ enum CaptureTarget {
     CaptureCoresFreeze, CaptureCoresSlower, CaptureCoresNormal,
     CaptureCh1Freeze, CaptureCh1Normal, CaptureCh1Unlit, CaptureCh1Lit,
     CaptureCh5Freeze, CaptureCh5Normal, CaptureCh5Unlit, CaptureCh5Lit,
-    CaptureCh4Freeze, CaptureCh4Slow, CaptureCh4Normal,
+    CaptureCh4Freeze, CaptureCh4Slow, CaptureCh4Normal, CaptureCh4Unlit, CaptureCh4Lit,
     CaptureKeyClickAdd, CaptureKeyClickToggle,
     CaptureF11Slot = 1000,       // + binding index
     CaptureKeyClickSlot = 2000,  // + binding index

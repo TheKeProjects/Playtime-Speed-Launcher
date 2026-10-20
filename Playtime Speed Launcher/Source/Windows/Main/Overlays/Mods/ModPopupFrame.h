@@ -30,5 +30,7 @@ void DrawModPopup(UI::Ui& ui, UI::Popup& popup, const Rect& screen, float width,
 void ShowModMessage(HWND owner, const std::wstring& title, const std::wstring& message, bool success);
 // "This requires deleting the current UE4SS files. Do you want to delete them?"
 void ConfirmDeleteUe4ss(HWND owner, const std::wstring& title, std::function<void()> onYes);
+// Chapter 4's old LoadManipV2_P files: mandatory delete before installing (the install deletes them)
+void ConfirmDeleteLegacyLoadManip(HWND owner, const std::wstring& title, std::function<void()> onYes);
 
 } // namespace SpeedrunLauncher::Main

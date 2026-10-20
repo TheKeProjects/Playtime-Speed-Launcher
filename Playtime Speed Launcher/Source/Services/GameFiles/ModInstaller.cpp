@@ -11,7 +11,7 @@ namespace SpeedrunLauncher::Services::ModInstaller {
 namespace {
 
 bool HasFile(const std::optional<std::wstring>& path) { return path && Files::Exists(*path); }
-bool UsesUe4ssMods(int chapter) { return chapter == 1 || chapter == 5; }
+bool UsesUe4ssMods(int chapter) { return chapter == 1 || chapter == 4 || chapter == 5; }
 
 Result Ok(std::wstring message) { return { true, std::move(message) }; }
 Result Fail(std::wstring message) { return { false, std::move(message) }; }
@@ -72,6 +72,8 @@ bool ForeignUe4ssBlocksFullBright(const Target& t) {
     return t.win64 && Ue4ssPresent(t) && !LoadManipFiles::IsUe4ssFromLoadManip(*t.win64) && !FullBrightFiles::IsInstalled(*t.win64);
 }
 
+bool LegacyLoadManipPresent(const Target& t) { return t.chapter == 4 && t.paks && LoadManipFiles::HasLegacyV2(*t.paks); }
+
 std::wstring GenericUe4ssZip(int chapter) {
     // Chapter 5 runs a newer engine build than Chapters 1-4 and needs its own UE4SS build
     return ModFiles::ToolPath(chapter >= 5 ? L"Chapter 5\\Ue4ss.zip" : L"Chapter 1 - 4\\Ue4ss.zip");
@@ -129,6 +131,7 @@ Result InstallLoadManip(const Target& t, bool deleteForeignUe4ss) {
             if (Files::Exists(generic)) LoadManipFiles::UninstallUe4ss(*t.win64, generic, std::nullopt);
         }
     }
+    if (LegacyLoadManipPresent(t)) LoadManipFiles::DeleteLegacyV2(*t.paks);
     if (!LoadManipFiles::Install(*t.paks, *zip, LoadManipFiles::ConfigZipPath(t.chapter)))
         return Fail(L"Error installing Load Manip files:\nCould not extract the files.");
     if (UsesUe4ssMods(t.chapter) && !LoadManipFiles::InstallUe4ss(*t.win64, *ue4ssZip, LoadManipFiles::MarkerZipPath(t.chapter)))
@@ -165,6 +168,7 @@ Result InstallFullBright(const Target& t, bool withLoadManip, bool deleteForeign
         const std::wstring generic = GenericUe4ssZip(t.chapter);
         if (Files::Exists(generic)) LoadManipFiles::UninstallUe4ss(*t.win64, generic, std::nullopt);
     }
+    if (LegacyLoadManipPresent(t)) LoadManipFiles::DeleteLegacyV2(*t.paks);
     if (withLoadManip && !LoadManipInstalled(t)) {
         // Load Manip goes underneath FullBright (pak + its UE4SS build + launcher.playtime)
         const auto lmZip = LoadManipFiles::ZipPath(t.chapter), lmUe4ss = LoadManipFiles::Ue4ssZipPath(t.chapter);

@@ -3,6 +3,7 @@
 #include "App/Launcher.h"
 #include "App/Paths.h"
 #include "Core/Files.h"
+#include "Core/Text.h"
 #include "Windows/GameOverlays/EasterEggOverlayWindow.h"
 #include "Windows/Main/MainWindow.h"
 #include "Windows/Main/Overlays/EasterEgg/EasterEggOverlay.h"
@@ -25,14 +26,16 @@ void EasterEggs::Show(const std::wstring& fileName) {
     if (playing) return;
     const std::wstring path = Paths::Asset(L"Videos\\EasterEggs\\" + fileName);
     if (!Files::Exists(path)) return;
+    const std::wstring ext = Text::Lower(Files::Extension(path));
+    const bool photo = ext == L".png" || ext == L".jpg" || ext == L".jpeg";
     playing = true;
     if (App::L().IsGameForeground()) {
-        gameWindow = std::make_unique<Windows::EasterEggOverlayWindow>(path);
+        gameWindow = std::make_unique<Windows::EasterEggOverlayWindow>(path, photo);
         gameWindow->onFinished = [this] { Hide(); };
         if (!gameWindow->Open()) Hide();
         return;
     }
-    main.EggVideo().Play(path);
+    main.EggVideo().Play(path, photo);
 }
 
 void EasterEggs::Hide() {

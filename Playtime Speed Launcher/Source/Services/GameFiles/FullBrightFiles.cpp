@@ -7,20 +7,19 @@ namespace SpeedrunLauncher::Services::FullBrightFiles {
 
 namespace {
 
-std::optional<std::wstring> ForChapter(int chapter, const wchar_t* ch1, const wchar_t* ch5) {
-    if (chapter == 1) return ModFiles::ToolPath(std::wstring(L"Chapter 1 Night Vision\\FullBright\\") + ch1);
-    if (chapter == 5) return ModFiles::ToolPath(std::wstring(L"Chapter 5 Night Vision\\FullBright\\") + ch5);
-    return std::nullopt;
+// "Chapter N Night Vision\FullBright\<prefix>CHN<suffix>"
+std::optional<std::wstring> ForChapter(int chapter, const wchar_t* prefix, const wchar_t* suffix) {
+    if (chapter != 1 && chapter != 4 && chapter != 5) return std::nullopt;
+    const std::wstring n = std::to_wstring(chapter);
+    return ModFiles::ToolPath(L"Chapter " + n + L" Night Vision\\FullBright\\" + prefix + L"CH" + n + suffix);
 }
 
 } // namespace
 
-std::optional<std::wstring> ZipPath(int chapter) { return ForChapter(chapter, L"FullBrightCH1.zip", L"FullBrightCH5.zip"); }
-std::optional<std::wstring> Ue4ssZipPath(int chapter) { return ForChapter(chapter, L"FullBrightCH1UE4SS.zip", L"FullBrightCH5UE4SS.zip"); }
-std::optional<std::wstring> MarkerZipPath(int chapter) {
-    return ForChapter(chapter, L"FullBrightCH1Playtime.zip", L"FullBrightCH5Playtime.zip");
-}
-std::optional<std::wstring> ConfigZipPath(int chapter) { return ForChapter(chapter, L"ConfigFullBrightCH1.zip", L"ConfigFullBrightCH5.zip"); }
+std::optional<std::wstring> ZipPath(int chapter) { return ForChapter(chapter, L"FullBright", L".zip"); }
+std::optional<std::wstring> Ue4ssZipPath(int chapter) { return ForChapter(chapter, L"FullBright", L"UE4SS.zip"); }
+std::optional<std::wstring> MarkerZipPath(int chapter) { return ForChapter(chapter, L"FullBright", L"Playtime.zip"); }
+std::optional<std::wstring> ConfigZipPath(int chapter) { return ForChapter(chapter, L"ConfigFullBright", L".zip"); }
 
 std::wstring LooseConfigPath() { return ModFiles::ToolPath(std::wstring(L"Chapter 1 Night Vision\\FullBright\\") + ConfigFileName); }
 

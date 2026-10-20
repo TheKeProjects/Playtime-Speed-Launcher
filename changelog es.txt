@@ -1,3 +1,10 @@
-4.1.2
-## Correcciones
-Se ha solucionado el problema por el que el contador de FPS y la superposición del mando no aparecían en la lista de captura de ventanas de OBS.
+4.1.3
+## Novedades
+Capítulo 4: nuevo botón FULLBRIGHT en la tarjeta del capítulo, que se instala igual que en los Capítulos 1 y 5
+Capítulo 4: el Load Manip ahora se instala igual que en los Capítulos 1 y 5, con su propia versión de UE4SS y su archivo de configuración
+Capítulo 4: si se encuentra el Load Manip antiguo (LoadManipV2_P) en Content\Paks, el launcher pide borrarlo antes de instalar el Load Manip o el FullBright
+Se han añadido dos nuevos easter eggs, uno de ellos una imagen
+## Rediseños
+Ajustes → Load Manip: el Capítulo 4 ahora edita las teclas de Freeze / Slow / Normal loads y las del FullBright directamente en los archivos de configuración de los mods, igual que en los Capítulos 1 y 5
+## Otros
+Se ha eliminado la antigua reasignación de teclas del Capítulo 4 (el nuevo Load Manip lee sus teclas desde su archivo de configuración)

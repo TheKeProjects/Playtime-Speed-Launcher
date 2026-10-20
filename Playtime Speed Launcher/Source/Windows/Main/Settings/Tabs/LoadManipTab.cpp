@@ -1,7 +1,8 @@
 // Settings → Load Manip: chapter picker, then per chapter the Load Manip / FullBright keys
-// (written straight into the mods' config.ini) or the Chapter 4 input remap.
+// (written straight into the mods' config.ini).
 #include <map>
 #include <optional>
+#include <vector>
 #include "App/Launcher.h"
 #include "Core/Async.h"
 #include "Core/Process.h"
@@ -22,10 +23,22 @@ using namespace UI;
 
 namespace {
 
-// Key pair read from an installed mod config (KeyFreeze/KeyNormal or KeyUnlit/KeyLit).
+// One editable key of a mod config: its name in config.ini and the row label
+struct KeySpec {
+    const wchar_t* key;
+    const char* label;
+};
+
+// Keys read from an installed mod config (KeyFreeze/[KeySlow/]KeyNormal or KeyUnlit/KeyLit).
 struct ConfigKeys {
-    std::optional<std::wstring> path, first, second;
-    bool Editable() const { return first && second; }
+    std::optional<std::wstring> path;
+    std::vector<std::optional<std::wstring>> values;
+    bool Editable() const {
+        if (values.empty()) return false;
+        for (const auto& v : values)
+            if (!v) return false;
+        return true;
+    }
 };
 
 struct CachedKeys {
@@ -39,18 +52,15 @@ std::map<int, CachedKeys>& Cache() {
 }
 
 // Re-read at most every 1.5 s (the files live in the game folder and change outside the launcher).
-const ConfigKeys& ReadKeys(Ui& ui, int chapter, bool fullBright) {
+const ConfigKeys& ReadKeys(Ui& ui, int chapter, bool fullBright, const std::vector<KeySpec>& specs) {
     auto& slot = Cache()[chapter * 2 + (fullBright ? 1 : 0)];
     if (ui.Time() - slot.readAt < 1.5) return slot.keys;
     slot.readAt = ui.Time();
     slot.keys = {};
     auto& l = App::L();
     slot.keys.path = fullBright ? l.ActiveFullBrightConfigPath(chapter) : l.ActiveLoadManipConfigPath(chapter);
-    if (slot.keys.path) {
-        namespace M = Services::ModFiles;
-        slot.keys.first = M::ReadConfigKey(*slot.keys.path, fullBright ? L"KeyUnlit" : L"KeyFreeze");
-        slot.keys.second = M::ReadConfigKey(*slot.keys.path, fullBright ? L"KeyLit" : L"KeyNormal");
-    }
+    if (slot.keys.path)
+        for (const auto& spec : specs) slot.keys.values.push_back(Services::ModFiles::ReadConfigKey(*slot.keys.path, spec.key));
     return slot.keys;
 }
 
@@ -126,29 +136,28 @@ bool GameOpenLock(SettingsContext& c, int chapterNumber) {
     return true;
 }
 
-// Two rows editing `keys` in the mod config, or the "not installed" note. `locked`: shown greyed
-// out and not clickable (the game is open).
-void ConfigKeyRows(SettingsContext& c, int chapter, bool fullBright, int firstTarget, const char* firstLabel, const char* secondLabel,
+// One row per key editing it in the mod config, or the "not installed" note. Rows use the capture
+// targets firstTarget, firstTarget + 1, ... `locked`: shown greyed out and not clickable (the game is open).
+void ConfigKeyRows(SettingsContext& c, int chapter, bool fullBright, int firstTarget, const std::vector<KeySpec>& specs,
                    const char* notInstalled, bool locked = false) {
     auto& ui = c.ui;
-    const ConfigKeys& keys = ReadKeys(ui, chapter, fullBright);
+    const int count = static_cast<int>(specs.size());
+    const ConfigKeys& keys = ReadKeys(ui, chapter, fullBright, specs);
     if (!keys.Editable()) {
-        if (c.capture.Active(firstTarget) || c.capture.Active(firstTarget + 1)) c.capture.Cancel();
+        for (int i = 0; i < count; ++i)
+            if (c.capture.Active(firstTarget + i)) c.capture.Cancel();
         c.Paragraph(Loc::Get(notInstalled), 10.f, Palette::Hint);
         return;
     }
-    const wchar_t* configKeys[2] = { fullBright ? L"KeyUnlit" : L"KeyFreeze", fullBright ? L"KeyLit" : L"KeyNormal" };
-    const std::wstring* values[2] = { &*keys.first, &*keys.second };
-    const char* labels[2] = { firstLabel, secondLabel };
     const float top = c.col.y;
     if (locked) ui.g.PushOpacity(0.35f);
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < count; ++i) {
         if (i) c.Gap(8.f);
         const int target = firstTarget + i;
         const bool capturing = c.capture.Active(target);
-        const std::wstring text = capturing ? Loc::Get("f11_remap_press_input") : ::SpeedrunLauncher::Input::KeyNames::ConfigValueDisplay(*values[i]);
-        if (c.KeyRow(ui.MakeId("config-key", target), Loc::Get(labels[i]), text, capturing) && !locked) {
-            const std::wstring path = *keys.path, key = configKeys[i];
+        const std::wstring text = capturing ? Loc::Get("f11_remap_press_input") : ::SpeedrunLauncher::Input::KeyNames::ConfigValueDisplay(*keys.values[i]);
+        if (c.KeyRow(ui.MakeId("config-key", target), Loc::Get(specs[i].label), text, capturing) && !locked) {
+            const std::wstring path = *keys.path, key = specs[i].key;
             const int slot = chapter * 2 + (fullBright ? 1 : 0);
             c.capture.Toggle(target, true, [path, key, slot](const CapturedInput& in) {
                 if (auto name = UnrealName(in)) Services::ModFiles::UpdateConfigKey(path, key, *name);
@@ -165,53 +174,41 @@ void ConfigKeyRows(SettingsContext& c, int chapter, bool fullBright, int firstTa
 void Chapter1(SettingsContext& c) {
     const bool locked = GameOpenLock(c, 1);
     c.Section(Loc::Get("chapter1_section"));
-    ConfigKeyRows(c, 1, false, CaptureCh1Freeze, "chapter1_freeze_label", "chapter1_normal_label", "chapter1_loadmanip_not_installed", locked);
+    ConfigKeyRows(c, 1, false, CaptureCh1Freeze,
+                  { { L"KeyFreeze", "chapter1_freeze_label" }, { L"KeyNormal", "chapter1_normal_label" } },
+                  "chapter1_loadmanip_not_installed", locked);
     c.Rule();
     c.Section(Loc::Get("chapter1_fullbright_section"));
-    ConfigKeyRows(c, 1, true, CaptureCh1Unlit, "chapter1_fullbright_unlit_label", "chapter1_fullbright_lit_label",
+    ConfigKeyRows(c, 1, true, CaptureCh1Unlit,
+                  { { L"KeyUnlit", "chapter1_fullbright_unlit_label" }, { L"KeyLit", "chapter1_fullbright_lit_label" } },
                   "chapter1_fullbright_not_installed", locked);
     c.Paragraph(Loc::Get("chapter1_hint"), 9.f, Palette::Dim, 8.f);
+}
+
+void Chapter4(SettingsContext& c) {
+    const bool locked = GameOpenLock(c, 4);
+    c.Section(Loc::Get("chapter4_section"));
+    ConfigKeyRows(c, 4, false, CaptureCh4Freeze,
+                  { { L"KeyFreeze", "chapter4_freeze_label" }, { L"KeySlow", "chapter4_slow_label" }, { L"KeyNormal", "chapter4_normal_label" } },
+                  "chapter4_loadmanip_not_installed", locked);
+    c.Rule();
+    c.Section(Loc::Get("chapter4_fullbright_section"));
+    ConfigKeyRows(c, 4, true, CaptureCh4Unlit,
+                  { { L"KeyUnlit", "chapter4_fullbright_unlit_label" }, { L"KeyLit", "chapter4_fullbright_lit_label" } },
+                  "chapter4_fullbright_not_installed", locked);
 }
 
 void Chapter5(SettingsContext& c) {
     const bool locked = GameOpenLock(c, 5);
     c.Section(Loc::Get("chapter5_section"));
-    ConfigKeyRows(c, 5, false, CaptureCh5Freeze, "chapter5_freeze_label", "chapter5_normal_label", "chapter5_loadmanip_not_installed", locked);
+    ConfigKeyRows(c, 5, false, CaptureCh5Freeze,
+                  { { L"KeyFreeze", "chapter5_freeze_label" }, { L"KeyNormal", "chapter5_normal_label" } },
+                  "chapter5_loadmanip_not_installed", locked);
     c.Rule();
     c.Section(Loc::Get("chapter5_fullbright_section"));
-    ConfigKeyRows(c, 5, true, CaptureCh5Unlit, "chapter5_fullbright_unlit_label", "chapter5_fullbright_lit_label",
+    ConfigKeyRows(c, 5, true, CaptureCh5Unlit,
+                  { { L"KeyUnlit", "chapter5_fullbright_unlit_label" }, { L"KeyLit", "chapter5_fullbright_lit_label" } },
                   "chapter5_fullbright_not_installed", locked);
-}
-
-// Chapter 4: pure input remap (I / O / P are fixed in the game) through the launcher's hooks.
-void Chapter4(SettingsContext& c) {
-    auto& ui = c.ui;
-    auto& cores = Settings::Cores::Current();
-    c.Section(Loc::Get("chapter4_section"));
-    if (c.ToggleRow(ui.MakeId("ch4-enable"), Loc::Get("chapter4_enable_label"), cores.chapter4Enabled)) {
-        cores.chapter4Enabled = !cores.chapter4Enabled;
-        cores.SaveChapter4Enabled();
-        c.main.Remaps().RefreshChapter4();
-    }
-    ::SpeedrunLauncher::Input::Binding* bindings[3] = { &cores.chapter4Freeze, &cores.chapter4Slow, &cores.chapter4Normal };
-    const char* labels[3] = { "chapter4_freeze_label", "chapter4_slow_label", "chapter4_normal_label" };
-    for (int i = 0; i < 3; ++i) {
-        c.Gap(8.f);
-        const int target = CaptureCh4Freeze + i;
-        const bool capturing = c.capture.Active(target);
-        const std::wstring text = capturing ? Loc::Get("f11_remap_press_input") : BindingText(*bindings[i]);
-        if (c.KeyRow(ui.MakeId("ch4-key", i), Loc::Get(labels[i]), text, capturing)) {
-            ::SpeedrunLauncher::Input::Binding* binding = bindings[i];
-            auto* remaps = &c.main.Remaps();
-            c.capture.Toggle(target, true, [binding, remaps](const CapturedInput& in) {
-                if (in.escape) return;
-                *binding = in.mouseButton ? ::SpeedrunLauncher::Input::Binding::Mouse(in.mouseButton) : ::SpeedrunLauncher::Input::Binding::Key(in.vk);
-                Settings::Cores::Current().SaveChapter4Hotkeys();
-                remaps->RefreshChapter4();
-            });
-        }
-    }
-    c.Paragraph(Loc::Get("chapter4_hint"), 9.f, Palette::Dim, 8.f);
 }
 
 } // namespace

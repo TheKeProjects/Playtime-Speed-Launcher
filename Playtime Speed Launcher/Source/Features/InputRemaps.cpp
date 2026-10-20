@@ -22,8 +22,6 @@ namespace SpeedrunLauncher::Features {
 
 namespace {
 
-constexpr unsigned kCh4FreezeVk = 'I', kCh4SlowVk = 'O', kCh4NormalVk = 'P';   // fixed in-game keys
-
 // Mouse button down / up at the cursor (0 left, 1 right, 2 middle)
 void SendMouse(int button, bool up) {
     INPUT input{};
@@ -87,7 +85,6 @@ struct KeyClickState {
 
 void InputRemaps::Initialize() {
     RefreshCores();
-    RefreshChapter4();
     RefreshKeyClicks();
     auto& f11 = App::L().f11;
     f11.onRawKeyDown = [this](unsigned vk, unsigned time) { FeedEasterEgg(vk, time); };
@@ -97,9 +94,8 @@ void InputRemaps::Initialize() {
 
 void InputRemaps::Shutdown() {
     StopKeyClicks();
-    for (int* id : { &coresKeyboard, &chapter4Keyboard, &eggKeyboard })
+    for (int* id : { &coresKeyboard, &eggKeyboard })
         if (*id) Input::Hooks::RemoveKeyboard(*id), *id = 0;
-    if (chapter4Mouse) Input::Hooks::RemoveMouse(chapter4Mouse), chapter4Mouse = 0;
 }
 
 bool InputRemaps::AnyKeyboardHookActive() const { return Input::Hooks::KeyboardHookActive(); }
@@ -123,57 +119,6 @@ void InputRemaps::RefreshCores() {
         }
         return false;
     });
-}
-
-// Thread-safe (input hook thread): the remap is only registered while enabled
-bool InputRemaps::Chapter4Active() const { return App::L().ForegroundChapter() == 4; }
-
-void InputRemaps::RefreshChapter4() {
-    if (chapter4Keyboard) Input::Hooks::RemoveKeyboard(chapter4Keyboard);
-    if (chapter4Mouse) Input::Hooks::RemoveMouse(chapter4Mouse);
-    chapter4Keyboard = chapter4Mouse = 0;
-    const auto& s = Settings::Cores::Current();
-    if (!s.chapter4Enabled) return;
-
-    // The handlers run on the input hook thread: bindings and held keys are their own copies
-    const Input::Binding bindFreeze = s.chapter4Freeze, bindSlow = s.chapter4Slow, bindNormal = s.chapter4Normal;
-    auto held = std::make_shared<std::set<unsigned>>();
-    chapter4Keyboard = Input::Hooks::AddKeyboard([this, bindFreeze, bindSlow, bindNormal, held](const Input::Hooks::KeyEvent& e) {
-        if (e.down && !e.injected) FeedEasterEgg(e.vk, e.time);
-        const bool isTarget = e.vk == kCh4FreezeVk || e.vk == kCh4SlowVk || e.vk == kCh4NormalVk;
-        if (e.injected || !Chapter4Active()) return false;
-        const auto matches = [&](const Input::Binding& b) { return b.type == Input::BindingType::Keyboard && b.keyVk == e.vk; };
-        const bool freeze = matches(bindFreeze), slow = matches(bindSlow), normal = matches(bindNormal);
-        if (freeze || slow || normal) {
-            if (e.down && held->insert(e.vk).second) {
-                const unsigned target = freeze ? kCh4FreezeVk : slow ? kCh4SlowVk : kCh4NormalVk;
-                // Deferred: injecting the same key from inside the hook handling it can get dropped
-                Async::Post([target] { Input::Injector::HeldPress(target); });
-            } else if (e.up) {
-                held->erase(e.vk);
-            }
-        }
-        // Swallow the real I / O / P so they aren't processed twice (our injected ones pass)
-        return isTarget;
-    });
-
-    const auto isMouse = [](const Input::Binding& b) { return b.type == Input::BindingType::Mouse; };
-    if (isMouse(s.chapter4Freeze) || isMouse(s.chapter4Slow) || isMouse(s.chapter4Normal)) {
-        chapter4Mouse = Input::Hooks::AddMouse([this, bindFreeze, bindSlow, bindNormal](const Input::Hooks::MouseEvent& e) {
-            if ((e.message != WM_XBUTTONDOWN && e.message != WM_MBUTTONDOWN) || !Chapter4Active()) return false;
-            int pressed = 0;
-            if (e.message == WM_MBUTTONDOWN) pressed = Input::MouseButtons::Middle;
-            else pressed = e.xButton == 1 ? Input::MouseButtons::XButton1 : e.xButton == 2 ? Input::MouseButtons::XButton2 : 0;
-            if (!pressed) return false;
-            const auto matches = [&](const Input::Binding& b) { return b.type == Input::BindingType::Mouse && b.mouseButton == pressed; };
-            const bool freeze = matches(bindFreeze), slow = matches(bindSlow), normal = matches(bindNormal);
-            if (freeze || slow || normal) {
-                const unsigned target = freeze ? kCh4FreezeVk : slow ? kCh4SlowVk : kCh4NormalVk;
-                Async::Post([target] { Input::Injector::HeldPress(target); });
-            }
-            return false;
-        });
-    }
 }
 
 void InputRemaps::StopKeyClicks() {

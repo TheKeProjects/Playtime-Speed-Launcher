@@ -1,4 +1,4 @@
-// [ LOAD MANIP ] popup: UE4SS gate (Chapters 1 and 5), add, or remove (keeping or also removing
+// [ LOAD MANIP ] popup: UE4SS gate (Chapters 1, 4 and 5), add, or remove (keeping or also removing
 // FullBright).
 #include "Windows/Main/MainWindow.h"
 #include "Windows/Main/Overlays/Mods/ModPopupFrame.h"
@@ -21,7 +21,7 @@ void ModPopups::OpenLoadManip(int chapter) {
 
 void ModPopups::DrawLoadManip(UI::Ui& ui, const Rect& screen) {
     const int chapter = target.chapter;
-    const bool needsUe4ss = (chapter == 1 || chapter == 5) && !snap.ue4ss;
+    const bool needsUe4ss = (chapter == 1 || chapter == 4 || chapter == 5) && !snap.ue4ss;
     const bool installed = !needsUe4ss && snap.loadManip;
     const MI::Target t = target;
     const auto close = [this] { loadManip.Close(true); };
@@ -55,10 +55,14 @@ void ModPopups::DrawLoadManip(UI::Ui& ui, const Rect& screen) {
                                   Run(L"LOAD MANIP", [t, deleteForeign] { return MI::InstallLoadManip(t, deleteForeign); });
                               };
                               // A UE4SS that isn't Load Manip's own build has to go first
-                              if (!loadManipUe4ssThisSession && MI::ForeignUe4ssBlocksLoadManip(t))
-                                  ConfirmDeleteUe4ss(main.Hwnd(), L"LOAD MANIP", [install] { install(true); });
-                              else
-                                  install(false);
+                              const auto proceed = [this, t, install] {
+                                  if (!loadManipUe4ssThisSession && MI::ForeignUe4ssBlocksLoadManip(t))
+                                      ConfirmDeleteUe4ss(main.Hwnd(), L"LOAD MANIP", [install] { install(true); });
+                                  else
+                                      install(false);
+                              };
+                              if (MI::LegacyLoadManipPresent(t)) ConfirmDeleteLegacyLoadManip(main.Hwnd(), L"LOAD MANIP", proceed);
+                              else proceed();
                           } });
     }
     right.push_back({ "lm-no", L"NO", true, 110.f, 16.f, 12.f, 0.f, true, close });

@@ -31,14 +31,6 @@ Cores& Cores::Current() {
         }
         c.enabled = Config::ReadFlag(L"cores_enabled.cfg", false);
         if (auto p = Config::ReadText(L"cores_priority.cfg")) c.priorityHigh = *p != L"low";
-
-        const auto remap = Files::ReadLines(Paths::DataFile(L"chapter4_remap_hotkeys.cfg"));
-        if (remap.size() >= 3) {
-            if (auto b = Input::Binding::Parse(remap[0])) c.chapter4Freeze = *b;
-            if (auto b = Input::Binding::Parse(remap[1])) c.chapter4Slow = *b;
-            if (auto b = Input::Binding::Parse(remap[2])) c.chapter4Normal = *b;
-        }
-        c.chapter4Enabled = Config::ReadFlag(L"chapter4_remap_enabled.cfg", false);
         return c;
     }();
     return current;
@@ -51,12 +43,5 @@ void Cores::SaveHotkeys() const {
 
 void Cores::SaveEnabled() const { Config::WriteFlag(L"cores_enabled.cfg", enabled); }
 void Cores::SavePriority() const { Config::WriteText(L"cores_priority.cfg", priorityHigh ? L"high" : L"low"); }
-
-void Cores::SaveChapter4Hotkeys() const {
-    Config::WriteText(L"chapter4_remap_hotkeys.cfg",
-                      chapter4Freeze.Token() + L"\n" + chapter4Slow.Token() + L"\n" + chapter4Normal.Token());
-}
-
-void Cores::SaveChapter4Enabled() const { Config::WriteFlag(L"chapter4_remap_enabled.cfg", chapter4Enabled); }
 
 } // namespace SpeedrunLauncher::Settings

@@ -315,7 +315,7 @@ void ChapterCards::DrawCardButtons(UI::Ui& ui, size_t index, float x, float y) {
     };
     if (textButton("ue4ss", L"UE4SS", mods.ue4ss, false)) main.OpenUe4ss(number);
     if ((number == 1 || number == 4 || number == 5) && textButton("manip", L"MANIP", mods.loadManip, true)) main.OpenLoadManip(number);
-    if ((number == 1 || number == 5) && textButton("fullbright", L"FULLBRIGHT", mods.fullBright, false)) main.OpenFullBright(number);
+    if ((number == 1 || number == 4 || number == 5) && textButton("fullbright", L"FULLBRIGHT", mods.fullBright, false)) main.OpenFullBright(number);
 }
 
 } // namespace SpeedrunLauncher::Main

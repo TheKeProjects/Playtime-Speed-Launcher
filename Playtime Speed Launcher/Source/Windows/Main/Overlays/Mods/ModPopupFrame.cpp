@@ -87,4 +87,17 @@ void ConfirmDeleteUe4ss(HWND owner, const std::wstring& title, std::function<voi
                       });
 }
 
+void ConfirmDeleteLegacyLoadManip(HWND owner, const std::wstring& title, std::function<void()> onYes) {
+    Dialogs::Options o;
+    o.title = title;
+    o.primary = L"DELETE";
+    o.close = L"CANCEL";
+    Dialogs::ShowText(owner, o,
+                      L"An old Load Manip (LoadManipV2_P) was found in Content\\Paks.\n"
+                      L"It must be deleted before installing. Delete it now?",
+                      Rgba(160, 180, 200, 200), [onYes](Dialogs::Result r) {
+                          if (r == Dialogs::Result::Primary && onYes) onYes();
+                      });
+}
+
 } // namespace SpeedrunLauncher::Main

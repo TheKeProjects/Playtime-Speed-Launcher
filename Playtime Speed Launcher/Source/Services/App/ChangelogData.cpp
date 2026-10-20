@@ -6,6 +6,17 @@ namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
+        { L"4.1.3", L"20/10/2026", {
+            L"## Additions",
+            L"Chapter 4: new FULLBRIGHT button on the chapter card, installed like Chapters 1 and 5",
+            L"Chapter 4: Load Manip now installs like Chapters 1 and 5, with its own UE4SS build and config file",
+            L"Chapter 4: if the old Load Manip (LoadManipV2_P) is found in Content\\Paks, the launcher asks to delete it before installing Load Manip or FullBright",
+            L"Added two new easter eggs, one of them a picture",
+            L"## Redesigns",
+            L"Settings \x2192 Load Manip: Chapter 4 now edits the Freeze / Slow / Normal loads keys and the FullBright keys straight in the mods' config files, like Chapters 1 and 5",
+            L"## Other",
+            L"Removed the old Chapter 4 key remap (the new Load Manip reads its keys from its config file)",
+        } },
         { L"4.1.2", L"19/10/2026", {
             L"## Bug Fixes",
             L"Fixed the FPS counter and the controller overlay not showing up in OBS's Window Capture list",

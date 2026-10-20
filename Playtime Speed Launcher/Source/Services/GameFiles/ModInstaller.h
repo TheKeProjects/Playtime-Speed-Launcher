@@ -28,6 +28,7 @@ bool LoadManipInstalled(const Target& t);
 bool StandaloneUe4ssInstalled(const Target& t);     // UE4SS not owned by Load Manip / FullBright
 bool ForeignUe4ssBlocksLoadManip(const Target& t);  // a standalone UE4SS that must be deleted first
 bool ForeignUe4ssBlocksFullBright(const Target& t);
+bool LegacyLoadManipPresent(const Target& t);       // Chapter 4 LoadManipV2_P.* (deleted by both installs)
 
 std::wstring GenericUe4ssZip(int chapter);          // Tools\Chapter 1 - 4 | Chapter 5\Ue4ss.zip
 

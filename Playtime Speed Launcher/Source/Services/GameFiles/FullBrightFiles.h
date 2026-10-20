@@ -2,7 +2,7 @@
 #include <optional>
 #include <string>
 
-// "FullBright" (night vision) pak mod for Chapters 1 and 5. Ships the same LogicMods pak as Load
+// "FullBright" (night vision) pak mod for Chapters 1, 4 and 5. Ships the same LogicMods pak as Load
 // Manip plus its own complete UE4SS build and a fullbright.playtime marker.
 namespace SpeedrunLauncher::Services::FullBrightFiles {
 

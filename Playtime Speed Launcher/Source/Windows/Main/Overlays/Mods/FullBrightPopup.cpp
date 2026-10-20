@@ -1,4 +1,4 @@
-// [ FULLBRIGHT ] popup (Chapters 1 and 5): UE4SS gate, add (alone or on top of Load Manip), or
+// [ FULLBRIGHT ] popup (Chapters 1, 4 and 5): UE4SS gate, add (alone or on top of Load Manip), or
 // remove (restoring or also removing Load Manip).
 #include "Services/GameFiles/LoadManipFiles.h"
 #include "Windows/Main/MainWindow.h"
@@ -58,8 +58,12 @@ void ModPopups::DrawFullBright(UI::Ui& ui, const Rect& screen) {
             // A standalone UE4SS (not Load Manip's, not FullBright's) has to be deleted first
             bool blocked = !sessionUe4ss && MI::ForeignUe4ssBlocksFullBright(t);
             if (withLoadManip) blocked = blocked && !MI::LoadManipInstalled(t);
-            if (blocked) ConfirmDeleteUe4ss(main.Hwnd(), L"FULLBRIGHT", [run] { run(true); });
-            else run(false);
+            const auto proceed = [this, blocked, run] {
+                if (blocked) ConfirmDeleteUe4ss(main.Hwnd(), L"FULLBRIGHT", [run] { run(true); });
+                else run(false);
+            };
+            if (MI::LegacyLoadManipPresent(t)) ConfirmDeleteLegacyLoadManip(main.Hwnd(), L"FULLBRIGHT", proceed);
+            else proceed();
         };
         right.push_back({ "fb-only", L"ONLY FULLBRIGHT", false, 130.f, 12.f, 11.f, 8.f, true, [close, install] {
                               close();

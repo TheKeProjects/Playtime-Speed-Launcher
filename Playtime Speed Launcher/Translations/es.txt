@@ -390,11 +390,15 @@ chapter5_fullbright_lit_label     = Tecla con luz
 chapter5_fullbright_not_installed = (fullbright no instalado)
 
 chapter4_section       = CAPÍTULO 4
-chapter4_enable_label  = Activar Congelar/Ralentizar/Normalizar cargas
 chapter4_freeze_label  = Congelar cargas
 chapter4_slow_label    = Ralentizar cargas
 chapter4_normal_label  = Cargas normales
-chapter4_hint          = Estas teclas solo hacen efecto mientras haya un juego del Capítulo 4 en ejecución.
+chapter4_loadmanip_not_installed = (load manip no instalado)
+
+chapter4_fullbright_section       = FULLBRIGHT
+chapter4_fullbright_unlit_label   = Tecla sin luz
+chapter4_fullbright_lit_label     = Tecla con luz
+chapter4_fullbright_not_installed = (fullbright no instalado)
 
 # Toast de inicio de juego
 game_toast_hint     = Abre el checkpoint loader con:

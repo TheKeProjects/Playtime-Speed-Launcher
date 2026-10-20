@@ -13,8 +13,8 @@ class EasterEggOverlayWindow;
 
 namespace SpeedrunLauncher::Features {
 
-// Key-sequence easter eggs: plays the matching video inside the launcher, or over the game in a
-// click-through window when the game has focus.
+// Key-sequence easter eggs: plays the matching video (or shows the photo) inside the launcher, or
+// over the game in a click-through window when the game has focus.
 class EasterEggs {
 public:
     explicit EasterEggs(Main::MainWindow& window);
