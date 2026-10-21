@@ -4,11 +4,13 @@
 #include <memory>
 #include <vector>
 #include "Core/Async.h"
+#include "Graphics/Animation.h"
 #include "Seasonal/SeasonalCardArt.h"
 #include "Seasonal/SeasonalTheme.h"
 #include "UI/Style.h"
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/Controls.h"
+#include "UI/Widgets/MenuKit.h"
 #include "UI/Window.h"
 
 namespace SpeedrunLauncher::Dialogs {
@@ -217,6 +219,44 @@ void Close(int id) {
 Content Text(const std::wstring& text, Color color, float fontSize) {
     return [text, color, fontSize](UI::Ui& ui, const Rect& area) {
         return UI::Paragraph(ui, area.x, area.y, area.w, text, UI::Mono(fontSize), color);
+    };
+}
+
+Content BadgeText(wchar_t glyph, Color accent, const std::wstring& text) {
+    const size_t nl = text.find(L'\n');
+    const std::wstring head = nl == std::wstring::npos ? text : text.substr(0, nl);
+    const std::wstring body = nl == std::wstring::npos ? L"" : text.substr(nl + 1);
+    auto shownAt = std::make_shared<double>(-1.0);
+    return [=](UI::Ui& ui, const Rect& area) {
+        if (*shownAt < 0.0) *shownAt = ui.Time();
+        const float since = static_cast<float>(ui.Time() - *shownAt);
+        constexpr float kBadge = 48.f;
+        const float tx = area.x + kBadge + 16.f, tw = area.w - kBadge - 16.f;
+        TextStyle headStyle = UI::Mono(12.f, true);
+        headStyle.wrap = true;
+        headStyle.valign = VAlign::Top;
+        TextStyle bodyStyle = UI::Mono(10.5f);
+        bodyStyle.wrap = true;
+        bodyStyle.valign = VAlign::Top;
+        const float headH = ui.g.Measure(head, headStyle, tw).h;
+        const float bodyH = body.empty() ? 0.f : ui.g.Measure(body, bodyStyle, tw).h;
+        const float textH = headH + (bodyH > 0.f ? 6.f + bodyH : 0.f);
+        const float h = std::max(kBadge, textH);
+        // The badge pops in, then the text slides in beside it
+        const float pop = Anim::EaseOutBack(Anim::Clamp01(since / 0.4f), 1.6f);
+        const Rect badge{ area.x, area.y + (h - kBadge) * 0.5f, kBadge, kBadge };
+        ui.PushScale(0.6f + 0.4f * pop, badge.CX(), badge.CY());
+        UI::MenuKit::GlyphBadge(ui, badge, glyph, accent);
+        ui.PopTransform();
+        const float slide = Anim::EaseOutCubic(Anim::Clamp01((since - 0.08f) / 0.35f));
+        ui.g.PushOpacity(slide);
+        float y = area.y + (h - textH) * 0.5f;
+        ui.g.Text(head, { tx + 10.f * (1.f - slide), y, tw, headH }, Lerp(accent, UI::Palette::Bright, 0.4f), headStyle);
+        y += headH + 6.f;
+        if (bodyH > 0.f) ui.g.Text(body, { tx + 10.f * (1.f - slide), y, tw, bodyH }, Rgba(160, 185, 205, 220), bodyStyle);
+        ui.g.PopLayer();
+        if (since < 0.6f) ui.KeepAnimating();
+        return h;
     };
 }
 

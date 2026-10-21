@@ -1,5 +1,6 @@
 // Skips & glitches → sidebar: search box, filter pills and the (grouped) video list.
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <set>
 #include "App/Paths.h"
@@ -257,19 +258,34 @@ void VideoTutorialWindow::DrawVideoItem(Column& col, const Video& video, int ind
     if (r.B() < visibleTop || r.y > visibleBottom) return;   // off screen: only its height matters
     StaggerItem in(ui, listShownAt, index, -22.f, 0.f, 0.03, 0.34);
 
-    const Interaction it = ui.Interact(ui.MakeId("video", index), r, !isLoading);
+    const Id id = ui.MakeId("video", index);
+    const Interaction it = ui.Interact(id, r, !isLoading);
     if (it.hovered) ui.SetCursor(IDC_HAND);
     if (isLoading && ui.MouseOver(r)) ui.SetCursor(IDC_WAIT);
+    // Hover / selection fade in (instead of jumping) and the row nudges right while hovered
+    const float hoverK = ui.Animate(HashId(id, 0x1D01), it.hovered ? 1.f : 0.f, 16.f, 0.f);
+    const float selK = ui.Animate(HashId(id, 0x1D02), isSelected ? 1.f : 0.f, 14.f, 0.f);
     const Color normal = proac ? Rgba(218, 165, 32, 18) : Rgba(255, 255, 255, 12);
     const Color hover = proac ? Rgba(218, 165, 32, 35) : Rgba(255, 255, 255, 28);
-    const Color bg = isSelected ? Rgba(0, 204, 170, 50) : it.hovered ? hover : normal;
+    const Color bg = Lerp(Lerp(normal, hover, hoverK), Rgba(0, 204, 170, 50), selK);
+    if (selK > 0.01f) g.GlowRound(r, 4.f, Palette::Teal, 10.f, 0.25f * selK);
     if (proac) g.Border(r, 4.f, bg, Rgba(218, 165, 32, 90), 1.f);
     else g.FillRound(r, 4.f, bg);
+    const float lit = std::max(selK, isCurrent ? 1.f : 0.f);
+    if (lit > 0.01f) g.FillRound({ r.x, r.y + 6.f, 3.f * lit, r.h - 12.f }, 1.5f, Palette::Teal);
+    ui.PushTranslate(3.f * hoverK, 0.f);
 
     const float top = r.y + 8.f;
     const Color dot = isLoading ? Rgba(255, 170, 0) : isCurrent ? Palette::Teal : Rgba(100, 130, 150, 60);
+    if (isLoading || isCurrent) {
+        // The playing / loading video's dot breathes
+        const float pulse = 0.5f + 0.5f * static_cast<float>(std::sin(ui.Time() * (isLoading ? 6.0 : 2.4)));
+        g.FillEllipse(r.x + 11.f, top + 7.f, 3.f + 3.f * pulse, 3.f + 3.f * pulse, dot.WithAlpha(0.25f * (1.f - pulse)));
+        ui.KeepAnimatingThrottled();
+    }
     g.FillRound({ r.x + 8.f, top + 4.f, 6.f, 6.f }, 3.f, dot);
-    g.Text(video.title, { textX, top, textW, titleH }, isLoading || isCurrent ? Rgba(200, 216, 228) : Rgba(160, 180, 200, 130), title);
+    g.Text(video.title, { textX, top, textW, titleH },
+           isLoading || isCurrent ? Rgba(200, 216, 228) : Lerp(Rgba(160, 180, 200, 130), Rgba(200, 216, 228), hoverK), title);
     for (size_t i = 0; i < tags.size(); ++i) {
         const Rect t = tagRects[i].Offset(0.f, top + titleH + 3.f);
         const Color fg = tags[i].second ? Rgba(0, 204, 170, 180) : Rgba(160, 180, 200, 140);
@@ -284,6 +300,7 @@ void VideoTutorialWindow::DrawVideoItem(Column& col, const Video& video, int ind
         if (auto img = Images::Load(Paths::Asset(L"Images\\proacventure.png"))) g.DrawImageRounded(*img, a, 14.f);
         g.Border(a, 14.f, Colors::Transparent, Rgba(218, 165, 32, 180), 1.5f);
     }
+    ui.PopTransform();
     if (it.held && ui.In().pressed[0] && loadingId.empty()) Select(video);
 }
 

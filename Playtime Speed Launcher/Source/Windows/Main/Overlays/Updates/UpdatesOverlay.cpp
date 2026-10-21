@@ -2,12 +2,15 @@
 #include <algorithm>
 #include <cmath>
 #include "Core/Async.h"
+#include "Graphics/Animation.h"
 #include "Core/Text.h"
 #include "Localization/Localization.h"
 #include "Services/App/AppVersion.h"
 #include "Services/App/VersionCompare.h"
 #include "UI/Widgets/Button.h"
+#include "UI/Widgets/MenuKit.h"
 #include "UI/Widgets/Controls.h"
+#include "UI/Widgets/Form.h"
 #include "UI/Widgets/ScrollArea.h"
 #include "UI/Widgets/Stagger.h"
 #include "Windows/Main/Common/ChangelogLook.h"
@@ -27,31 +30,20 @@ constexpr float kNewsPadX = 16.f, kNewsHeaderH = 46.f, kNewsGap = 10.f;
 constexpr float kNewsTagH = 22.f, kNewsIndent = 18.f, kNewsLineGap = 6.f, kNewsSectionGap = 14.f;
 constexpr float kNewsText = 12.f;
 
-// Big "icon + title + message" banner button (status, GameBanana).
-bool Banner(Ui& ui, Id id, Column& col, wchar_t glyph, const std::wstring& title, const std::wstring& message, Color background,
-            bool enabled, bool border = true) {
-    auto& g = ui.g;
-    TextStyle body = Mono(12.f);
-    body.wrap = true;
-    body.valign = VAlign::Top;
-    const float textX = 16.f + 1.f + 22.f + 14.f;
-    const float textW = col.w - textX - 17.f;
-    const float titleH = g.Measure(title, Mono(15.f, true)).h, messageH = g.Measure(message, body, textW).h;
-    const Rect r = col.Next(1.f + 12.f + std::max(titleH + messageH, 30.f) + 12.f + 1.f, 10.f);
-    // The status button keeps WPF's default #707070 border; the GameBanana one sets BorderThickness 0
-    ButtonScope b(ui, id, r, { background, border ? Hex(0x707070) : Colors::Transparent, border ? 1.f : 0.f, 4.f, { 16.f, 12.f }, 0.f, r.h }, enabled);
-    g.Text(std::wstring(1, glyph), { r.x + 17.f, r.y, 22.f, r.h }, Colors::White, IconFont(22.f));
-    const float top = r.CY() - (titleH + messageH) * 0.5f;
-    g.Text(title, { r.x + textX, top, textW, titleH }, Colors::White, Mono(15.f, true));
-    g.Text(message, { r.x + textX, top + titleH, textW, messageH }, Colors::White.WithAlpha(0.85f), body);
-    return b.Clicked();
-}
-
 } // namespace
 
-void UpdatesOverlay::Open() {
+void UpdatesOverlay::Open(Page startPage) {
     installView = false;
     popup.Open();
+    page = startPage == Page::Updates ? Page::Changelog : Page::Updates;   // force the page's entrance
+    SelectPage(startPage, Async::Now() + 0.12);   // right behind the panel's own entrance
+}
+
+void UpdatesOverlay::SelectPage(Page next, double now) {
+    if (next == page) return;
+    page = next;
+    pageAt = now;
+    if (next == Page::Changelog) changelog.Reset(now + 0.1);
 }
 
 void UpdatesOverlay::ShowInstall(bool gameBanana) {
@@ -95,71 +87,341 @@ void UpdatesOverlay::Install() {
     });
 }
 
-void UpdatesOverlay::DrawCheckView(Ui& ui, Column& col) {
-    auto& g = ui.g;
-    // Current version banner (click = check again)
-    {
-        const float labelH = g.Measure(L"Ag", Mono(10.f)).h, versionH = g.Measure(L"Ag", Mono(20.f, true)).h;
-        const Rect r = col.Next(1.f + 12.f + labelH + versionH + labelH + 12.f + 1.f, 10.f);
-        ButtonScope b(ui, ui.MakeId("updates-check"), r, { Palette::HeaderBg, Palette::ButtonBorder, 1.f, 4.f, { 16.f, 12.f }, 0.f, r.h });
-        g.Text(std::wstring(1, Glyphs::Sync), { r.x + 17.f, r.y, 22.f, r.h }, Palette::Teal, IconFont(22.f));
-        const float x = r.x + 17.f + 22.f + 14.f, w = r.R() - x - 17.f;
-        float y = r.y + 13.f;
-        g.Text(Loc::Get("updates_current_version"), { x, y, w, labelH }, Palette::Muted, Mono(10.f));
-        y += labelH;
-        g.Text(AppVersion::DisplayVersion(), { x, y, w, versionH }, Palette::Teal, Mono(20.f, true));
-        y += versionH;
-        g.Text(Loc::Get(checking ? "updates_checking" : "updates_check_hint"), { x, y, w, labelH }, Hex(0x1A3A50), Mono(10.f).Italic());
-        if (b.Clicked()) Check();
-    }
-    if (info) {
-        // Status: available (green) / up to date (blue) / error (orange)
-        if (info->isUpdateAvailable) {
-            if (Banner(ui, ui.MakeId("updates-status"), col, 0xE896, Loc::Get("updates_available_title"),
-                       Loc::Fmt("updates_available_msg", L"v" + info->latestVersion), Rgba(46, 125, 50), true)) {
-                ShowInstall(false);
-            }
-        } else if (!info->latestVersion.empty() && info->latestVersion == AppVersion::CurrentVersion) {
-            Banner(ui, ui.MakeId("updates-status"), col, 0xE930, Loc::Get("updates_up_to_date_title"), Loc::Get("updates_up_to_date_msg"),
-                   Rgba(21, 101, 192), false);
-        } else {
-            Banner(ui, ui.MakeId("updates-status"), col, 0xE814, Loc::Get("updates_error_title"), Loc::Get("updates_error_msg"), Rgba(230, 81, 0),
-                   false);
-        }
-        if (!info->isUpdateAvailable && gb && gb->isUpdateAvailable) {
-            if (Banner(ui, ui.MakeId("updates-gb"), col, 0xE774, Loc::Get("updates_gb_title"), Loc::Fmt("updates_gb_msg", L"v" + gb->latestVersion),
-                       Hex(0xF4821A), true, false)) {
-                ShowInstall(true);
-            }
-        }
-        if (info->isUpdateAvailable) {
-            // Release details
-            const float labelH = g.Measure(L"Ag", Mono(10.f, true)).h, rowH = g.Measure(L"Ag", Mono(11.f)).h;
-            const Rect r = col.Next(1.f + 12.f + labelH + 8.f + rowH * 3.f + 12.f + 1.f);
-            g.Border(r, 4.f, Palette::HeaderBg, Palette::ButtonBorder, 1.f);
-            float y = r.y + 13.f;
-            const float x = r.x + 17.f;
-            g.Text(Loc::Get("updates_details_label"), { x, y, r.w - 34.f, labelH }, Palette::Teal, Mono(10.f, true));
-            y += labelH + 8.f;
-            const std::pair<const char*, std::wstring> rows[] = { { "updates_latest_version", L"v" + info->latestVersion },
-                                                                  { "updates_file_name", info->fileName },
-                                                                  { "updates_file_size", Text::FileSize(info->fileSize) } };
-            for (const auto& [key, value] : rows) {
-                g.Text(Loc::Get(key), { x, y, 130.f, rowH }, Palette::Muted, Mono(11.f));
-                g.Text(value, { x + 130.f, y, r.R() - x - 147.f, rowH }, Palette::Label, Mono(11.f).Ellipsis());
-                y += rowH;
-            }
-        }
-    }
+namespace {
 
-    // "Manual update" link (Margin 2,14,0,0)
-    col.Gap(14.f);
-    const std::wstring link = Loc::Get("updates_manual_link");
-    const TextStyle linkStyle = Mono(10.f);
-    const TextSize size = g.Measure(link, linkStyle);
-    const Rect r = col.Next(size.h);
-    if (LinkButton(ui, ui.MakeId("updates-manual"), { r.x + 2.f, r.y, size.w + 2.f, size.h }, link, linkStyle, Palette::Dim))
-        Standalone::OpenManualUpdate();
+constexpr float kBannerH = 96.f, kGap = 12.f, kSideW = 300.f, kCardRadius = 10.f;
+constexpr Color kBlue = Rgba(60, 150, 230), kOrange = Hex(0xF4821A);
+
+enum class Status { Unknown, Checking, UpToDate, Available, GameBanana, Error };
+
+// Rounded card with a small caption on top ("YOUR VERSION"...); returns the content area
+Rect Card(Ui& ui, const Rect& r, const std::wstring& caption, wchar_t glyph) {
+    auto& g = ui.g;
+    g.Border(r, kCardRadius, Palette::HeaderBg, Palette::ButtonBorder, 1.f);
+    g.FillLinear(r.Inset(1.f).Top(40.f), kCardRadius - 1.f, { { 0.f, Palette::Teal.WithAlpha(0.06f) }, { 1.f, Palette::Teal.WithAlpha(0.f) } }, { 0.f, 0.f },
+                 { 0.f, 1.f });
+    Glyph(ui, glyph, { r.x + 14.f, r.y + 10.f, 16.f, 18.f }, 11.f, Palette::Teal);
+    g.Text(caption, { r.x + 36.f, r.y + 10.f, r.w - 50.f, 18.f }, Palette::Teal, Mono(9.5f, true));
+    return { r.x + 14.f, r.y + 32.f, r.w - 28.f, r.h - 42.f };
+}
+
+} // namespace
+
+// The two options side by side: a card per page (glyph, name, what's in it); the picked one
+// glows and a bar slides under it
+void UpdatesOverlay::DrawPages(Ui& ui, const Rect& row) {
+    auto& g = ui.g;
+    struct Option {
+        Page page;
+        wchar_t glyph;
+        const char* title;
+        const char* subtitle;
+    };
+    const Option options[] = { { Page::Updates, Glyphs::Sync, "updates_tab", "updates_tab_sub" },
+                               { Page::Changelog, Glyphs::Changelog, "changelog_tab", "changelog_tab_sub" } };
+    const float slide = ui.Animate(ui.MakeId("upd-page-bar"), page == Page::Updates ? 0.f : 1.f, 14.f);
+    for (int i = 0; i < 2; ++i) {
+        const Option& o = options[i];
+        const Rect r = GridCell(row, 2, i, 12.f);
+        const Id id = ui.MakeId("upd-page", i);
+        const Interaction it = ui.Interact(id, r);
+        if (it.hovered) ui.SetCursor(IDC_HAND);
+        const bool selected = page == o.page;
+        const float hover = ui.Animate(HashId(id, 1), it.hovered && !selected ? 1.f : 0.f, 16.f, 0.f);
+        const float sel = ui.Animate(HashId(id, 2), selected ? 1.f : 0.f, 14.f);
+        // The update alert shows on the UPDATES option too
+        const bool alert = o.page == Page::Updates && main.UpdateAlert();
+        const Color accent = alert ? Rgba(220, 60, 40) : Palette::Teal;
+        if (sel > 0.01f) g.GlowRound(r, 10.f, accent, 16.f, 0.3f * sel);
+        g.Border(r, 10.f, Lerp(Lerp(Palette::OptionBg, Hex(0x0A1A28), hover), accent.WithAlpha(24.f / 255.f), sel),
+                 Lerp(Lerp(Palette::ButtonBorder, Palette::ControlBorder, hover), accent.WithAlpha(0.85f), sel), 1.f);
+        const Rect badge{ r.x + 12.f, r.CY() - 18.f, 36.f, 36.f };
+        g.Border(badge, 9.f, accent.WithAlpha((18.f + 30.f * sel) / 255.f), accent.WithAlpha((60.f + 120.f * sel) / 255.f), 1.f);
+        const float spin = o.page == Page::Updates && (checking || alert) ? static_cast<float>(std::fmod(ui.Time() * (checking ? 240.0 : 60.0), 360.0)) : 0.f;
+        g.PushTransform(D2D1::Matrix3x2F::Rotation(spin, D2D1::Point2F(badge.CX(), badge.CY())));
+        Glyph(ui, o.glyph, badge, 15.f, Lerp(Palette::Dim, accent, std::max(sel, 0.5f * hover)));
+        g.PopTransform();
+        if (spin != 0.f) ui.KeepAnimatingThrottled();
+        const float tx = badge.R() + 12.f + 3.f * hover;
+        g.Text(Loc::Get(o.title), { tx, r.CY() - 18.f, r.R() - tx - 12.f, 18.f }, Lerp(Lerp(Palette::Dim, Palette::Label, hover), accent, sel),
+               Mono(12.f, true).Ellipsis());
+        g.Text(Loc::Get(o.subtitle), { tx, r.CY() + 2.f, r.R() - tx - 12.f, 16.f }, MenuKit::kDim, Mono(9.5f).Ellipsis());
+        if (alert) {
+            const float pulse = 1.f - 0.45f * Anim::EaseInOutSine(Anim::PingPong(ui.Time(), 1.2));
+            g.FillEllipse(badge.R() - 2.f, badge.y + 2.f, 5.f, 5.f, Rgba(220, 60, 40).WithAlpha(pulse));
+            ui.KeepAnimatingThrottled();
+        }
+        if (it.clicked) SelectPage(o.page, ui.Time());
+    }
+    // Sliding bar under the picked option
+    const float cellW = (row.w - 12.f) * 0.5f;
+    const Rect bar{ row.x + (cellW + 12.f) * slide + cellW * 0.25f, row.B() + 6.f, cellW * 0.5f, 3.f };
+    g.GlowRound(bar, 1.5f, Palette::Teal, 8.f, 0.6f);
+    g.FillRound(bar, 1.5f, Palette::Teal);
+}
+
+// Banner: a gradient strip with a drifting light, the sync badge floating, the title, a subtitle
+// and the installed version as a pill
+void UpdatesOverlay::DrawBanner(Ui& ui, const Rect& r) {
+    auto& g = ui.g;
+    const float t = static_cast<float>(ui.Time());
+    g.PushRoundClip(r, kCardRadius);
+    g.FillLinear(r, 0.f, { { 0.f, Rgba(0, 60, 52) }, { 0.55f, Hex(0x0A1D2C) }, { 1.f, Hex(0x07121C) } }, { 0.f, 0.f }, { 1.f, 1.f });
+    const float lx = r.x + r.w * (0.65f + 0.25f * std::sin(t * 0.6f));
+    g.FillRadial({ lx - 200.f, r.y - 90.f, 400.f, 260.f }, { { 0.f, Palette::Teal.WithAlpha(0.18f) }, { 1.f, Palette::Teal.WithAlpha(0.f) } });
+    // A few faint rings rippling out from the badge
+    const float ring = std::fmod(t, 3.f) / 3.f;
+    const float bx = r.x + 60.f, by = r.CY();
+    for (int i = 0; i < 2; ++i) {
+        const float k = std::fmod(ring + 0.5f * static_cast<float>(i), 1.f);
+        g.StrokeEllipse(bx, by, 34.f + 50.f * k, 34.f + 50.f * k, Palette::Teal.WithAlpha(0.25f * (1.f - k)), 1.5f);
+    }
+    g.PopLayer();
+    g.StrokeRound(r.Inset(0.5f), kCardRadius - 0.5f, Palette::Teal.WithAlpha(0.35f), 1.f);
+    MenuKit::GlyphBadge(ui, { bx - 30.f, by - 30.f + 3.f * std::sin(t * 2.f), 60.f, 60.f }, Glyphs::Sync, Palette::Teal, 26.f);
+    const float tx = r.x + 112.f;
+    g.Text(Loc::Get("updates_banner_title"), { tx, r.CY() - 26.f, r.R() - tx - 200.f, 24.f }, MenuKit::kTitle, Mono(17.f, true).Ellipsis());
+    g.Text(Loc::Get("updates_banner_sub"), { tx, r.CY() + 2.f, r.R() - tx - 200.f, 18.f }, Rgba(140, 175, 195), Mono(10.5f).Ellipsis());
+    const std::wstring pill = Loc::Fmt("updates_installed_pill", AppVersion::DisplayVersion());
+    const float pw = ui.g.Measure(pill, Mono(9.f, true)).w + 18.f;
+    MenuKit::Chip(ui, r.R() - 20.f - pw, r.CY(), pill, Palette::Teal);
+    ui.KeepAnimatingThrottled();
+}
+
+// The big status: an orb (spinning arcs while checking, a check when up to date, a bouncing
+// download arrow when there's an update), the title, the message and the actions under it
+void UpdatesOverlay::DrawStatus(Ui& ui, const Rect& r) {
+    auto& g = ui.g;
+    const float t = static_cast<float>(ui.Time());
+    Status status = Status::Unknown;
+    if (checking) status = Status::Checking;
+    else if (info && info->isUpdateAvailable) status = Status::Available;
+    else if (gb && gb->isUpdateAvailable) status = Status::GameBanana;
+    else if (info && !info->latestVersion.empty()) status = Status::UpToDate;
+    else if (info) status = Status::Error;
+    const Color color = status == Status::Available ? MenuKit::kGreen : status == Status::GameBanana ? kOrange : status == Status::UpToDate ? kBlue
+                      : status == Status::Error ? MenuKit::kRed : MenuKit::kAmber;
+
+    // The state pops in whenever it changes
+    struct StateAnim {
+        int status = -1;
+        double since = -10.0;
+    };
+    auto& anim = ui.Data<StateAnim>(ui.MakeId("upd-status-anim"));
+    if (anim.status != static_cast<int>(status)) {
+        anim.status = static_cast<int>(status);
+        anim.since = ui.Time();
+    }
+    const float since = static_cast<float>(ui.Time() - anim.since);
+    const float pop = Anim::EaseOutBack(Anim::Clamp01(since / 0.5f), 0.8f);
+    if (since < 0.6f) ui.KeepAnimating();
+    ui.KeepAnimatingThrottled();
+
+    g.Border(r, kCardRadius, Palette::HeaderBg, Palette::ButtonBorder, 1.f);
+    g.FillRadial({ r.CX() - r.w * 0.6f, r.y - 120.f, r.w * 1.2f, 360.f }, { { 0.f, color.WithAlpha(0.10f) }, { 1.f, color.WithAlpha(0.f) } });
+
+    // Orb
+    const float ocx = r.CX(), ocy = r.y + 98.f, orb = 50.f * (0.85f + 0.15f * pop);
+    if (status != Status::Checking && status != Status::Unknown) {
+        const float ring = std::fmod(t, 2.f) / 2.f;
+        for (int i = 0; i < 2; ++i) {
+            const float k = std::fmod(ring + 0.5f * static_cast<float>(i), 1.f);
+            g.StrokeEllipse(ocx, ocy, orb + 30.f * k, orb + 30.f * k, color.WithAlpha(0.4f * (1.f - k)), 2.f);
+        }
+    }
+    g.GlowRound({ ocx - orb, ocy - orb, orb * 2.f, orb * 2.f }, orb, color, 24.f, 0.45f);
+    g.FillRadial({ ocx - orb, ocy - orb, orb * 2.f, orb * 2.f }, { { 0.f, Lerp(color, Colors::White, 0.3f) }, { 1.f, Lerp(color, Colors::Black, 0.15f) } });
+    if (status == Status::Checking) {
+        // Two arcs chasing each other around the orb
+        const auto arc = [&](float start, float sweep) {
+            constexpr int kSegments = 20;
+            const float step = sweep / kSegments, rr = orb + 11.f;
+            for (int i = 0; i < kSegments; ++i) {
+                const float a0 = start + i * step, a1 = a0 + step;
+                g.Line(ocx + std::cos(a0) * rr, ocy + std::sin(a0) * rr, ocx + std::cos(a1) * rr, ocy + std::sin(a1) * rr, color, 3.f, true);
+            }
+        };
+        const float spin = std::fmod(t * 5.f, 6.2831853f);
+        arc(spin, 1.4f);
+        arc(spin + 3.1415927f, 1.4f);
+        ui.KeepAnimating();
+    }
+    wchar_t glyph = Glyphs::Info;
+    float bob = 0.f, spin = 0.f;
+    switch (status) {
+        case Status::Checking: glyph = Glyphs::Sync; spin = std::fmod(t * 200.f, 360.f); break;
+        case Status::UpToDate: glyph = Glyphs::CheckMark; break;
+        case Status::Available: glyph = Glyphs::Download; bob = 5.f * std::sin(t * 3.f); break;
+        case Status::GameBanana: glyph = Glyphs::Download; bob = 5.f * std::sin(t * 3.f); break;
+        case Status::Error: glyph = Glyphs::Warning; break;
+        default: break;
+    }
+    g.PushTransform(D2D1::Matrix3x2F::Rotation(spin, D2D1::Point2F(ocx, ocy)) * D2D1::Matrix3x2F::Translation(0.f, bob));
+    ui.PushScale(std::max(0.01f, pop), ocx, ocy);
+    Glyph(ui, glyph, { ocx - orb, ocy - orb, orb * 2.f, orb * 2.f }, 38.f, Colors::White);
+    ui.PopTransform();
+    g.PopTransform();
+
+    // Title + message
+    std::wstring title, message;
+    switch (status) {
+        case Status::Checking: title = Loc::Get("updates_hero_checking_title"); message = Loc::Get("updates_hero_checking_msg"); break;
+        case Status::UpToDate: title = Loc::Get("updates_up_to_date_title"); message = Loc::Get("updates_up_to_date_msg"); break;
+        case Status::Available:
+            title = Loc::Get("updates_available_title");
+            message = Loc::Fmt("updates_hero_available_msg", L"v" + info->latestVersion);
+            break;
+        case Status::GameBanana: title = Loc::Get("updates_gb_title"); message = Loc::Fmt("updates_hero_gb_msg", L"v" + gb->latestVersion); break;
+        case Status::Error: title = Loc::Get("updates_error_title"); message = Loc::Get("updates_error_msg"); break;
+        default: title = Loc::Get("updates_hero_unknown_title"); message = Loc::Get("updates_hero_unknown_msg"); break;
+    }
+    const float textW = r.w - 60.f;
+    TextStyle titleStyle = Mono(16.f, true);
+    titleStyle.wrap = true;
+    titleStyle.align = HAlign::Center;
+    titleStyle.valign = VAlign::Top;
+    TextStyle msgStyle = Mono(11.f);
+    msgStyle.wrap = true;
+    msgStyle.align = HAlign::Center;
+    msgStyle.valign = VAlign::Top;
+    float y = ocy + orb + 34.f;
+    const float textK = Anim::EaseOutCubic(Anim::Clamp01((since - 0.1f) / 0.35f));
+    g.PushOpacity(textK);
+    ui.PushTranslate(0.f, 8.f * (1.f - textK));
+    const float titleH = g.Measure(title, titleStyle, textW).h;
+    g.Text(title, { r.x + 30.f, y, textW, titleH }, Lerp(color, Palette::Bright, 0.35f), titleStyle);
+    y += titleH + 8.f;
+    const float msgH = g.Measure(message, msgStyle, textW).h;
+    g.Text(message, { r.x + 30.f, y, textW, msgH }, Rgba(140, 170, 190), msgStyle);
+    ui.PopTransform();
+    g.PopLayer();
+
+    // Actions at the bottom of the card: the main one (see the update / check again), GameBanana,
+    // and the manual update
+    const float by = r.B() - 22.f - 38.f;
+    std::vector<std::pair<int, float>> buttons;   // which, width
+    const std::wstring view = Loc::Get("updates_view_btn"), again = Loc::Get("updates_check_again_btn"), banana = Loc::Get("updates_gb_btn"),
+                       manual = Loc::Get("updates_manual_btn");
+    const bool available = status == Status::Available, gbAvailable = gb && gb->isUpdateAvailable && !available;
+    const std::wstring& mainText = available ? view : again;
+    const wchar_t mainGlyph = available ? Glyphs::Forward : Glyphs::Refresh;
+    const float mw = MenuKit::FooterButtonWidth(ui, mainText, mainGlyph, 170.f);
+    const float gw = gbAvailable ? MenuKit::FooterButtonWidth(ui, banana, Glyphs::Download, 150.f) : 0.f;
+    const float total = mw + (gbAvailable ? 10.f + gw : 0.f);
+    float x = r.CX() - total * 0.5f;
+    if (MenuKit::FooterButton(ui, ui.MakeId("upd-main"), { x, by, mw, 38.f }, mainText, available ? MenuKit::Kind::Primary : MenuKit::Kind::Secondary,
+                              !checking && !downloading, mainGlyph, available ? MenuKit::kGreen : Palette::Teal)) {
+        if (available) ShowInstall(false);
+        else Check();
+    }
+    x += mw + 10.f;
+    if (gbAvailable &&
+        MenuKit::FooterButton(ui, ui.MakeId("upd-gb"), { x, by, gw, 38.f }, banana, MenuKit::Kind::Primary, !downloading, Glyphs::Download, kOrange))
+        ShowInstall(true);
+    // Manual update as a quiet link under the buttons
+    const TextStyle linkStyle = Mono(9.5f, true).Center();
+    const float lw = g.Measure(manual, linkStyle).w + 24.f;
+    const Rect link{ r.CX() - lw * 0.5f, by - 26.f, lw, 18.f };
+    const Interaction it = ui.Interact(ui.MakeId("upd-manual"), link);
+    if (it.hovered) ui.SetCursor(IDC_HAND);
+    const float hover = ui.Animate(ui.MakeId("upd-manual-hover"), it.hovered ? 1.f : 0.f, 16.f, 0.f);
+    Glyph(ui, Glyphs::Download, { link.x, link.y, 14.f, link.h }, 9.f, Lerp(Palette::Dim, Palette::Teal, hover));
+    g.Text(manual, link.CutLeft(14.f), Lerp(Palette::Dim, Palette::Teal, hover), TextStyle(linkStyle).Underline());
+    if (it.clicked) Standalone::OpenManualUpdate();
+}
+
+void UpdatesOverlay::DrawVersionCard(Ui& ui, const Rect& r) {
+    auto& g = ui.g;
+    const Rect c = Card(ui, r, Loc::Get("updates_version_card"), Glyphs::Info);
+    g.Text(AppVersion::DisplayVersion(), { c.x, c.y - 2.f, c.w, 28.f }, Palette::Teal, Mono(21.f, true));
+    const std::wstring latest = checking ? Loc::Get("updates_source_waiting")
+                              : info && !info->latestVersion.empty() ? L"v" + info->latestVersion : L"\x2014";
+    const bool newer = info && info->isUpdateAvailable;
+    // "Latest published ······ v4.1.5 · 3.2 MB"
+    const std::wstring value = newer && info->fileSize > 0 ? latest + L"   B7  " + Text::FileSize(info->fileSize) : latest;
+    g.Text(Loc::Get("updates_latest_label"), { c.x, c.y + 30.f, c.w, 16.f }, MenuKit::kDim, Mono(9.5f));
+    g.Text(value, { c.x, c.y + 30.f, c.w, 16.f }, newer ? MenuKit::kGreen : Palette::Label, Mono(10.f, true).Right());
+}
+
+void UpdatesOverlay::DrawSourcesCard(Ui& ui, const Rect& r) {
+    auto& g = ui.g;
+    const Rect c = Card(ui, r, Loc::Get("updates_sources_card"), Glyphs::Download);
+    struct Source {
+        const char* name;
+        bool known;
+        bool reached;
+        std::wstring version;
+        bool newer;
+    };
+    const Source sources[] = {
+        { "updates_source_github", info.has_value(), info && !info->latestVersion.empty(), info ? info->latestVersion : L"", info && info->isUpdateAvailable },
+        { "updates_source_gb", gb.has_value(), gb && !gb->latestVersion.empty(), gb ? gb->latestVersion : L"", gb && gb->isUpdateAvailable },
+    };
+    float y = c.y;
+    for (const auto& s : sources) {
+        const Rect row{ c.x, y, c.w, 26.f };
+        y += 28.f;
+        const Color dot = !s.known ? MenuKit::kAmber : s.newer ? MenuKit::kGreen : s.reached ? Palette::Teal : MenuKit::kRed;
+        if (!s.known) Form::Spinner(ui, row.x + 6.f, row.CY(), 5.f, dot);
+        else {
+            g.FillEllipse(row.x + 6.f, row.CY(), 7.f, 7.f, dot.WithAlpha(0.18f));
+            g.FillEllipse(row.x + 6.f, row.CY(), 3.5f, 3.5f, dot);
+        }
+        g.Text(Loc::Get(s.name), { row.x + 20.f, row.y, row.w - 110.f, row.h }, Palette::Label, Mono(10.5f, true).Ellipsis());
+        const std::wstring value = !s.known ? Loc::Get("updates_source_waiting") : s.reached ? L"v" + s.version : Loc::Get("updates_source_none");
+        g.Text(value, row, s.newer ? MenuKit::kGreen : MenuKit::kDim, Mono(10.f, true).Right());
+    }
+}
+
+void UpdatesOverlay::DrawHowCard(Ui& ui, const Rect& r) {
+    auto& g = ui.g;
+    const Rect c = Card(ui, r, Loc::Get("updates_how_card"), Glyphs::Education);
+    TextStyle step = Mono(10.f);
+    step.wrap = true;
+    step.valign = VAlign::Top;
+    float y = c.y;
+    const char* keys[] = { "updates_how_1", "updates_how_2", "updates_how_3" };
+    for (int i = 0; i < 3; ++i) {
+        const std::wstring text = Loc::Get(keys[i]);
+        const float h = std::max(20.f, g.Measure(text, step, c.w - 30.f).h);
+        if (y + h > c.B() + 6.f) break;
+        const Rect n{ c.x, y, 20.f, 20.f };
+        g.Border(n, 10.f, Palette::Teal.WithAlpha(0.12f), Palette::Teal.WithAlpha(0.5f), 1.f);
+        g.Text(std::to_wstring(i + 1), n, Palette::Teal, Mono(9.f, true).Center());
+        if (i < 2) g.FillRect({ n.CX() - 0.5f, n.B() + 2.f, 1.f, h - 14.f }, Palette::Teal.WithAlpha(0.25f));
+        g.Text(text, { c.x + 30.f, y + 2.f, c.w - 30.f, h }, Rgba(150, 180, 200), step);
+        y += h + 8.f;
+    }
+}
+
+// Banner on top, the status on the left, the three cards on the right; everything comes in one
+// after another
+void UpdatesOverlay::DrawOverview(Ui& ui, const Rect& area) {
+    {
+        StaggerItem reveal(ui, pageAt, 0, 0.f, 12.f);
+        DrawBanner(ui, area.Top(kBannerH));
+    }
+    const float top = area.y + kBannerH + kGap;
+    const Rect left{ area.x, top, area.w - kSideW - kGap, area.B() - top };
+    const Rect right{ left.R() + kGap, top, kSideW, area.B() - top };
+    {
+        StaggerItem reveal(ui, pageAt + 0.08, 0, 0.f, 16.f);
+        DrawStatus(ui, left);
+    }
+    const float versionH = 88.f, sourcesH = 96.f;
+    {
+        StaggerItem reveal(ui, pageAt + 0.14, 0, 26.f);
+        DrawVersionCard(ui, right.Top(versionH));
+    }
+    {
+        StaggerItem reveal(ui, pageAt + 0.2, 0, 26.f);
+        DrawSourcesCard(ui, { right.x, right.y + versionH + kGap, right.w, sourcesH });
+    }
+    {
+        StaggerItem reveal(ui, pageAt + 0.26, 0, 26.f);
+        const float y = right.y + versionH + sourcesH + kGap * 2.f;
+        DrawHowCard(ui, { right.x, y, right.w, right.B() - y });
+    }
 }
 
 void UpdatesOverlay::DrawInstallView(Ui& ui, const Rect& body) {
@@ -168,8 +430,8 @@ void UpdatesOverlay::DrawInstallView(Ui& ui, const Rect& body) {
     const std::wstring version = L"v" + (useGb ? gb->latestVersion : info->latestVersion);
     const std::wstring file = useGb ? gb->fileName : info->fileName;
     const long long fileSize = useGb ? gb->fileSize : info->fileSize;
-    std::wstring changelog = Text::Trim(useGb ? gb->changelog : info->changelog);
-    if (changelog.empty()) changelog = L"\x2014";
+    std::wstring notes = Text::Trim(useGb ? gb->changelog : info->changelog);
+    if (notes.empty()) notes = L"\x2014";
 
     // Header strip: install glyph + "vX ready" + file / size
     const float titleH = g.Measure(L"Ag", Mono(14.f, true)).h, subH = g.Measure(L"Ag", Mono(11.f)).h;
@@ -188,11 +450,11 @@ void UpdatesOverlay::DrawInstallView(Ui& ui, const Rect& body) {
     g.Text(Loc::Get("updates_whats_new"), label, Palette::Teal, Mono(10.f, true));
     const Rect list{ body.x + 12.f, label.B() + 10.f, body.w - 24.f, body.B() - label.B() - 14.f };
     const Id scrollId = ui.MakeId("updates-changelog");
-    if (changelog != newsSource) ScrollArea::ScrollTo(ui, scrollId, 0.f);
+    if (notes != newsSource) ScrollArea::ScrollTo(ui, scrollId, 0.f);
     ScrollArea scroll(ui, scrollId, list, false, 48.f, ScrollArea::Bar::Classic);
     const float listW = scroll.ContentWidth() - 4.f;
-    if (changelog != newsSource || std::abs(listW - newsWidth) > 0.5f || newsLang != Loc::Revision())
-        BuildNews(ui, changelog, useGb ? gb->latestVersion : info->latestVersion, listW);
+    if (notes != newsSource || std::abs(listW - newsWidth) > 0.5f || newsLang != Loc::Revision())
+        BuildNews(ui, notes, useGb ? gb->latestVersion : info->latestVersion, listW);
     if (!news.empty()) {
         const std::wstring from = L"v" + AppVersion::CurrentVersion, to = L"v" + news.front().entry.version;
         const std::wstring summary = news.size() > 1 ? Loc::Fmt("updates_news_summary", static_cast<int>(news.size()), from, to)
@@ -377,28 +639,25 @@ float UpdatesOverlay::DrawNewsCard(Ui& ui, size_t index, float x, float y, float
 void UpdatesOverlay::DrawFooter(Ui& ui, const Rect& footer) {
     auto& g = ui.g;
     const Rect row = footer.Inset(14.f, 0.f);
-    const TextStyle text = Mono(11.f, true).Center();
     if (downloading) {
         const std::wstring label = Loc::Fmt("updates_downloading", percent);
         const float w = g.Measure(label, Mono(11.f)).w + 1.f;
         g.Text(label, { row.x, row.y, w, row.h }, Palette::Teal, Mono(11.f));
-        ProgressBar(ui, { row.x + w + 12.f, row.CY() - 3.f, 200.f, 6.f }, percent / 100.f);
-        ui.KeepAnimatingThrottled();
+        MenuKit::GlowProgress(ui, ui.MakeId("updates-progress"), { row.x + w + 12.f, row.CY() - 4.f, 220.f, 8.f }, percent / 100.f);
     } else if (installView) {
         const std::wstring accept = Loc::Get("updates_download_btn");
-        ButtonStyle acceptStyle{ Palette::Teal, Colors::Transparent, 0.f, 3.f, { 0.f }, 200.f, 36.f };
-        const float aw = ButtonWidth(ui, accept, text, acceptStyle);
-        if (TextButton(ui, ui.MakeId("updates-accept"), { row.x, row.CY() - 18.f, aw, 36.f }, accept, text, Hex(0x060C12), acceptStyle)) Install();
+        const float aw = MenuKit::FooterButtonWidth(ui, accept, Glyphs::Download, 200.f);
+        if (MenuKit::FooterButton(ui, ui.MakeId("updates-accept"), { row.x, row.CY() - 18.f, aw, 36.f }, accept, MenuKit::Kind::Primary, true, Glyphs::Download))
+            Install();
         const std::wstring cancel = Loc::Get("updates_cancel_btn");
-        ButtonStyle cancelStyle = Styles::Footer();
-        cancelStyle.minWidth = 100.f;
-        const float cw = ButtonWidth(ui, cancel, text, cancelStyle);
-        if (TextButton(ui, ui.MakeId("updates-cancel"), { row.x + aw + 8.f, row.CY() - 18.f, cw, 36.f }, cancel, text, Palette::Dim, cancelStyle))
+        const float cw = MenuKit::FooterButtonWidth(ui, cancel, Glyphs::Cancel, 100.f);
+        if (MenuKit::FooterButton(ui, ui.MakeId("updates-cancel"), { row.x + aw + 8.f, row.CY() - 18.f, cw, 36.f }, cancel, MenuKit::Kind::Secondary, true,
+                                  Glyphs::Cancel))
             installView = false;
     }
     const std::wstring close = Loc::Get("updates_close");
-    const float w = ButtonWidth(ui, close, text, Styles::Footer());
-    if (TextButton(ui, ui.MakeId("updates-close"), { row.R() - w, row.CY() - 18.f, w, 36.f }, close, text, Palette::Dim, Styles::Footer())) {
+    const float w = MenuKit::FooterButtonWidth(ui, close, Glyphs::Back, 120.f);
+    if (MenuKit::FooterButton(ui, ui.MakeId("updates-close"), { row.R() - w, row.CY() - 18.f, w, 36.f }, close, MenuKit::Kind::Secondary, true, Glyphs::Back)) {
         popup.Close();
         if (!downloading) installView = false;
     }
@@ -407,17 +666,27 @@ void UpdatesOverlay::DrawFooter(Ui& ui, const Rect& footer) {
 void UpdatesOverlay::Draw(Ui& ui, const Rect& screen) {
     PanelStyle style;
     style.title = Loc::Get("updates_header");
-    OverlayFrame frame(ui, ui.MakeId("updates"), screen, 700.f, 540.f, style, popup.Opacity(), popup.Scale());
-    if (installView && (installGb ? gb.has_value() : info.has_value())) {
-        DrawInstallView(ui, frame.body);
-    } else {
-        installView = false;
-        ScrollArea scroll(ui, ui.MakeId("updates-scroll"), frame.body, false, 48.f, ScrollArea::Bar::Classic);
-        Column col(frame.body.x + 20.f, frame.body.y + 14.f, scroll.ContentWidth() - 40.f);
-        DrawCheckView(ui, col);
-        scroll.SetContentSize(col.Height() + 28.f);
+    OverlayFrame frame(ui, ui.MakeId("updates"), screen, 900.f, 690.f, style, popup.Opacity(), popup.Scale());
+    // The two options on top (hidden in the install view, which has its own header)
+    const bool install = page == Page::Updates && installView && (installGb ? gb.has_value() : info.has_value());
+    if (!install && page == Page::Updates) installView = false;
+    Rect content = frame.body;
+    if (!install) {
+        const Rect row{ frame.body.x + 20.f, frame.body.y + 16.f, frame.body.w - 40.f, 54.f };
+        {
+            StaggerItem reveal(ui, frame.OpenedAt() + 0.1, 0, 0.f, 10.f);
+            DrawPages(ui, row);
+        }
+        content = { frame.body.x + 20.f, row.B() + 20.f, frame.body.w - 40.f, frame.body.B() - row.B() - 36.f };
     }
+    if (page == Page::Changelog) changelog.Draw(ui, { frame.body.x, content.y - 4.f, frame.body.w, frame.body.B() - content.y + 4.f });
+    else if (install) DrawInstallView(ui, frame.body);
+    else DrawOverview(ui, content);
     DrawFooter(ui, frame.footer);
+    if (popup.IsOpen() && !downloading && ui.KeyPressed(VK_ESCAPE)) {
+        if (install) installView = false;
+        else popup.Close();
+    }
 }
 
 } // namespace SpeedrunLauncher::Main

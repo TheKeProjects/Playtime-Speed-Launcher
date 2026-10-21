@@ -9,6 +9,7 @@
 #include "Core/Async.h"
 #include "Core/Files.h"
 #include "Core/Http.h"
+#include "Core/Text.h"
 #include "UI/Window.h"
 
 namespace SpeedrunLauncher::Windows::RemoteImages {
@@ -63,6 +64,41 @@ void WriteDisk(const std::wstring& path, const Decoded& in) {
     Files::WriteBytes(path, bytes);
 }
 
+bool Contains(const std::wstring& s, const wchar_t* part) { return s.find(part) != std::wstring::npos; }
+
+// speedrun.com profile pictures ("/static/user/<id>/image?v=x") sit behind a Cloudflare challenge
+// that turns away most requests from apps (403), and it depends on the player's IP: for some people
+// none of them load. The same picture as "/image.png?v=x" comes from Cloudflare's cache instead.
+// (The extension doesn't change the format: it's still whatever was uploaded, WebP included.)
+std::wstring Direct(const std::wstring& url) {
+    if (!Contains(url, L"speedrun.com/static/")) return url;
+    const size_t query = url.find(L'?');
+    const size_t end = query == std::wstring::npos ? url.size() : query;
+    if (end >= 6 && url.compare(end - 6, 6, L"/image") == 0) return url.substr(0, end) + L".png" + url.substr(end);
+    return url;
+}
+
+// The same picture converted to PNG by wsrv.nl's image CDN: for WebP pictures on PCs without the
+// WebP codec (stripped-down Windows installs don't have it, so WIC can't open them) and for pictures
+// speedrun.com keeps refusing
+std::wstring ViaProxy(const std::wstring& url) { return L"https://wsrv.nl/?url=" + Text::UrlEncode(url) + L"&output=png"; }
+
+// Downloads and decodes `url` (retrying refusals); `undecodable` is set when it arrived but Windows
+// couldn't read it
+bool Fetch(const std::wstring& url, unsigned maxSide, Decoded& out, int attempts, bool& undecodable) {
+    for (int attempt = 1; attempt <= attempts; ++attempt) {
+        const Http::Response response = Http::Get(url, {}, 15000);
+        if (response.Ok() && !response.body.empty()) {
+            if (Images::DecodeMemory(response.body, maxSide, out.w, out.h, out.pixels)) return true;
+            undecodable = true;   // arrived fine but Windows can't read the format: retrying won't help
+            return false;
+        }
+        if (response.status == 404) return false;   // gone: no point retrying
+        if (attempt < attempts) Sleep(400 * attempt);
+    }
+    return false;
+}
+
 } // namespace
 
 ImagePtr Get(const std::wstring& url, unsigned maxSide) {
@@ -78,13 +114,11 @@ ImagePtr Get(const std::wstring& url, unsigned maxSide) {
                 decoded->ok = true;
                 return decoded;
             }
-            for (int attempt = 1; attempt <= kAttempts && !decoded->ok; ++attempt) {
-                const Http::Response response = Http::Get(url, {}, 15000);
-                if (response.Ok() && !response.body.empty())
-                    decoded->ok = Images::DecodeMemory(response.body, maxSide, decoded->w, decoded->h, decoded->pixels);
-                else if (response.status == 404) break;   // gone: no point retrying
-                if (!decoded->ok && attempt < kAttempts) Sleep(400 * attempt);
-            }
+            const std::wstring direct = Direct(url);
+            bool undecodable = false;
+            decoded->ok = Fetch(direct, maxSide, *decoded, kAttempts, undecodable);
+            // Couldn't get it or couldn't read it: the PNG copy from the image CDN
+            if (!decoded->ok) decoded->ok = Fetch(ViaProxy(direct), maxSide, *decoded, 2, undecodable);
             if (decoded->ok && diskCached) WriteDisk(disk, *decoded);
             return decoded;
         }, [url](std::shared_ptr<Decoded> decoded) {

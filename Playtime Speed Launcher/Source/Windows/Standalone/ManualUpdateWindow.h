@@ -24,6 +24,8 @@ private:
     std::optional<Services::Updates::UpdateInfo> release;
     bool failed = false, downloading = false;
     int percent = 0;
+    double openedAt = -1.0;
+    float decor = 0.f;   // transparent strip above the panel for the seasonal decorations
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);   // guards async callbacks
 };
 

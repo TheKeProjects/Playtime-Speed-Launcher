@@ -101,7 +101,6 @@ void Cores(SettingsContext& c);
 void Steam(SettingsContext& c);
 void Controller(SettingsContext& c);
 void Discord(SettingsContext& c);
-void Updates(SettingsContext& c);
 void LiveSplit(SettingsContext& c);
 void Overlays(SettingsContext& c);
 void IconTheme(SettingsContext& c);

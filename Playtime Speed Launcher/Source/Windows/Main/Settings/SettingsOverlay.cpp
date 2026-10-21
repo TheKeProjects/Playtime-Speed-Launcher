@@ -4,6 +4,7 @@
 #include "Graphics/Animation.h"
 #include "Localization/Localization.h"
 #include "UI/Widgets/Button.h"
+#include "UI/Widgets/MenuKit.h"
 #include "UI/Widgets/ScrollArea.h"
 #include "UI/Widgets/Stagger.h"
 #include "Windows/Main/MainWindow.h"
@@ -28,14 +29,12 @@ constexpr std::array<TabInfo, SettingsOverlay::TabCount> kTabs{ {
     { "settings_tab_steam", SettingsTabs::Steam },
     { "settings_tab_controller", SettingsTabs::Controller },
     { "settings_tab_discord", SettingsTabs::Discord },
-    { "settings_tab_updates", SettingsTabs::Updates },
     { "settings_tab_livesplit", SettingsTabs::LiveSplit },
     { "settings_tab_overlays", SettingsTabs::Overlays },
     { "settings_tab_icontheme", SettingsTabs::IconTheme },
 } };
 
 constexpr float kSidebarWidth = 155.f;
-constexpr Color kAlertRed = Rgba(204, 34, 0);
 
 } // namespace
 
@@ -64,29 +63,29 @@ void SettingsOverlay::DrawSidebar(Ui& ui, const Rect& area) {
     auto& g = ui.g;
     g.FillRect(area, Palette::HeaderBg);
     g.FillRect({ area.R() - 1.f, area.y, 1.f, area.h }, Palette::Divider);
-    float y = area.y + 14.f;
+    // Selection: a glowing bar and a soft highlight that slide to the selected tab
+    const float top = area.y + 14.f;
+    {
+        const float selY = ui.Animate(ui.MakeId("settings-tab-sel"), top + 36.f * static_cast<float>(tab), 16.f);
+        const Rect sel{ area.x, selY, area.w - 1.f, 36.f };
+        g.FillLinear(sel, 0.f, { { 0.f, Palette::Teal.WithAlpha(0.14f) }, { 1.f, Palette::Teal.WithAlpha(0.f) } }, { 0.f, 0.f }, { 1.f, 0.f });
+        g.GlowRound({ sel.x, sel.y + 4.f, 3.f, sel.h - 8.f }, 1.5f, Palette::Teal, 10.f, 0.6f);
+        g.FillRound({ sel.x, sel.y + 4.f, 3.f, sel.h - 8.f }, 1.5f, Palette::Teal);
+    }
+    float y = top;
     for (int i = 0; i < TabCount; ++i) {
         const Rect r{ area.x, y, area.w - 1.f, 36.f };
         y += 36.f;
         const bool selected = i == tab;
         StaggerItem reveal(ui, openedAt, i, -34.f, 0.f, 0.03, 0.34);   // tabs slide in from the left one by one
-        ButtonScope b(ui, ui.MakeId("settings-tab", i), r, Styles::Flat());
-        if (selected) g.FillRect({ r.x, r.y, 3.f, r.h }, Palette::Teal);
+        const Id tabId = ui.MakeId("settings-tab", i);
+        const float hover = ui.Animate(HashId(tabId, 0x4F56), ui.Hot(tabId) && !selected ? 1.f : 0.f, 16.f, 0.f);
+        ButtonScope b(ui, tabId, r, Styles::Flat());
+        if (hover > 0.01f) g.FillRect(r, Palette::Teal.WithAlpha(0.05f * hover));
         const std::wstring text = Loc::Get(kTabs[static_cast<size_t>(i)].key);
         const TextStyle style = Mono(11.f, true);
-        Rect textArea = r.CutLeft(17.f);
-        if (i == Updates && main.UpdateAlert()) {
-            // Red text + breathing red border while an update is waiting
-            const float t = Anim::EaseInOutSine(Anim::PingPong(ui.Time(), 0.8));
-            const Color border = Lerp(kAlertRed, Rgba(80, 10, 0), t);
-            const float w = g.Measure(text, style).w + 8.f + 2.f, h = g.Measure(text, style).h + 4.f + 2.f;
-            const Rect box{ textArea.x, r.CY() - h * 0.5f, w, h };
-            g.Border(box, 3.f, Colors::Transparent, border, 1.f);
-            g.Text(text, box.Inset(5.f, 3.f), selected ? Palette::Teal : kAlertRed, style);
-            ui.KeepAnimatingThrottled();
-        } else {
-            g.Text(text, i == Updates ? textArea.CutLeft(5.f) : textArea, selected ? Palette::Teal : Palette::Dim, style);
-        }
+        Rect textArea = r.CutLeft(17.f + 4.f * hover + (selected ? 3.f : 0.f));
+        g.Text(text, textArea, selected ? Palette::Teal : Lerp(Palette::Dim, Palette::Label, hover), style);
         if (b.Clicked()) SelectTab(static_cast<Tab>(i));
     }
 }
@@ -115,8 +114,9 @@ void SettingsOverlay::Draw(Ui& ui, const Rect& screen) {
 
     // Footer: VOLVER on the right
     const std::wstring back = Loc::Get("back");
-    const Rect btn{ frame.footer.R() - 14.f - 120.f, frame.footer.CY() - 18.f, 120.f, 36.f };
-    if (TextButton(ui, ui.MakeId("settings-close"), btn, back, Mono(11.f, true).Center(), Palette::Dim, Styles::Footer())) Close();
+    const float bw = MenuKit::FooterButtonWidth(ui, back, Glyphs::Back, 120.f);
+    const Rect btn{ frame.footer.R() - 14.f - bw, frame.footer.CY() - 18.f, bw, 36.f };
+    if (MenuKit::FooterButton(ui, ui.MakeId("settings-close"), btn, back, MenuKit::Kind::Secondary, true, Glyphs::Back)) Close();
 }
 
 } // namespace SpeedrunLauncher::Main

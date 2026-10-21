@@ -1,5 +1,6 @@
 // [ UE4SS ] popup: add / remove the standalone UE4SS build, or replace a Load Manip / FullBright
 // owned one with it.
+#include "UI/Widgets/MenuKit.h"
 #include "Windows/Main/MainWindow.h"
 #include "Windows/Main/Overlays/Mods/ModPopupFrame.h"
 #include "Windows/Main/Overlays/Mods/ModPopups.h"
@@ -11,6 +12,7 @@ namespace MI = Services::ModInstaller;
 void ModPopups::OpenUe4ss(int chapter) {
     target = MI::Resolve(chapter);
     TakeSnapshot();
+    if (job && job->finished) job.reset();   // reopened while the last result was still fading out
     ue4ss.Open(true);
 }
 
@@ -45,8 +47,10 @@ void ModPopups::DrawUe4ss(UI::Ui& ui, const Rect& screen) {
                               Run(L"UE4SS", [t] { return MI::InstallUe4ss(t); });
                           } });
     }
-    right.push_back({ "ue4ss-no", L"NO", true, 110.f, 16.f, 12.f, 0.f, true, close });
-    DrawModPopup(ui, ue4ss, screen, 420.f, L"[ UE4SS ]", question, L"", left, right);
+    right.push_back({ "ue4ss-no", L"NO", false, 110.f, 16.f, 12.f, 0.f, true, close, true });
+    const wchar_t glyph = ownedByMod ? UI::Glyphs::Warning : installed ? UI::Glyphs::Delete : UI::Glyphs::Install;
+    const Color accent = ownedByMod ? UI::MenuKit::kAmber : installed ? UI::MenuKit::kRed : UI::Palette::Teal;
+    DrawModPopup(ui, ue4ss, screen, 420.f, L"[ UE4SS ]", glyph, accent, question, L"", left, right);
 }
 
 } // namespace SpeedrunLauncher::Main

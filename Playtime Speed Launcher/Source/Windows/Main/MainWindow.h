@@ -29,7 +29,6 @@ class LiveSplitOverlay;
 class SaveCardOverlay;
 class CheckpointOverlay;
 class BugReportOverlay;
-class ChangelogOverlay;
 class EasterEggOverlay;
 class ModPopups;
 class AddToSteamOverlay;
@@ -143,7 +142,6 @@ private:
     std::unique_ptr<SaveCardOverlay> saveCard;
     std::unique_ptr<CheckpointOverlay> checkpoint;
     std::unique_ptr<BugReportOverlay> bugReport;
-    std::unique_ptr<ChangelogOverlay> changelog;
     std::unique_ptr<EasterEggOverlay> eggVideo;
     std::unique_ptr<ModPopups> mods;
     std::unique_ptr<AddToSteamOverlay> addToSteam;

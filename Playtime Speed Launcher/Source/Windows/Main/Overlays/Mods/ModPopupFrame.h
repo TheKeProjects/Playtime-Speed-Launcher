@@ -19,12 +19,28 @@ struct ModButton {
     float gapAfter = 10.f;     // margin to the next button
     bool enabled = true;
     std::function<void()> onClick;
+    bool secondary = false;    // outlined (NO / CANCEL) instead of filled / red
 };
 
-// "[ TITLE ]" + centred question (+ amber warning) + left / right footer button groups, with the
-// pop animation (fade + scale 0.85 → 1).
-void DrawModPopup(UI::Ui& ui, UI::Popup& popup, const Rect& screen, float width, const std::wstring& title, const std::wstring& question,
-                  const std::wstring& warning, const std::vector<ModButton>& left, const std::vector<ModButton>& right);
+// "[ TITLE ]" + a glowing badge with `glyph` (install / remove / requirement, in `accent`), the
+// centred question, an amber warning box and left / right footer button groups; the rows come in
+// one after another.
+void DrawModPopup(UI::Ui& ui, UI::Popup& popup, const Rect& screen, float width, const std::wstring& title, wchar_t glyph, Color accent,
+                  const std::wstring& question, const std::wstring& warning, const std::vector<ModButton>& left, const std::vector<ModButton>& right);
+
+// The working screen a mod popup turns into while its files are being installed / removed: a
+// ring creeping round with the mod's icon floating in it and `label` under it; once finished the
+// ring closes green with a ✓ and sparks (or red with a ✕ that shakes), the result message and OK.
+// Returns true when OK was pressed.
+struct ModWorkState {
+    std::wstring label;
+    wchar_t glyph = 0;
+    double startedAt = 0.0;
+    bool finished = false, ok = false;
+    std::wstring head, body;
+    double finishedAt = 0.0;
+};
+bool DrawModWorking(UI::Ui& ui, UI::Popup& popup, const Rect& screen, float width, const std::wstring& title, const ModWorkState& state);
 
 // Result / error message dialog ("UE4SS", "LOAD MANIP", "FULLBRIGHT").
 void ShowModMessage(HWND owner, const std::wstring& title, const std::wstring& message, bool success);

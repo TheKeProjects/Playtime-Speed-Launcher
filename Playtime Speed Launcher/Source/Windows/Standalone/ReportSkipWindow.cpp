@@ -16,6 +16,7 @@
 #include "UI/Widgets/Stagger.h"
 #include "UI/Widgets/TextBox.h"
 #include "Windows/Dialogs/DialogParts.h"
+#include "Windows/Main/Common/ReportKit.h"
 #include "Windows/Popups/TutorialWindows.h"
 #include "Windows/Standalone/Common/Pills.h"
 #include "Localization/Localization.h"
@@ -72,6 +73,7 @@ TextBoxStyle FieldStyle(bool multiline = false, size_t maxLength = 0) {
 }
 
 constexpr float kCardPad = 14.f;
+constexpr float kWindowW = 900.f, kWindowH = 720.f, kRightW = 290.f;
 
 } // namespace
 
@@ -83,8 +85,8 @@ bool ReportSkipWindow::Open(HWND owner) {
     o.owner = owner;
     o.transparent = true;
     o.topmost = true;
-    o.width = 460;
-    o.height = 740;
+    o.width = static_cast<int>(kWindowW);
+    o.height = static_cast<int>(kWindowH);
     o.showCommand = SW_HIDE;
     if (!Create(o)) return false;
     g.SetColorFilter(&Seasonal::Filter);   // follows the seasonal theme like the main window
@@ -93,7 +95,7 @@ bool ReportSkipWindow::Open(HWND owner) {
         SetContinuous(true, true);
         SetIdleFps(30.0);
     }
-    CenterOnOwner(*this, owner, 460.f, 740.f);
+    CenterOnOwner(*this, owner, kWindowW, kWindowH);
     if (owner) EnableWindow(owner, FALSE);   // ShowDialog
     openedAt = Async::Now();
     Show(SW_SHOW);
@@ -234,30 +236,44 @@ void ReportSkipWindow::OnFrame() {
     const Rect panel = all.Inset(8.f);   // room for the glow inside the transparent window
     g.GlowRound(panel, 12.f, Palette::Teal, 16.f, 0.25f);
     g.Border(panel, 12.f, Argb(0xF407101A), Hex(0x153048), 1.f);
+    namespace RK = Main::ReportKit;
+    const Rect inner = panel.Inset(18.f);
 
-    // Header: icon · title / subtitle ............ ✕
-    const Rect header{ panel.x + 1.f, panel.y + 1.f, panel.w - 2.f, 64.f };
-    g.FillRound(header, 11.f, 11.f, 0.f, 0.f, Hex(0x05090F));
-    const Rect row = header.Inset(16.f, 0.f);
-    g.FillEllipse(row.x + 18.f, row.CY(), 19.f, 19.f, Rgba(0, 204, 170, 26));
-    g.Border({ row.x + 2.f, row.CY() - 16.f, 32.f, 32.f }, 16.f, Rgba(0, 204, 170, 36), Rgba(0, 204, 170, 120), 1.f);
-    Glyph(ui, 0xEA80, { row.x + 2.f, row.CY() - 16.f, 32.f, 32.f }, 14.f, Palette::Teal);   // light bulb
-    g.Text(Loc::Get("rs_title"), { row.x + 46.f, row.y + 13.f, row.w - 90.f, 20.f }, Palette::Teal, Mono(14.f, true));
-    g.Text(Loc::Get("rs_subtitle"), { row.x + 46.f, row.y + 33.f, row.w - 90.f, 16.f }, Rgba(90, 130, 160), Mono(10.f));
-    if (TextButton(ui, ui.MakeId("close"), { row.R() - 30.f, row.CY() - 15.f, 30.f, 30.f }, L"\x2715", Mono(12.f, true).WithFont(Font::Ui).Center(),
-                   Palette::Dim, { Palette::ButtonBg, Palette::ButtonBorder, 1.f, 6.f, { 0.f }, 0.f, 30.f }))
+    // Banner (the ✕ sits on its top-right corner)
+    const Rect banner = inner.Top(RK::kBannerH);
+    {
+        StaggerItem in(ui, openedAt, 0, 0.f, 12.f);
+        RK::Banner(ui, banner, 0xEA80, Loc::Get("rs_title"), Loc::Get("rs_subtitle"), Loc::Get("rs_banner_pill"), Palette::Teal);   // light bulb
+    }
+    if (TextButton(ui, ui.MakeId("close"), { banner.R() - 36.f, banner.y + 8.f, 28.f, 28.f }, L"\x2715", Mono(11.f, true).WithFont(Font::Ui).Center(),
+                   Palette::Dim, { Rgba(5, 9, 15, 200), Palette::ButtonBorder, 1.f, 14.f, { 0.f }, 0.f, 28.f }))
         BeginClose();
 
-    // Bottom: status banner + send button
-    const Rect content{ panel.x + 18.f, header.B() + 16.f, panel.w - 36.f, panel.B() - header.B() - 16.f - 18.f };
-    const float statusH = Form::StatusBannerHeight(ui, status, content.w);
-    const Rect send{ content.x, content.B() - 42.f, content.w, 42.f };
-    if (statusH > 0.f) Form::StatusBannerAt(ui, ui.MakeId("status"), { content.x, send.y - 12.f - statusH, content.w, statusH }, status, statusKind);
-    else Form::StatusBannerAt(ui, ui.MakeId("status"), {}, status, statusKind);
-    const Form::SendState state = sent ? Form::SendState::Sent : sending ? Form::SendState::Sending : Form::SendState::Idle;
-    if (Form::SendButton(ui, ui.MakeId("send"), send, sent ? Loc::Get("rs_sent") : sending ? Loc::Get("rs_sending") : Loc::Get("rs_send"), Palette::Teal, Rgba(3, 17, 13), state))
-        Send();
-    const Rect form{ content.x, content.y, content.w, send.y - 14.f - (statusH > 0.f ? statusH + 12.f : 0.f) - content.y };
+    const float top = banner.B() + RK::kGap;
+    const Rect right{ inner.R() - kRightW, top, kRightW, inner.B() - top };
+    const Rect form{ inner.x, top, right.x - RK::kGap - inner.x, inner.B() - top };
+
+    // Right: checklist, status, send
+    {
+        constexpr float kSendH = 46.f, kStatusH = 40.f;
+        const Rect send{ right.x, right.B() - kSendH, right.w, kSendH };
+        const Rect statusRow{ right.x, send.y - 10.f - kStatusH, right.w, kStatusH };
+        StaggerItem in(ui, openedAt + 0.12, 0, 26.f);
+        const std::vector<RK::Check> checks = {
+            { Loc::Get("rs_check_name"), Loc::Get("rs_check_name_hint"), !Text::Trim(name).empty(), false },
+            { Loc::Get("rs_check_chapter"), Loc::Get("rs_check_chapter_hint"), chapter.has_value(), false },
+            { Loc::Get("rs_check_video"), Loc::Get("rs_check_video_hint"), !Text::Trim(videoUrl).empty(), true },
+            { Loc::Get("rs_check_details"), Loc::Get("rs_check_details_hint"), !Text::Trim(description).empty(), true },
+        };
+        RK::Checklist(ui, { right.x, right.y, right.w, statusRow.y - 10.f - right.y }, checks, Palette::Teal, openedAt + 0.3,
+                      Loc::Get("reports_before_send"), Loc::Get("reports_ready"), Loc::Get("reports_pending"), Loc::Get("reports_optional"), Loc::Get("rs_tip"));
+        RK::StatusPill(ui, ui.MakeId("status"), statusRow, status, statusKind);
+        const Form::SendState state = sent ? Form::SendState::Sent : sending ? Form::SendState::Sending : Form::SendState::Idle;
+        const bool ready = !Text::Trim(name).empty() && chapter.has_value();
+        if (RK::SendButton(ui, ui.MakeId("send"), send, sent ? Loc::Get("rs_sent") : sending ? Loc::Get("rs_sending") : Loc::Get("rs_send"), Palette::Teal,
+                           ready, state))
+            Send();
+    }
 
     // Form
     {
@@ -368,7 +384,7 @@ void ReportSkipWindow::OnFrame() {
 
     const float sinceOpen = static_cast<float>(now - openedAt);
     Seasonal::CardArt::DrawPanelParticles(g, panel, 12.f, now, 0.6f);   // seasonal theme
-    PanelDecor(ui, panel, 12.f, Palette::Teal, sinceOpen, header.B() - 1.f);
+    PanelDecor(ui, panel, 12.f, Palette::Teal, sinceOpen);
     if (PanelEntranceRunning(sinceOpen)) ui.KeepAnimating();
     if (scaled) ui.PopTransform();
     if (layered) g.PopLayer();

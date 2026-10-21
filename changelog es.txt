@@ -1,10 +1,14 @@
-4.1.3
+4.1.4
 ## Novedades
-Capítulo 4: nuevo botón FULLBRIGHT en la tarjeta del capítulo, que se instala igual que en los Capítulos 1 y 5
-Capítulo 4: el Load Manip ahora se instala igual que en los Capítulos 1 y 5, con su propia versión de UE4SS y su archivo de configuración
-Capítulo 4: si se encuentra el Load Manip antiguo (LoadManipV2_P) en Content\Paks, el launcher pide borrarlo antes de instalar el Load Manip o el FullBright
-Se han añadido dos nuevos easter eggs, uno de ellos una imagen
+Ya salió Escape From Playtime: el launcher encuentra tu instalación de Steam y lo abre
+Nuevo botón de Actualizaciones junto a Ajustes, con las páginas de Actualizaciones y Changelog una al lado de la otra (brilla en rojo cuando hay una versión nueva)
+Añadir a Steam ahora es un botón junto al de cerrar, con una ventana que muestra cada paso en directo
+Instalar o quitar el Load Manip y el FullBright muestra una pantalla de carga animada y el resultado en el mismo popup
 ## Rediseños
-Ajustes → Load Manip: el Capítulo 4 ahora edita las teclas de Freeze / Slow / Normal loads y las del FullBright directamente en los archivos de configuración de los mods, igual que en los Capítulos 1 y 5
-## Otros
-Se ha eliminado la antigua reasignación de teclas del Capítulo 4 (el nuevo Load Manip lee sus teclas desde su archivo de configuración)
+Nuevo aspecto para los reportes de errores y de skips, con una lista de pasos que se marca sola mientras los rellenas
+Nuevo aspecto para los popups de mods, partidas y checkpoints, LiveSplit, actualización manual, tutoriales y notificaciones
+Ajustes: interruptores ON / OFF que se deslizan y pestañas y opciones animadas
+## Temas de temporada
+Todos los menús y ventanas tienen ahora las decoraciones y partículas de la temporada
+## Correcciones
+Arreglado que las fotos de los corredores no se vieran en las clasificaciones para mucha gente

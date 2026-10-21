@@ -12,8 +12,9 @@
 namespace SpeedrunLauncher::Windows {
 
 // "REPORT A SKIP": suggest a skip / glitch for the tutorial list (sent to the review webhook).
-// Modal over the Skips and Glitches window. Pops in when opened, its three section cards
-// (basics, categories, details) slide in one by one, and it fades out when closed.
+// Modal over the Skips and Glitches window, laid out like the bug report: an animated banner, the
+// three section cards (basics, categories, details) on the left sliding in one by one, and on the
+// right a checklist that ticks itself as the report fills in, the status and the send button.
 class ReportSkipWindow : public UI::Window {
 public:
     ~ReportSkipWindow() override { *alive = false; }

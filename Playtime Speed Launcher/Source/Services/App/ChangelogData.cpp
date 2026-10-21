@@ -6,6 +6,21 @@ namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
+        { L"4.1.4", L"21/10/2026", {
+            L"## Additions",
+            L"Escape From Playtime is out: the launcher finds your Steam install and launches it",
+            L"New Updates button next to Settings, with the Updates and Changelog pages side by side (it glows red when there's a new version)",
+            L"Add to Steam is now a button next to the quit button, with a window that shows each step live",
+            L"Installing or removing Load Manip and FullBright shows an animated loading screen and the result in the same popup",
+            L"## Redesigns",
+            L"New look for the bug and skip reports, with a checklist that ticks itself as you fill them in",
+            L"New look for the mod popups, saves and checkpoints, LiveSplit, manual update, tutorials and notifications",
+            L"Settings: sliding ON / OFF switches and animated tabs and options",
+            L"## Seasonal Themes",
+            L"Every menu and window now has the season's decorations and particles",
+            L"## Bug Fixes",
+            L"Fixed runners' pictures not showing in the leaderboards for many people",
+        } },
         { L"4.1.3", L"20/10/2026", {
             L"## Additions",
             L"Chapter 4: new FULLBRIGHT button on the chapter card, installed like Chapters 1 and 5",

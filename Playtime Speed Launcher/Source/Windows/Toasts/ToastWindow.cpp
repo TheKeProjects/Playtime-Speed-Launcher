@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "Core/Async.h"
 #include "Graphics/Animation.h"
+#include "Seasonal/SeasonalTheme.h"
 #include "UI/Style.h"
 
 namespace SpeedrunLauncher::Toasts {
@@ -20,6 +21,7 @@ bool ToastWindow::Open() {
     o.height = 80;
     o.showCommand = SW_HIDE;
     if (!Create(o)) return false;
+    g.SetColorFilter(&Seasonal::Filter);   // follows the seasonal theme like the launcher
     opened = Async::Now();
     Place(80.f);
     ShowWindow(hwnd, SW_SHOWNOACTIVATE);
@@ -61,23 +63,34 @@ void ToastWindow::OnFrame() {
     }
 
     const Rect box{ 0.f, 0.f, g.Width(), g.Height() };
+    // Slides in from the screen edge it's anchored to, lines following one after another
+    const float slideIn = Anim::EaseOutBack(Anim::Clamp01(static_cast<float>(t / 0.4)), 0.8f);
+    const float fromX = (spec.anchor == Spec::Anchor::RightMiddle ? 1.f : -1.f) * 24.f;
     g.PushOpacity(opacity);
-    g.PushRoundClip(box, 6.f);
-    g.FillRect(box, Rgba(9, 20, 30, 240));
+    g.PushTransform(D2D1::Matrix3x2F::Translation(fromX * (1.f - slideIn), 0.f));
+    g.PushRoundClip(box, 8.f);
+    g.FillRect(box, Rgba(9, 20, 30, 242));
+    g.FillLinear(box, 0.f, { { 0.f, spec.accent.WithAlpha(0.14f) }, { 0.55f, spec.accent.WithAlpha(0.f) } }, { 0.f, 0.f }, { 1.f, 0.f });
+    g.FillRect({ 0.f, 0.f, 3.f, box.h }, spec.accent);   // accent stripe on the left edge
     float y = spec.padding.t;
+    int index = 0;
     for (const auto& line : spec.lines) {
         y += line.marginTop;
         const float lh = g.Measure(line.text, UI::Mono(line.size, line.bold)).h;
-        g.Text(line.text, { spec.padding.l, y, box.w - spec.padding.H(), lh }, line.color, UI::Mono(line.size, line.bold));
+        const float k = Anim::EaseOutCubic(Anim::Clamp01(static_cast<float>((t - 0.08 - 0.06 * index++) / 0.3)));
+        g.Text(line.text, { spec.padding.l + 3.f + 10.f * (1.f - k), y, box.w - spec.padding.H() - 3.f, lh }, line.color.WithAlpha(line.color.a * k),
+               UI::Mono(line.size, line.bold));
         y += lh;
     }
-    // Progress bar shrinking over the toast's lifetime
-    const Rect bar{ 1.f, box.B() - 4.f, box.w - 2.f, 3.f };
+    // Progress bar shrinking over the toast's lifetime, with a light at its tip
+    const Rect bar{ 3.f, box.B() - 3.f, box.w - 3.f, 3.f };
     g.FillRect(bar, spec.accent.WithAlpha(40.f / 255.f));
     const float remaining = 1.f - Anim::Clamp01(static_cast<float>(t / spec.duration));
-    g.FillRect({ bar.x, bar.y, bar.w * remaining, bar.h }, spec.accent);
+    g.FillLinear({ bar.x, bar.y, bar.w * remaining, bar.h }, 0.f, { { 0.f, spec.accent.WithAlpha(0.6f) }, { 1.f, spec.accent } }, { 0.f, 0.f }, { 1.f, 0.f });
+    g.FillEllipse(bar.x + bar.w * remaining, bar.CY(), 3.f, 3.f, Colors::White.WithAlpha(0.8f));
     g.PopLayer();
-    g.StrokeRound(box, 6.f, Rgba(21, 48, 72), 1.f);
+    g.StrokeRound(box.Inset(0.5f), 7.5f, Lerp(Rgba(21, 48, 72), spec.accent, 0.35f), 1.f);
+    g.PopTransform();
     g.PopLayer();
 }
 

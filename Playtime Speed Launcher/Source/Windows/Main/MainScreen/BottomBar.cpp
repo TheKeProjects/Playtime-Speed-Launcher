@@ -43,11 +43,6 @@ void Draw(UI::Ui& ui, MainWindow& main, const Rect& area) {
                      Hex(0x003322), Hex(0x007755), Hex(0x007755)))
         main.OpenBeginnerTutorials();
 
-    const std::wstring log = Loc::Get("changelog_btn");
-    const float logW = FooterButtonWidth(ui, log);
-    if (FooterButton(ui, "changelog", { area.R() - 12.f - logW, y, logW, 24.f }, UI::Glyphs::Changelog, log, Hex(0x060F18), Hex(0x0D2535),
-                     Hex(0x1A4060), Hex(0x1A4060)))
-        main.OpenChangelog();
 }
 
 } // namespace SpeedrunLauncher::Main::BottomBar

@@ -21,7 +21,8 @@ private:
     Media::VideoPlayer player;
 };
 
-// Step-by-step image tutorial (Steam launch option / controller setup) with Prev / n of N / Next.
+// Step-by-step image tutorial (Steam launch option / controller setup): a header with the step dots,
+// the step sliding in (picture / gamepad, caption, copy button) and Back / Next in the footer.
 class TutorialStepsWindow : public UI::Window {
 public:
     struct Step {
@@ -37,9 +38,13 @@ protected:
     Color ClearColor() const override { return Rgba(9, 12, 30); }
 
 private:
+    void GoTo(size_t next);
+
     std::vector<Step> steps;
     size_t step = 0;
     bool copied = false;
+    double openedAt = -1.0, stepChangedAt = -1.0, copiedAt = -1.0;
+    int direction = 1;   // +1 when the step moved forward (slides in from the right)
 };
 
 // Centres a popup window of `width`×`height` DIPs on `owner` (WindowStartupLocation.CenterOwner).

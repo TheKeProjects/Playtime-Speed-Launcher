@@ -1,4 +1,5 @@
-// Settings → Steam: copy the launch option for Steam, or add the launcher as a non-Steam game.
+// Settings → Steam: copy the launch option for Steam (adding the launcher as a non-Steam game is on
+// the main screen, next to the quit button).
 #include <windows.h>
 #include "Core/System.h"
 #include "Localization/Localization.h"
@@ -10,14 +11,13 @@ namespace SpeedrunLauncher::Main::SettingsTabs {
 
 void Steam(SettingsContext& c) {
     auto& ui = c.ui;
-    if (c.ImageOption(ui.MakeId("steam-copy"), L"Images\\Steam.jpg", Loc::Get("steam_launch_btn"), 8.f)) {
+    if (c.ImageOption(ui.MakeId("steam-copy"), L"Images\\Steam.jpg", Loc::Get("steam_launch_btn"))) {
         // "<this exe>" %command%  →  the game's Steam launch options
         wchar_t exe[MAX_PATH]{};
         GetModuleFileNameW(nullptr, exe, MAX_PATH);
         System::SetClipboardText(L"\"" + std::wstring(exe) + L"\" %command%");
         c.main.Tutorials().ShowVideoPopup();
     }
-    if (c.ImageOption(ui.MakeId("steam-add"), L"Images\\Steam.jpg", Loc::Get("add_to_steam_btn"))) c.main.OpenAddToSteam();
 }
 
 } // namespace SpeedrunLauncher::Main::SettingsTabs

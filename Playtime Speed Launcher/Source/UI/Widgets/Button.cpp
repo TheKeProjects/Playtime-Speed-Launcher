@@ -1,5 +1,7 @@
 #include "UI/Widgets/Button.h"
 #include <algorithm>
+#include <cmath>
+#include "Graphics/Animation.h"
 
 namespace SpeedrunLauncher::UI {
 
@@ -77,30 +79,69 @@ bool ImageTextButton(Ui& ui, Id id, const Rect& r, const ImagePtr& image, float 
 }
 
 float ToggleWidth(Ui& ui, bool on) {
-    return ButtonWidth(ui, on ? L"ON" : L"OFF", Mono(10.f, true), Styles::Toggle());
+    (void)on;   // same width both ways, so the knob has a fixed track to travel
+    return std::max(ButtonWidth(ui, L"OFF", Mono(10.f, true), Styles::Toggle()), 26.f + 18.f + ui.g.Measure(L"OFF", Mono(10.f, true)).w + 10.f);
 }
 
+// ON / OFF switch: the knob slides across, the track fills with teal and glows while on
 bool Toggle(Ui& ui, Id id, const Rect& r, bool on) {
-    return TextButton(ui, id, r, on ? L"ON" : L"OFF", Mono(10.f, true).Center(), on ? Palette::Teal : Palette::OffText,
-                      Styles::Toggle());
+    auto& g = ui.g;
+    const Interaction it = ui.Interact(id, r);
+    if (it.hovered) ui.SetCursor(IDC_HAND);
+    const float k = ui.Animate(HashId(id, 0x7061), on ? 1.f : 0.f, 16.f);
+    const float hover = ui.Animate(HashId(id, 0x7062), it.hovered ? 1.f : 0.f, 18.f, 0.f);
+    const float radius = r.h * 0.5f;
+    if (k > 0.01f) g.GlowRound(r, radius, Palette::Teal, 12.f, (0.18f + 0.15f * hover) * k);
+    g.Border(r, radius, Lerp(Palette::ButtonBg, Rgba(0, 60, 48), k), Lerp(Lerp(Palette::ControlBorder, Palette::Dim, hover), Palette::Teal, k), 1.f);
+    const float knobR = radius - 5.f;
+    const float kx = Anim::Lerp(r.x + 5.f + knobR, r.R() - 5.f - knobR, Anim::EaseInOutCubic(k));
+    const float squash = 1.f + 0.15f * std::sin(k * 3.14159265f);   // stretches mid-travel
+    g.FillEllipse(kx, r.CY(), knobR * squash, knobR, Lerp(Palette::OffText, Palette::Teal, k));
+    // Label on the free side of the track, cross-fading
+    const TextStyle t = Mono(10.f, true).Center();
+    if (k > 0.01f) g.Text(L"ON", { r.x + 4.f, r.y, kx - knobR - r.x - 4.f, r.h }, Palette::Teal.WithAlpha(k), t);
+    if (k < 0.99f) g.Text(L"OFF", { kx + knobR, r.y, r.R() - 4.f - kx - knobR, r.h }, Palette::OffText.WithAlpha(1.f - k), t);
+    return it.clicked;
 }
 
 float OptionButtonHeight(Ui& ui, float fontSize) {
     return ui.g.Measure(L"Ag", Mono(fontSize, true)).h + 20.f + 2.f;
 }
 
+// List option: lights its border and nudges its text while hovered; the selected one glows and
+// keeps an accent bar on its left edge
 bool OptionButton(Ui& ui, Id id, const Rect& r, const std::wstring& text, bool selected, float fontSize, HAlign align, Font font) {
+    auto& g = ui.g;
+    const float sel = ui.Animate(HashId(id, 0x0571), selected ? 1.f : 0.f, 14.f);
+    const float hover = ui.Animate(HashId(id, 0x0572), ui.Hot(id) ? 1.f : 0.f, 16.f, 0.f);
+    if (sel > 0.01f) g.GlowRound(r, 4.f, Palette::Teal, 12.f, 0.22f * sel);
+    ButtonStyle style = Styles::Option();
+    style.background = Lerp(Lerp(Palette::OptionBg, Hex(0x0A1A28), hover), Palette::SelectedBg, sel);
+    style.border = Lerp(Lerp(Palette::ButtonBorder, Palette::ControlBorder, hover), Palette::Teal, sel);
+    ButtonScope b(ui, id, r, style);
+    if (sel > 0.01f) g.FillRound({ r.x + 1.f, r.y + 6.f, 3.f * sel, r.h - 12.f }, 1.5f, Palette::Teal);
     TextStyle t = Mono(fontSize, true);
     t.font = font;
     t.align = align;
-    return TextButton(ui, id, r, text, t, selected ? Palette::Teal : Palette::Dim,
-                      selected ? Styles::OptionSelected() : Styles::Option());
+    t.valign = VAlign::Center;
+    const float nudge = align == HAlign::Left ? 3.f * std::max(hover, sel) : 0.f;
+    g.Text(text, b.content.Offset(nudge, 0.f), Lerp(Lerp(Palette::Dim, Palette::Label, hover), Palette::Teal, sel), t);
+    return b.Clicked();
 }
 
+// Key binding: pulses (border + glow) while waiting for a key
 bool KeyBindButton(Ui& ui, Id id, const Rect& r, const std::wstring& text, bool capturing) {
     ButtonStyle s = Styles::KeyBind();
-    if (capturing) s.border = Palette::Teal;
-    return TextButton(ui, id, r, text, Mono(10.f).Center(), capturing ? Palette::Teal : Palette::Label, s);
+    const float hover = ui.Animate(HashId(id, 0x4B42), ui.Hot(id) ? 1.f : 0.f, 16.f, 0.f);
+    s.border = Lerp(s.border, Palette::Dim, hover);
+    if (capturing) {
+        const float pulse = Anim::EaseInOutSine(Anim::PingPong(ui.Time(), 1.2));
+        ui.g.GlowRound(r, 4.f, Palette::Teal, 12.f, 0.2f + 0.3f * pulse);
+        s.border = Lerp(Palette::TealDim, Palette::Teal, pulse);
+        s.background = Rgba(0, 40, 30);
+        ui.KeepAnimatingThrottled();
+    }
+    return TextButton(ui, id, r, text, Mono(10.f).Center(), capturing ? Palette::Teal : Lerp(Palette::Label, Palette::Bright, hover), s);
 }
 
 bool LinkButton(Ui& ui, Id id, const Rect& r, const std::wstring& text, const TextStyle& style, Color color) {

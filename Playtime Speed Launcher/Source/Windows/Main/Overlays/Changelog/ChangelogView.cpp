@@ -1,4 +1,4 @@
-#include "Windows/Main/Overlays/Changelog/ChangelogOverlay.h"
+#include "Windows/Main/Overlays/Changelog/ChangelogView.h"
 #include <algorithm>
 #include <cmath>
 #include "Core/Async.h"
@@ -10,7 +10,6 @@
 #include "UI/Widgets/Stagger.h"
 #include "Windows/Main/Common/ChangelogLook.h"
 #include "Windows/Main/Common/MentionText.h"
-#include "Windows/Main/MainWindow.h"
 
 namespace SpeedrunLauncher::Main {
 
@@ -36,14 +35,13 @@ TextStyle LineStyle() { return Mono(kTextSize).Wrap().Top(); }
 
 } // namespace
 
-void ChangelogOverlay::Open() {
+void ChangelogView::Reset(double now) {
     resetScroll = true;
-    openedAt = Async::Now();
-    popup.Open();
+    openedAt = now;
 }
 
 // Measures everything once: card heights and the position of every section / line inside them
-void ChangelogOverlay::BuildLayout(Ui& ui, float width) {
+void ChangelogView::BuildLayout(Ui& ui, float width) {
     cards.clear();
     const float textW = width - kCardLeft - kCardPadX * 2.f - kBulletIndent;
     float y = kSummaryH;
@@ -82,7 +80,7 @@ void ChangelogOverlay::BuildLayout(Ui& ui, float width) {
     layoutLang = Loc::Revision();
 }
 
-void ChangelogOverlay::DrawCard(Ui& ui, const Card& card, float x, float y, float w, int index) {
+void ChangelogView::DrawCard(Ui& ui, const Card& card, float x, float y, float w, int index) {
     auto& g = ui.g;
     const Rect r{ x, y, w, card.h };
     // Hover: the card lifts its border / background a little (eased)
@@ -145,22 +143,19 @@ void ChangelogOverlay::DrawCard(Ui& ui, const Card& card, float x, float y, floa
     }
 }
 
-void ChangelogOverlay::Draw(Ui& ui, const Rect& screen) {
+void ChangelogView::Draw(Ui& ui, const Rect& area) {
     auto& g = ui.g;
-    PanelStyle style;
-    style.title = Loc::Get("changelog_header");
-    OverlayFrame frame(ui, ui.MakeId("changelog"), screen, 850.f, 680.f, style, popup.Opacity(), popup.Scale());
     const Id scrollId = ui.MakeId("changelog-scroll");
     if (resetScroll) {
         ScrollArea::ScrollTo(ui, scrollId, 0.f);
         resetScroll = false;
     }
     {
-        ScrollArea scroll(ui, scrollId, frame.body, false, 64.f, ScrollArea::Bar::Classic);
-        const float listX = frame.body.x + kPadX;
+        ScrollArea scroll(ui, scrollId, area, false, 64.f, ScrollArea::Bar::Classic);
+        const float listX = area.x + kPadX;
         const float listW = scroll.ContentWidth() - kPadX * 2.f;
         if (std::abs(listW - layoutWidth) > 0.5f || layoutLang != Loc::Revision()) BuildLayout(ui, listW);
-        const float top = frame.body.y + 16.f;
+        const float top = area.y + 16.f;
 
         // Summary line
         const auto& entries = Services::Changelog::Entries();
@@ -171,8 +166,8 @@ void ChangelogOverlay::Draw(Ui& ui, const Rect& screen) {
         }
 
         // Only the cards inside the viewport are drawn (the layout covers them all)
-        const float viewTop = frame.body.y + scroll.Offset() - 40.f;
-        const float viewBottom = frame.body.y + scroll.Offset() + frame.body.h + 40.f;
+        const float viewTop = area.y + scroll.Offset() - 40.f;
+        const float viewBottom = area.y + scroll.Offset() + area.h + 40.f;
         const float railX = listX + kRail;
         const double now = ui.Time();
         int shown = 0;   // order among the visible cards, for the one-by-one entrance
@@ -205,13 +200,6 @@ void ChangelogOverlay::Draw(Ui& ui, const Rect& screen) {
         }
         scroll.SetContentSize(listHeight + 28.f);
     }
-
-    const std::wstring back = Loc::Get("back");
-    const TextStyle text = Mono(11.f, true).Center();
-    const float w = ButtonWidth(ui, back, text, Styles::Footer());
-    if (TextButton(ui, ui.MakeId("changelog-close"), { frame.footer.R() - 14.f - w, frame.footer.CY() - 18.f, w, 36.f }, back, text, Palette::Dim,
-                   Styles::Footer()))
-        popup.Close();
 }
 
 } // namespace SpeedrunLauncher::Main

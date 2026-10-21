@@ -9,7 +9,7 @@ namespace SpeedrunLauncher::Main {
 // drawn by its own file in Settings\Tabs\.
 class SettingsOverlay : public Overlay {
 public:
-    enum Tab { General, Controls, LoadManip, Cores, Steam, Controller, Discord, Updates, LiveSplit, Overlays, IconTheme, TabCount };
+    enum Tab { General, Controls, LoadManip, Cores, Steam, Controller, Discord, LiveSplit, Overlays, IconTheme, TabCount };
 
     using Overlay::Overlay;
     bool Visible() const override { return popup.Visible(); }

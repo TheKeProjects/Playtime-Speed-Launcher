@@ -7,13 +7,14 @@
 #include "Localization/Localization.h"
 #include "Services/Community/BugReportService.h"
 #include "UI/Layout.h"
+#include "Windows/Main/Common/ReportKit.h"
 #include "UI/Widgets/Button.h"
+#include "UI/Widgets/MenuKit.h"
 #include "UI/Widgets/Controls.h"
 #include "UI/Widgets/Form.h"
 #include "UI/Widgets/ScrollArea.h"
 #include "UI/Widgets/Stagger.h"
 #include "UI/Widgets/TextBox.h"
-#include "Graphics/Geometry.h"
 #include "Graphics/Images.h"
 #include "Windows/Main/MainWindow.h"
 
@@ -23,7 +24,9 @@ using namespace UI;
 
 namespace {
 
-constexpr Color kPurple = Hex(0x9944CC), kPurpleDim = Hex(0x5522AA), kPurpleBorder = Hex(0x2A1050);
+constexpr Color kPurple = Hex(0x9944CC), kPurpleBorder = Hex(0x2A1050), kDiscord = Rgba(0x58, 0x65, 0xF2);
+constexpr float kRightW = 330.f;
+constexpr size_t kTitleMax = 100, kDescriptionMax = 1500;
 
 PanelStyle PurplePanel(const std::wstring& title) {
     PanelStyle s;
@@ -37,7 +40,7 @@ PanelStyle PurplePanel(const std::wstring& title) {
     return s;
 }
 
-TextBoxStyle FormBox(Color foreground, bool multiline, size_t maxLength) {
+TextBoxStyle FormBox(Color foreground, bool multiline) {
     TextBoxStyle s;
     s.text = Mono(11.f);
     s.foreground = foreground;
@@ -46,10 +49,9 @@ TextBoxStyle FormBox(Color foreground, bool multiline, size_t maxLength) {
     s.focusBorder = kPurpleBorder;
     s.caret = kPurple;
     s.selection = Rgba(153, 68, 204, 90);
-    s.padding = { 10.f, 8.f };
-    s.radius = 6.f;
+    s.padding = { 12.f, 10.f };
+    s.radius = 8.f;
     s.multiline = multiline;
-    s.maxLength = maxLength;
     return s;
 }
 
@@ -65,6 +67,10 @@ void BugReportOverlay::Open() {
     discord.Reset();
     openedAt = Async::Now() + 0.06;   // the form follows the panel in
     popup.Open();
+}
+
+bool BugReportOverlay::Ready() const {
+    return discord.User().has_value() && !Text::Trim(title).empty() && Text::Trim(description).size() >= 20;
 }
 
 void BugReportOverlay::Send() {
@@ -96,103 +102,126 @@ void BugReportOverlay::Send() {
     });
 }
 
-float BugReportOverlay::DrawForm(Ui& ui, const Rect& body) {
+// The form card: "YOUR REPORT" with a hint, the title, the description (fills the card), the
+// screenshot zone and the send row (status pill on the left, the send button on the right)
+void BugReportOverlay::DrawForm(Ui& ui, const Rect& r) {
     auto& g = ui.g;
-    ScrollArea scroll(ui, ui.MakeId("bug-scroll"), body, false, 48.f, ScrollArea::Bar::Classic);
-    Column col(body.x + 24.f, body.y + 18.f, scroll.ContentWidth() - 48.f);
-    int reveal = 0;   // blocks slide in one after another when the panel opens
+    const Rect c = ReportKit::Card(ui, r, kPurple, 20.f);
+    int reveal = 0;
+    float y = c.y;
+    {
+        StaggerItem in(ui, openedAt + 0.1, reveal++, 0.f, 10.f);
+        ReportKit::Caption(ui, c.x, y, c.w, 0xE70F, Loc::Get("bug_report_your_report"), kPurple);   // edit
+        g.Text(Loc::Get("bug_report_subtitle"), { c.x, y + 26.f, c.w, 16.f }, Rgba(150, 130, 190), Mono(10.f).Ellipsis());
+        y += 54.f;
+    }
+    {
+        StaggerItem in(ui, openedAt + 0.1, reveal++, 0.f, 10.f);
+        ReportKit::FieldLabel(ui, { c.x, y, c.w, 16.f }, Loc::Get("bug_report_etitle_label"), title.size(), kTitleMax, kPurple, true);
+        const TextBoxStyle style = FormBox(Hex(0xCCEEFF), false);
+        const float h = TextBoxHeight(ui, style) + 4.f;
+        Form::Field(ui, ui.MakeId("bug-title"), { c.x, y + 22.f, c.w, h }, title, style, kPurple);
+        if (title.size() > kTitleMax) title.resize(kTitleMax);
+        y += 22.f + h + 16.f;
+    }
+    constexpr float kShotH = 84.f, kSendH = 46.f;
+    const float descH = std::max(90.f, c.B() - y - 22.f - 16.f - kShotH - 16.f - kSendH);
+    {
+        StaggerItem in(ui, openedAt + 0.1, reveal++, 0.f, 10.f);
+        ReportKit::FieldLabel(ui, { c.x, y, c.w, 16.f }, Loc::Get("bug_report_desc_label"), description.size(), kDescriptionMax, kPurple, true);
+        Form::Field(ui, ui.MakeId("bug-desc"), { c.x, y + 22.f, c.w, descH }, description, FormBox(Hex(0xAABBCC), true), kPurple);
+        if (description.size() > kDescriptionMax) description.resize(kDescriptionMax);
+        y += 22.f + descH + 16.f;
+    }
+    {
+        StaggerItem in(ui, openedAt + 0.1, reveal++, 0.f, 10.f);
+        ReportKit::Screenshot(ui, ui.MakeId("bug-image"), { c.x, y, c.w, kShotH }, image, kPurple, main.Hwnd(), Loc::Get("bug_report_screenshot_title"),
+                              Loc::Get("bug_report_screenshot_formats"), Loc::Get("bug_report_screenshot_attached"));
+        y += kShotH + 16.f;
+    }
+    {
+        StaggerItem in(ui, openedAt + 0.1, reveal++, 0.f, 10.f);
+        const Rect row{ c.x, y, c.w, kSendH };
+        constexpr float kButtonW = 210.f;
+        ReportKit::StatusPill(ui, ui.MakeId("bug-status"), { row.x, row.y, row.w - kButtonW - 14.f, row.h }, status,
+                              statusOk ? Form::Status::Success : Form::Status::Error);
+        const bool sent = statusOk && !status.empty();
+        const Form::SendState state = sent ? Form::SendState::Sent : sending ? Form::SendState::Sending : Form::SendState::Idle;
+        const std::wstring label = Loc::Get(state == Form::SendState::Sending ? "bug_report_sending" : "bug_report_send_btn");
+        if (ReportKit::SendButton(ui, ui.MakeId("bug-send"), { row.R() - kButtonW, row.y, kButtonW, row.h }, label, kPurple, Ready(), state)) Send();
+    }
+}
 
-    {
-        StaggerItem in(ui, openedAt, reveal++, 30.f);
-        col.Gap(Paragraph(ui, col.x, col.y, col.w, Loc::Get("bug_report_subtitle"), Mono(10.f), Rgba(150, 120, 200, 200)));
-        col.Gap(16.f);
-    }
-    {
-        StaggerItem in(ui, openedAt, reveal++, 30.f);
-        Form::Label(ui, col, 0xE77B, Loc::Get("bug_report_discord_label"), kPurpleDim);   // person
-        discord.Draw(ui, col, [this] { infoOpen = true; });
-    }
-    {
-        StaggerItem in(ui, openedAt, reveal++, 30.f);
-        Form::Label(ui, col, 0xEBE8, Loc::Get("bug_report_etitle_label"), kPurple, true);   // bug
-        const TextBoxStyle titleStyle = FormBox(Hex(0xCCEEFF), false, 100);
-        Form::Field(ui, ui.MakeId("bug-title"), col.Next(TextBoxHeight(ui, titleStyle), 18.f), title, titleStyle, kPurple);
-    }
-    {
-        StaggerItem in(ui, openedAt, reveal++, 30.f);
-        Form::Label(ui, col, 0xE8BD, Loc::Get("bug_report_desc_label"), kPurple, true);   // message
-        Form::Field(ui, ui.MakeId("bug-desc"), col.Next(110.f, 18.f), description, FormBox(Hex(0xAABBCC), true, 1500), kPurple);
-    }
-
-    // Screenshot (optional): a dashed "attach" card, or a preview of the picked image with a remove button
-    {
-        StaggerItem in(ui, openedAt, reveal++, 30.f);
-        Form::Label(ui, col, 0xEB9F, Loc::Get("bug_report_image_label"), kPurpleDim);   // photo
-        const Rect card = col.Next(image ? 76.f : 58.f);
-        const Interaction it = ui.Interact(ui.MakeId("bug-image"), card);
-        const float hover = ui.Animate(ui.MakeId("bug-image-hover"), it.hovered ? 1.f : 0.f, 14.f);
-        if (it.hovered) ui.SetCursor(IDC_HAND);
-        g.FillRound(card, 8.f, Lerp(Hex(0x0A0818), Hex(0x140A28), hover));
-        if (!image) {
-            // Dashed outline
-            static ComPtr<ID2D1StrokeStyle> dashed;
-            if (!dashed) {
-                const float dashes[] = { 4.f, 3.f };
-                Device::Get().D2DFactory()->CreateStrokeStyle(
-                    D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_LINE_JOIN_ROUND, 10.f,
-                                                D2D1_DASH_STYLE_CUSTOM),
-                    dashes, 2, &dashed);
-            }
-            auto outline = Geometry::RoundedRect(card.Inset(0.5f).D2D(), 8.f, 8.f);
-            g.Context()->DrawGeometry(outline.Get(), g.Brush(Lerp(kPurpleBorder, kPurple, 0.3f + 0.5f * hover)), 1.f, dashed.Get());
-            Glyph(ui, 0xE898, { card.x, card.y + 6.f, card.w, 24.f }, 16.f, Lerp(kPurpleDim, kPurple, hover));   // upload
-            g.Text(Loc::Get("bug_report_image_hint"), { card.x, card.y + 30.f, card.w, 18.f }, Lerp(Rgba(120, 90, 170), Rgba(190, 160, 240), hover),
-                   Mono(10.f, true).Center());
-        } else {
-            g.StrokeRound(card, 8.f, Lerp(kPurpleBorder, kPurple, 0.4f + 0.4f * hover), 1.f);
-            const Rect thumb{ card.x + 8.f, card.y + 8.f, 90.f, card.h - 16.f };
-            if (auto preview = Images::Load(*image, 256)) g.DrawImageRounded(*preview, thumb, 5.f, 1.f, Stretch::UniformToFill);
-            else g.FillRound(thumb, 5.f, Hex(0x1A0830));
-            g.Text(Files::FileName(*image), { thumb.R() + 12.f, card.y + 18.f, card.w - 160.f, 18.f }, Rgba(200, 175, 240), Mono(11.f, true).Ellipsis());
-            g.Text(Loc::Get("bug_report_image_btn"), { thumb.R() + 12.f, card.y + 40.f, card.w - 160.f, 16.f }, Rgba(120, 90, 170), Mono(9.f));
-        }
-        // The remove button registers after the card, so it gets the click instead of the card
-        bool removed = false;
-        if (image) {
-            const Rect x{ card.R() - 36.f, card.CY() - 14.f, 28.f, 28.f };
-            if (TextButton(ui, ui.MakeId("bug-image-remove"), x, L"\x2715", Mono(11.f, true).WithFont(Font::Ui).Center(), Rgba(200, 120, 140),
-                           { Hex(0x1A0818), kPurpleBorder, 1.f, 14.f, { 0.f }, 0.f, 28.f })) {
-                image.reset();
-                removed = true;
-            }
-        }
-        if (it.clicked && !removed) {
-            const std::wstring file = System::PickFile(main.Hwnd(), L"", { { L"Images", L"*.jpg;*.jpeg;*.png;*.gif;*.webp;*.bmp" } });
-            if (!file.empty()) image = file;
-        }
-    }
-
-    col.Gap(14.f);
-    Form::StatusBanner(ui, ui.MakeId("bug-status"), col, status, statusOk ? Form::Status::Success : Form::Status::Error);
-    scroll.SetContentSize(col.Height() + 32.f);
-    return col.Height() + 32.f;
+// Discord card: caption, why it's needed, then the connect button / waiting line / connected user
+float BugReportOverlay::DrawDiscord(Ui& ui, const Rect& r, bool draw) {
+    auto& g = ui.g;
+    constexpr float kPad = 18.f;
+    TextStyle why = Mono(9.5f);
+    why.wrap = true;
+    why.valign = VAlign::Top;
+    const std::wstring& text = Loc::Get("bug_report_discord_why");
+    const float whyH = g.Measure(text, why, r.w - kPad * 2.f).h;
+    const float stateH = discord.User() ? 46.f : discord.Waiting() ? 26.f : 36.f;
+    const float h = kPad * 2.f + 22.f + 10.f + whyH + 14.f + stateH;
+    if (!draw) return h;
+    const Rect c = ReportKit::Card(ui, { r.x, r.y, r.w, h }, kDiscord, kPad);
+    ReportKit::Caption(ui, c.x, c.y, c.w - 30.f, Glyphs::People, Loc::Get("bug_report_discord_label"), kDiscord);
+    if (MenuKit::FooterButton(ui, ui.MakeId("bug-discord-info"), { c.R() - 26.f, c.y - 2.f, 26.f, 26.f }, L"", MenuKit::Kind::Secondary, true, Glyphs::Info,
+                              kDiscord))
+        infoOpen = true;
+    g.Text(text, { c.x, c.y + 32.f, c.w, whyH }, Rgba(150, 160, 200), why);
+    Column col(c.x, c.y + 32.f + whyH + 14.f, c.w);
+    DiscordIdentityStyle style;
+    style.buttonBackground = Hex(0x1A1640);
+    style.border = Lerp(kDiscord, Colors::Black, 0.4f);
+    style.glyphText = Rgba(210, 215, 255);
+    style.accent = kDiscord;
+    style.marginBottom = 0.f;
+    discord.Draw(ui, col, [this] { infoOpen = true; }, style);
+    return h;
 }
 
 void BugReportOverlay::Draw(Ui& ui, const Rect& screen) {
     {
-        OverlayFrame frame(ui, ui.MakeId("bugreport"), screen, 500.f, 0.f, PurplePanel(Loc::Get("bug_report_title")), popup.Opacity(), popup.Scale());
-        frame.SetContentHeight(DrawForm(ui, frame.body));
-        // Footer: SEND (left), BACK (right)
+        OverlayFrame frame(ui, ui.MakeId("bugreport"), screen, 1000.f, 700.f, PurplePanel(Loc::Get("bug_report_title")), popup.Opacity(), popup.Scale());
+        const Rect inner = frame.body.Inset(20.f, 16.f);
+        {
+            StaggerItem in(ui, openedAt, 0, 0.f, 12.f);
+            ReportKit::Banner(ui, inner.Top(ReportKit::kBannerH), 0xEBE8, Loc::Get("bug_report_banner_title"), Loc::Get("bug_report_banner_sub"),
+                              Loc::Get("bug_report_banner_pill"), kPurple);   // bug
+        }
+        const float top = inner.y + ReportKit::kBannerH + ReportKit::kGap;
+        const Rect left{ inner.x, top, inner.w - kRightW - ReportKit::kGap, inner.B() - top };
+        const Rect right{ left.R() + ReportKit::kGap, top, kRightW, inner.B() - top };
+        {
+            StaggerItem in(ui, openedAt + 0.06, 0, 0.f, 16.f);
+            DrawForm(ui, left);
+        }
+        const float discordH = DrawDiscord(ui, right, false);
+        {
+            StaggerItem in(ui, openedAt + 0.12, 0, 26.f);
+            DrawDiscord(ui, right, true);
+        }
+        {
+            StaggerItem in(ui, openedAt + 0.18, 0, 26.f);
+            const std::vector<ReportKit::Check> checks = {
+                { Loc::Get("bug_check_discord"), Loc::Get("bug_check_discord_hint"), discord.User().has_value(), false },
+                { Loc::Get("bug_check_title"), Loc::Get("bug_check_title_hint"), !Text::Trim(title).empty(), false },
+                { Loc::Get("bug_check_describe"), Loc::Get("bug_check_describe_hint"), Text::Trim(description).size() >= 20, false },
+                { Loc::Get("bug_check_screenshot"), Loc::Get("bug_check_screenshot_hint"), image.has_value(), true },
+            };
+            const float y = right.y + discordH + ReportKit::kGap;
+            ReportKit::Checklist(ui, { right.x, y, right.w, right.B() - y }, checks, kPurple, openedAt + 0.3, Loc::Get("reports_before_send"),
+                                 Loc::Get("reports_ready"), Loc::Get("reports_pending"), Loc::Get("reports_optional"), Loc::Get("bug_report_tip"));
+        }
+
+        // Footer: BACK on the right
         const Rect row = frame.footer.Inset(14.f, 0.f);
-        const bool sent = statusOk && !status.empty();
-        const Form::SendState state = sent ? Form::SendState::Sent : sending ? Form::SendState::Sending : Form::SendState::Idle;
-        const std::wstring send = Loc::Get(state == Form::SendState::Sending ? "bug_report_sending" : "bug_report_send_btn");
-        const float sw = std::max(190.f, ui.g.Measure(send, Mono(12.f, true)).w + 60.f);
-        if (Form::SendButton(ui, ui.MakeId("bug-send"), { row.x, row.CY() - 18.f, sw, 36.f }, send, Hex(0x5A2A90), Colors::White, state)) Send();
         const std::wstring back = Loc::Get("back");
-        const float bw = ButtonWidth(ui, back, Mono(11.f, true), Styles::Footer());
-        if (TextButton(ui, ui.MakeId("bug-close"), { row.R() - bw, row.CY() - 18.f, bw, 36.f }, back, Mono(11.f, true).Center(), Palette::Dim,
-                       Styles::Footer())) {
+        const float bw = MenuKit::FooterButtonWidth(ui, back, Glyphs::Back, 120.f);
+        if (MenuKit::FooterButton(ui, ui.MakeId("bug-close"), { row.R() - bw, row.CY() - 18.f, bw, 36.f }, back, MenuKit::Kind::Secondary, true, Glyphs::Back,
+                                  kPurple) ||
+            (popup.IsOpen() && !infoOpen && ui.KeyPressed(VK_ESCAPE))) {
             discord.CancelAuth();
             popup.Close();
         }

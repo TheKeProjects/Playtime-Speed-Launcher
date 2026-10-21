@@ -33,7 +33,6 @@
 #include "Windows/Main/MainScreen/MainLayout.h"
 #include "Windows/Main/Overlays/AddToSteam/AddToSteamOverlay.h"
 #include "Windows/Main/Overlays/BugReport/BugReportOverlay.h"
-#include "Windows/Main/Overlays/Changelog/ChangelogOverlay.h"
 #include "Windows/Main/Overlays/EasterEgg/EasterEggOverlay.h"
 #include "Windows/Main/Overlays/Epic/EpicLocator.h"
 #include "Windows/Main/Overlays/HandMods/HandModsOverlay.h"
@@ -74,7 +73,6 @@ MainWindow::MainWindow() {
     saveCard = std::make_unique<SaveCardOverlay>(*this);
     checkpoint = std::make_unique<CheckpointOverlay>(*this);
     bugReport = std::make_unique<BugReportOverlay>(*this);
-    changelog = std::make_unique<ChangelogOverlay>(*this);
     eggVideo = std::make_unique<EasterEggOverlay>(*this);
     mods = std::make_unique<ModPopups>(*this);
     addToSteam = std::make_unique<AddToSteamOverlay>(*this);
@@ -83,7 +81,7 @@ MainWindow::MainWindow() {
     keyClickWizard = std::make_unique<KeyClickWizard>(*this);
     // Same stacking order as the overlays in the old MainWindow.xaml (later = on top)
     overlays = { versions.get(), settings.get(), keyClickWizard.get(), updates.get(), liveSplit.get(), saveCard.get(), checkpoint.get(),
-                 bugReport.get(), changelog.get(), eggVideo.get(), mods.get(), addToSteam.get(), handMods.get(), tutorials.get() };
+                 bugReport.get(), eggVideo.get(), mods.get(), addToSteam.get(), handMods.get(), tutorials.get() };
 }
 
 MainWindow::~MainWindow() {
@@ -349,7 +347,10 @@ void MainWindow::OpenVersions() { versions->Open(App::L().selected); }
 void MainWindow::OpenHandMods() { handMods->OpenHub(); }
 void MainWindow::OpenLeaderboard() { Standalone::ToggleLeaderboard(); }
 void MainWindow::OpenBugReport() { bugReport->Open(); }
-void MainWindow::OpenChangelog() { changelog->Open(); }
+void MainWindow::OpenChangelog() {
+    settings->Close();
+    updates->Open(UpdatesOverlay::Page::Changelog);
+}
 void MainWindow::OpenBeginnerTutorials() { Standalone::ShowBeginnerTutorials(); }
 void MainWindow::OpenUpdates() {
     settings->Close();
@@ -451,10 +452,10 @@ void MainWindow::OnFrame() {
     }
     for (Overlay* o : overlays) {
         if (o == eggVideo.get() && intro.Visible()) {
-            // The intro sits between the changelog and the easter egg video
+            // The intro sits between the bug report and the easter egg video
         }
         if (o->Visible()) o->Draw(ui, screen);
-        if (o == changelog.get() && intro.Visible() && intro.Draw(ui, screen)) HideIntro();
+        if (o == bugReport.get() && intro.Visible() && intro.Draw(ui, screen)) HideIntro();
     }
 }
 

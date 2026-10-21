@@ -1,5 +1,7 @@
 #pragma once
 #include <functional>
+#include <optional>
+#include <string>
 #include "Services/GameFiles/ModInstaller.h"
 #include "UI/Widgets/Panel.h"
 #include "Windows/Main/Overlays/Overlay.h"
@@ -26,7 +28,25 @@ private:
 
     // Runs a ModInstaller operation off the UI thread, then shows its message and refreshes.
     void Run(const wchar_t* title, std::function<Services::ModInstaller::Result()> work);
-    void InstallUe4ssInPlace(bool& installedThisSession, const wchar_t* title);
+    // Same, but `popup` stays open on an animated working screen (`label`, e.g. "Installing Load
+    // Manip…") and shows the result in place. With `onSuccess` a success goes straight back to the
+    // popup's question in its new state instead (the INSTALL UE4SS gate).
+    // `glyph` floats in the ring (install / delete).
+    void RunInPopup(UI::Popup& popup, std::wstring label, wchar_t glyph, std::function<Services::ModInstaller::Result()> work,
+                    std::function<void()> onSuccess = {});
+    void InstallUe4ssInPlace(bool& installedThisSession, UI::Popup& popup);
+    // Draws `popup`'s working / result screen when it has a job; returns false when it hasn't.
+    bool DrawJob(UI::Ui& ui, UI::Popup& popup, const Rect& screen, float width, const std::wstring& title);
+
+    struct Job {
+        UI::Popup* popup = nullptr;
+        std::wstring label;
+        wchar_t glyph = 0;
+        bool finished = false, ok = false;
+        std::wstring head, body;   // result message: first line, the rest
+        double startedAt = -1.0, finishedAt = -1.0;   // stamped by the first frame that shows them
+    };
+    std::optional<Job> job;
 
     // File state captured when a popup opens (and after its INSTALL UE4SS step), so a popup
     // fading out after an action keeps showing what the user clicked on.

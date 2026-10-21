@@ -20,7 +20,7 @@ inline constexpr const wchar_t* LatestExeUrl =
 
 // ── GameBanana (alternative update channel) ─────────────────────────────────
 namespace GameBanana {
-inline int ToolId = 0;   // set when published (kept non-constexpr so the GameBanana code stays compiled)
+inline int ToolId = 22136;   // set when published (kept non-constexpr so the GameBanana code stays compiled)
 inline constexpr const wchar_t* ApiItemUrl = L"https://api.gamebanana.com/Core/Item/Data?itemtype=Tool&itemid=";
 } // namespace GameBanana
 

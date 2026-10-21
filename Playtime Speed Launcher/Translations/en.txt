@@ -41,7 +41,7 @@ section_multiplayers = MULTIPLAYERS
 mp_pp_title = PROJECT PLAYTIME
 mp_pp_desc = Free multiplayer horror: six players team up to build a giant toy in the factory while a seventh player hunts them down as one of the monsters.
 mp_efp_title = ESCAPE FROM PLAYTIME
-mp_efp_desc = The next Poppy Playtime multiplayer game. It isn't out yet.
+mp_efp_desc = The new Poppy Playtime multiplayer game.
 patch = Patch
 
 # Versions overlay
@@ -238,6 +238,35 @@ updates_cancel_btn = CANCEL
 updates_downloading = Downloading...  {0}%
 updates_close = BACK
 updates_manual_link = App not updating? Click here to update manually
+updates_tooltip = Updates & changelog
+updates_tab = UPDATES
+updates_tab_sub = Check for and install new versions
+changelog_tab = CHANGELOG
+changelog_tab_sub = Everything that changed in each version
+updates_banner_title = Launcher updates
+updates_banner_sub = The launcher looks for a new version every time it opens
+updates_installed_pill = {0} installed
+updates_hero_checking_title = Looking for updates…
+updates_hero_checking_msg = Checking GitHub and GameBanana for a new version.
+updates_hero_available_msg = Version {0} is ready to download. See what's new and update in one click.
+updates_hero_gb_msg = Version {0} is available on GameBanana.
+updates_hero_unknown_title = Not checked yet
+updates_hero_unknown_msg = Check now to see if there's a new version.
+updates_check_again_btn = CHECK AGAIN
+updates_view_btn = SEE THE UPDATE
+updates_gb_btn = UPDATE FROM GAMEBANANA
+updates_manual_btn = UPDATE MANUALLY
+updates_version_card = YOUR VERSION
+updates_latest_label = Latest published
+updates_sources_card = WHERE UPDATES COME FROM
+updates_source_github = GitHub (automatic)
+updates_source_gb = GameBanana
+updates_source_waiting = Checking…
+updates_source_none = No response
+updates_how_card = HOW IT WORKS
+updates_how_1 = The launcher looks for a new version when it opens
+updates_how_2 = When it finds one, the updates button on the main screen glows red
+updates_how_3 = Download it here: the launcher restarts by itself, already updated
 
 # Manual update window
 manual_update_header = MANUAL UPDATE
@@ -260,6 +289,13 @@ add_to_steam_error_no_exe = Could not determine this app's executable path.
 add_to_steam_error_no_icon = Selected icon file wasn't found. Try restarting the launcher.
 add_to_steam_error_no_steam = Steam installation not found.
 add_to_steam_error_generic = Error adding to Steam:\n{0}
+add_to_steam_tooltip = Add to Steam
+add_to_steam_preview = HOW IT WILL LOOK IN YOUR LIBRARY
+add_to_steam_working = Adding to Steam…
+add_to_steam_working_hint = Don't close this window, Steam is being updated
+add_to_steam_step_close = Closing Steam
+add_to_steam_step_write = Writing the shortcut
+add_to_steam_step_start = Opening Steam again
 steam_tutorial_btn = SET UP CONTROLLER SUPPORT
 steam_tutorial_paste_here = Paste the command here
 steam_tutorial_copy_btn = COPY COMMAND
@@ -298,6 +334,16 @@ save_card_save_btn = SAVE FILE
 
 # Checkpoint select overlay (Chapter 1)
 checkpoint_select_header = [ SELECT CHECKPOINT ]
+save_card_hero_title = Chapter {0} saves
+save_card_hero_sub = Choose what to do with this chapter's save files
+save_card_delete_desc = Wipes every save slot of this chapter
+save_card_load_desc = Copies the bundled saves over the game's ones
+ch5_ngplus_load_desc = Loads the bundled NG+ saves
+ch5_ngplus_unload_desc = Takes the NG+ saves out again
+checkpoint_hero_title = Chapter {0} checkpoints
+checkpoint_hero_sub = The checkpoint's save is copied over the game's save file
+checkpoint_count = {0} checkpoints
+checkpoint_empty = No checkpoints were found for this chapter.
 
 # Hotkey overlay (Ctrl+Shift+Enter)
 hotkey_header   = [ LOAD CHECKPOINT ]
@@ -568,6 +614,27 @@ bug_report_err_empty   = Please fill in the title and description.
 bug_report_err_send    = Could not send the report. Check your connection.
 bug_report_discord_required_title = [ DISCORD REQUIRED ]
 bug_report_err_discord_required = Connect your Discord account first — anonymous reports are no longer accepted, and it gives me a quick way to ask you follow-up questions about the report.
+bug_report_banner_title = Report a bug
+bug_report_banner_sub = Something not working? Tell me and I'll fix it
+bug_report_banner_pill = Goes straight to the dev's Discord
+bug_report_your_report = YOUR REPORT
+bug_report_discord_why = Your report is linked to your Discord so I can ask you for more details if I need them.
+bug_report_screenshot_title = Attach a screenshot
+bug_report_screenshot_formats = PNG, JPG, GIF, WEBP or BMP · optional
+bug_report_screenshot_attached = Screenshot attached · click to change it
+reports_before_send = BEFORE SENDING
+reports_ready = Ready to send!
+reports_pending = Complete the steps
+reports_optional = OPTIONAL
+bug_check_discord = Connect Discord
+bug_check_discord_hint = So I can reply to you
+bug_check_title = Give it a title
+bug_check_title_hint = A few words about the problem
+bug_check_describe = Describe what happened
+bug_check_describe_hint = At least 20 characters: what you did and what went wrong
+bug_check_screenshot = Add a screenshot
+bug_check_screenshot_hint = It helps a lot to find the problem
+bug_report_tip = Reports with the steps to make the problem happen again get fixed much sooner.
 
 # UE4SS
 ue4ss_remap_hint = UE4SS active — temporary key remapping:
@@ -653,6 +720,16 @@ rs_section_details = DETAILS
 rs_video_url = VIDEO URL
 rs_author = AUTHOR / DISCOVERED BY
 rs_description = DESCRIPTION
+rs_banner_pill = Reviewed before it's added
+rs_check_name = Name the skip
+rs_check_name_hint = What it's usually called
+rs_check_chapter = Pick the chapter
+rs_check_chapter_hint = And its version, if you know it
+rs_check_video = Add a video
+rs_check_video_hint = A link that shows the skip
+rs_check_details = Explain how it's done
+rs_check_details_hint = Who found it and how to do it
+rs_tip = The more details, the sooner it gets added to the list.
 
 # Skips and glitches
 vt_window_title = Skips and Glitches

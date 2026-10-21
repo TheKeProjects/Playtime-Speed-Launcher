@@ -10,6 +10,7 @@
 #include "Services/Audio/SoundEffects.h"
 #include "Settings/KeyClickSettings.h"
 #include "UI/Widgets/Button.h"
+#include "UI/Widgets/MenuKit.h"
 #include "UI/Widgets/Controls.h"
 #include "UI/Widgets/Stagger.h"
 #include "Windows/Main/MainWindow.h"
@@ -314,25 +315,25 @@ void KeyClickWizard::Draw(Ui& ui, const Rect& screen) {
 
     // Footer: ‹ change key (mouse step) · cancel · save
     const Rect footer = frame.footer.Inset(20.f, 0.f);
-    const TextStyle text = Mono(11.f, true).Center();
     if (step == 1) {
         const std::wstring change = Loc::Get("keyclick_change_key");
-        const float cw = ButtonWidth(ui, change, text, Styles::Footer());
-        if (TextButton(ui, ui.MakeId("kc-change"), { footer.x, footer.CY() - 18.f, cw, 36.f }, change, text, Palette::Teal, Styles::Footer())) SetStep(0);
+        const float cw = MenuKit::FooterButtonWidth(ui, change, Glyphs::Back, 120.f);
+        if (MenuKit::FooterButton(ui, ui.MakeId("kc-change"), { footer.x, footer.CY() - 18.f, cw, 36.f }, change, MenuKit::Kind::Secondary, true, Glyphs::Back))
+            SetStep(0);
         const std::wstring save = Loc::Get("save_btn");
-        const float sw = std::max(140.f, ButtonWidth(ui, save, text, Styles::Footer()));
-        if (TextButton(ui, ui.MakeId("kc-save"), { footer.R() - sw, footer.CY() - 18.f, sw, 36.f }, save, text, Rgba(3, 17, 13),
-                       { Palette::Teal, Colors::Transparent, 0.f, 4.f, { 0.f }, 0.f, 36.f }))
+        const float sw = MenuKit::FooterButtonWidth(ui, save, Glyphs::Save, 140.f);
+        if (MenuKit::FooterButton(ui, ui.MakeId("kc-save"), { footer.R() - sw, footer.CY() - 18.f, sw, 36.f }, save, MenuKit::Kind::Primary, true, Glyphs::Save))
             Save();
         const std::wstring cancel = Loc::Get("cancel");
-        const float xw = ButtonWidth(ui, cancel, text, Styles::Footer());
-        if (TextButton(ui, ui.MakeId("kc-cancel"), { footer.R() - sw - 10.f - xw, footer.CY() - 18.f, xw, 36.f }, cancel, text, Palette::Dim,
-                       Styles::Footer()))
+        const float xw = MenuKit::FooterButtonWidth(ui, cancel, Glyphs::Cancel, 110.f);
+        if (MenuKit::FooterButton(ui, ui.MakeId("kc-cancel"), { footer.R() - sw - 10.f - xw, footer.CY() - 18.f, xw, 36.f }, cancel, MenuKit::Kind::Secondary,
+                                  true, Glyphs::Cancel))
             popup.Close();
     } else {
         const std::wstring cancel = Loc::Get("cancel");
-        const float xw = ButtonWidth(ui, cancel, text, Styles::Footer());
-        if (TextButton(ui, ui.MakeId("kc-cancel"), { footer.R() - xw, footer.CY() - 18.f, xw, 36.f }, cancel, text, Palette::Dim, Styles::Footer()))
+        const float xw = MenuKit::FooterButtonWidth(ui, cancel, Glyphs::Cancel, 110.f);
+        if (MenuKit::FooterButton(ui, ui.MakeId("kc-cancel"), { footer.R() - xw, footer.CY() - 18.f, xw, 36.f }, cancel, MenuKit::Kind::Secondary, true,
+                                  Glyphs::Cancel))
             popup.Close();
     }
     if (frame.BackdropClicked()) popup.Close();

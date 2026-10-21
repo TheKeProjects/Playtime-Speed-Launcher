@@ -7,8 +7,10 @@
 
 namespace SpeedrunLauncher::Main {
 
-// "[ REPORT BUG ]": Discord identity, title, description and an optional screenshot, sent to the
-// team's Discord webhook. The "?" next to Connect opens the Discord info popup on top.
+// "[ REPORT BUG ]", laid out like the Inazuma editor's reports tab: an animated banner, the form on
+// the left (title, description, a screenshot drop zone and the send button) and on the right the
+// Discord card and a checklist that ticks itself as the report gets ready. Sent to the team's
+// Discord webhook. The info button on the Discord card opens the Discord info popup on top.
 class BugReportOverlay : public Overlay {
 public:
     using Overlay::Overlay;
@@ -17,7 +19,9 @@ public:
     void Open();
 
 private:
-    float DrawForm(UI::Ui& ui, const Rect& body);   // returns the content height
+    void DrawForm(UI::Ui& ui, const Rect& r);
+    float DrawDiscord(UI::Ui& ui, const Rect& r, bool draw);   // returns the card's height
+    bool Ready() const;   // Discord connected, a title and a description of 20+ characters
     void Send();
 
     UI::Popup popup;

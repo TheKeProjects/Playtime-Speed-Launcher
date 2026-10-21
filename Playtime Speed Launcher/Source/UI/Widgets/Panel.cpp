@@ -3,6 +3,8 @@
 #include <cmath>
 #include "Core/Async.h"
 #include "Graphics/Animation.h"
+#include "Seasonal/SeasonalCardArt.h"
+#include "Seasonal/SeasonalTheme.h"
 
 namespace SpeedrunLauncher::UI {
 
@@ -75,6 +77,7 @@ OverlayFrame::OverlayFrame(Ui& u, Id frameId, const Rect& screen, float width, f
     const double now = ui.Time();
     if (now - clock.lastDrawn > 0.25) clock.openedAt = now;
     clock.lastDrawn = now;
+    openedAt = clock.openedAt;
     const float t = static_cast<float>(now - clock.openedAt);
 
     if (unknown) opacity = 0.f;   // size not known yet: stay invisible for this one frame
@@ -123,9 +126,17 @@ OverlayFrame::OverlayFrame(Ui& u, Id frameId, const Rect& screen, float width, f
         ui.g.FillRound(footer, 0.f, 0.f, style.radius - 1.f, style.radius - 1.f, style.footerBackground);
         ui.g.FillRect({ footer.x, footer.y, footer.w, 1.f }, style.footerBorder);
     }
+    // Seasonal theme: particles in the body (under the content), decorations resting on the top edge.
+    // They follow the seasonal clock, so they ease to a stop while a game is running.
+    const bool seasonal = style.seasonal && Seasonal::IsSeasonal();
+    if (seasonal) Seasonal::CardArt::DrawPanelParticles(ui.g, body, 0.f, Seasonal::LastAnimationTime(), 0.45f);
     if (style.decorated)
         PanelDecor(ui, panel, style.radius, accent, t, style.headerHeight > 0.f ? header.B() - 1.f : -1.f,
                    style.footerHeight > 0.f ? footer.y : -1.f);
+    if (seasonal) {
+        Seasonal::CardArt::DrawPanelEdge(ui.g, panel, Seasonal::LastAnimationTime());
+        if (!Seasonal::AnimationStopped()) ui.KeepAnimatingThrottled();
+    }
 
     // Body content cascades in just after the panel: a soft reveal travels down the body (so rows
     // appear one after another, top first) while everything fades and rises into place

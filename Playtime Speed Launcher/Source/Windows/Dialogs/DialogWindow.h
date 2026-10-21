@@ -33,6 +33,9 @@ void Close(int id);   // closes without calling `done`
 // Wrapped text content (TextBlock with TextWrapping=Wrap, MaxWidth = options.contentWidth).
 Content Text(const std::wstring& text, Color color, float fontSize = 12.f);
 void ShowText(HWND owner, const Options& options, const std::wstring& text, Color color, std::function<void(Result)> done = {});
+// A glowing badge with `glyph` (success ✓ / warning / error...) beside the wrapped text; the first
+// line is the heading when the text has several.
+Content BadgeText(wchar_t glyph, Color accent, const std::wstring& text);
 
 // From a worker thread: shows the dialog on the UI thread and waits for the answer.
 Result ShowBlocking(HWND owner, const Options& options, Content content);

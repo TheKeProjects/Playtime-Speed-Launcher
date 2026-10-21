@@ -39,6 +39,7 @@ struct PanelStyle {
     float footerHeight = 52.f;
     std::wstring title;            // centred in the header when not empty
     bool decorated = true;         // glow, accent lines, corner marks and the opening light sweep
+    bool seasonal = true;          // the season's particles in the body and decorations on the top edge
 };
 
 // The standard modal overlay: dimmed backdrop over the whole window, a centred panel with a
@@ -59,6 +60,8 @@ public:
     void SetContentHeight(float h) { contentHeight = h; }
     // Pressed on the backdrop outside the panel this frame.
     bool BackdropClicked() const { return backdropClicked; }
+    // When the panel opened (Ui::Time clock): start of the content's staggered entrance
+    double OpenedAt() const { return openedAt; }
 
     Rect panel, header, body, footer;
 
@@ -66,6 +69,7 @@ private:
     Ui& ui;
     Id id;
     float contentHeight = -1.f;
+    double openedAt = 0.0;
     bool layer = false, scaled = false, backdropClicked = false;
     bool bodyLayer = false;   // body content still fading / rising in
 };

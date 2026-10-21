@@ -1,3 +1,21 @@
+4.1.4 | 21/10/2026
+## Additions
+- Escape From Playtime is out: the launcher finds your Steam install and launches it
+- New Updates button next to Settings, with the Updates and Changelog pages side by side (it glows red when there's a new version)
+- Add to Steam is now a button next to the quit button, with a window that shows each step live
+- Installing or removing Load Manip and FullBright shows an animated loading screen and the result in the same popup
+
+## Redesigns
+- New look for the bug and skip reports, with a checklist that ticks itself as you fill them in
+- New look for the mod popups, saves and checkpoints, LiveSplit, manual update, tutorials and notifications
+- Settings: sliding ON / OFF switches and animated tabs and options
+
+## Seasonal Themes
+- Every menu and window now has the season's decorations and particles
+
+## Bug Fixes
+- Fixed runners' pictures not showing in the leaderboards for many people
+
 4.1.3 | 20/10/2026
 ## Additions
 - Chapter 4: new FULLBRIGHT button on the chapter card, installed like Chapters 1 and 5
@@ -6,7 +24,7 @@
 - Added two new easter eggs, one of them a picture
 
 ## Redesigns
-- Settings → Load Manip: Chapter 4 now edits the Freeze / Slow / Normal loads keys and the FullBright keys straight in the mods' config files, like Chapters 1 and 5
+- Settings \x2192 Load Manip: Chapter 4 now edits the Freeze / Slow / Normal loads keys and the FullBright keys straight in the mods' config files, like Chapters 1 and 5
 
 ## Other
 - Removed the old Chapter 4 key remap (the new Load Manip reads its keys from its config file)

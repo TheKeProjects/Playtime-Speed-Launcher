@@ -6,25 +6,39 @@
 #include "Services/App/UpdateService.h"
 #include "UI/Layout.h"
 #include "UI/Widgets/Panel.h"
+#include "Windows/Main/Overlays/Changelog/ChangelogView.h"
 #include "Windows/Main/Overlays/Overlay.h"
 
 namespace SpeedrunLauncher::Main {
 
-// Launcher updates: the check view (current version, status banner, GameBanana banner, release
-// details, manual-update link) and the install view: every version between the installed one and
-// the new one as a folding card (the newest open), then the download progress.
+// The updates menu (the button beside Settings on the main screen), with two pages side by side:
+//   UPDATES    a banner, the status (an orb that spins while checking, a check when up to date, a
+//              bouncing download arrow when there's an update) with its actions, and cards with
+//              your version, where updates come from and how they work. Picking the update opens
+//              the install view: every version between the installed one and the new one as a
+//              folding card (the newest open), then the download progress.
+//   CHANGELOG  the whole version history (ChangelogView).
 class UpdatesOverlay : public Overlay {
 public:
+    enum class Page { Updates, Changelog };
+
     using Overlay::Overlay;
     bool Visible() const override { return popup.Visible(); }
     void Draw(UI::Ui& ui, const Rect& screen) override;
 
-    void Open();
+    void Open(Page page = Page::Updates);
     void StartupCheck() { Check(); }
 
 private:
     void Check();
-    void DrawCheckView(UI::Ui& ui, UI::Column& col);
+    void SelectPage(Page next, double now);
+    void DrawPages(UI::Ui& ui, const Rect& row);
+    void DrawOverview(UI::Ui& ui, const Rect& area);
+    void DrawBanner(UI::Ui& ui, const Rect& r);
+    void DrawStatus(UI::Ui& ui, const Rect& r);
+    void DrawVersionCard(UI::Ui& ui, const Rect& r);
+    void DrawSourcesCard(UI::Ui& ui, const Rect& r);
+    void DrawHowCard(UI::Ui& ui, const Rect& r);
     void DrawInstallView(UI::Ui& ui, const Rect& body);
     void DrawFooter(UI::Ui& ui, const Rect& footer);
     void Install();
@@ -50,6 +64,9 @@ private:
     float DrawNewsCard(UI::Ui& ui, size_t index, float x, float y, float w);
 
     UI::Popup popup;
+    Page page = Page::Updates;
+    double pageAt = -10.0;   // when the page last changed (its content comes in again)
+    ChangelogView changelog;
     std::optional<Services::Updates::UpdateInfo> info;
     std::optional<Services::Updates::GbUpdateInfo> gb;
     bool checking = false;

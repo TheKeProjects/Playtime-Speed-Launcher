@@ -41,7 +41,7 @@ section_multiplayers = MULTIJUGADOR
 mp_pp_title = PROJECT PLAYTIME
 mp_pp_desc = Terror multijugador gratuito: seis jugadores se unen para fabricar un juguete gigante en la fábrica mientras un séptimo jugador los caza como uno de los monstruos.
 mp_efp_title = ESCAPE FROM PLAYTIME
-mp_efp_desc = El próximo juego multijugador de Poppy Playtime. Todavía no ha salido.
+mp_efp_desc = El nuevo juego multijugador de Poppy Playtime.
 patch = Parche
 
 # Overlay de versiones
@@ -238,6 +238,35 @@ updates_cancel_btn = CANCELAR
 updates_downloading = Descargando...  {0}%
 updates_close = VOLVER
 updates_manual_link = ¿La app no se actualiza? Haz clic aquí para actualizar manualmente
+updates_tooltip = Actualizaciones y changelog
+updates_tab = ACTUALIZACIONES
+updates_tab_sub = Busca e instala versiones nuevas
+changelog_tab = CHANGELOG
+changelog_tab_sub = Todo lo que cambió en cada versión
+updates_banner_title = Actualizaciones del launcher
+updates_banner_sub = El launcher busca una versión nueva cada vez que se abre
+updates_installed_pill = {0} instalada
+updates_hero_checking_title = Buscando actualizaciones…
+updates_hero_checking_msg = Buscando una versión nueva en GitHub y GameBanana.
+updates_hero_available_msg = La versión {0} está lista para descargar. Mira las novedades y actualiza con un clic.
+updates_hero_gb_msg = La versión {0} está disponible en GameBanana.
+updates_hero_unknown_title = Aún no se ha buscado
+updates_hero_unknown_msg = Busca ahora para ver si hay una versión nueva.
+updates_check_again_btn = VOLVER A BUSCAR
+updates_view_btn = VER LA ACTUALIZACIÓN
+updates_gb_btn = ACTUALIZAR DESDE GAMEBANANA
+updates_manual_btn = ACTUALIZAR A MANO
+updates_version_card = TU VERSIÓN
+updates_latest_label = Última publicada
+updates_sources_card = DE DÓNDE VIENEN
+updates_source_github = GitHub (automático)
+updates_source_gb = GameBanana
+updates_source_waiting = Buscando…
+updates_source_none = Sin respuesta
+updates_how_card = CÓMO FUNCIONA
+updates_how_1 = El launcher busca una versión nueva al abrirse
+updates_how_2 = Si encuentra una, el botón de actualizaciones de la pantalla principal brilla en rojo
+updates_how_3 = Descárgala aquí: el launcher se reinicia solo, ya actualizado
 
 # Ventana de actualización manual
 manual_update_header = ACTUALIZACIÓN MANUAL
@@ -260,6 +289,13 @@ add_to_steam_error_no_exe = No se pudo determinar la ruta del ejecutable de esta
 add_to_steam_error_no_icon = No se encontró el ícono seleccionado. Intenta reiniciar el launcher.
 add_to_steam_error_no_steam = No se encontró la instalación de Steam.
 add_to_steam_error_generic = Error al añadir a Steam:\n{0}
+add_to_steam_tooltip = Añadir a Steam
+add_to_steam_preview = ASÍ SE VERÁ EN TU BIBLIOTECA
+add_to_steam_working = Añadiendo a Steam…
+add_to_steam_working_hint = No cierres esta ventana, se está actualizando Steam
+add_to_steam_step_close = Cerrando Steam
+add_to_steam_step_write = Escribiendo el acceso directo
+add_to_steam_step_start = Abriendo Steam de nuevo
 steam_tutorial_btn = CONFIGURAR EL MANDO
 steam_tutorial_paste_here = Pega el comando aquí
 steam_tutorial_copy_btn = COPIAR COMANDO
@@ -298,6 +334,16 @@ save_card_save_btn = GUARDAR PARTIDA
 
 # Checkpoint select overlay (Chapter 1)
 checkpoint_select_header = [ SELECCIONAR CHECKPOINT ]
+save_card_hero_title = Partidas del Capítulo {0}
+save_card_hero_sub = Elige qué hacer con las partidas de este capítulo
+save_card_delete_desc = Borra todas las ranuras de guardado de este capítulo
+save_card_load_desc = Copia las partidas incluidas sobre las del juego
+ch5_ngplus_load_desc = Carga las partidas NG+ incluidas
+ch5_ngplus_unload_desc = Vuelve a quitar las partidas NG+
+checkpoint_hero_title = Checkpoints del Capítulo {0}
+checkpoint_hero_sub = La partida del checkpoint se copia sobre la del juego
+checkpoint_count = {0} checkpoints
+checkpoint_empty = No se encontraron checkpoints para este capítulo.
 
 # Hotkey overlay (Ctrl+Shift+Enter)
 hotkey_header   = [ CARGAR CHECKPOINT ]
@@ -564,6 +610,27 @@ bug_report_err_empty   = Por favor completa el título y la descripción.
 bug_report_err_send    = No se pudo enviar. Revisa tu conexión.
 bug_report_discord_required_title = [ SE REQUIERE DISCORD ]
 bug_report_err_discord_required = Conecta tu cuenta de Discord primero — ya no se aceptan reportes anónimos, y así tengo una forma rápida de hacerte preguntas sobre el reporte.
+bug_report_banner_title = Reportar un error
+bug_report_banner_sub = ¿Algo no funciona? Cuéntamelo y lo arreglo
+bug_report_banner_pill = Llega directo al Discord del dev
+bug_report_your_report = TU REPORTE
+bug_report_discord_why = Tu reporte se vincula a tu Discord para poder pedirte más detalles si hace falta.
+bug_report_screenshot_title = Adjunta una captura
+bug_report_screenshot_formats = PNG, JPG, GIF, WEBP o BMP · opcional
+bug_report_screenshot_attached = Captura adjunta · haz clic para cambiarla
+reports_before_send = ANTES DE ENVIAR
+reports_ready = ¡Listo para enviar!
+reports_pending = Completa los pasos
+reports_optional = OPCIONAL
+bug_check_discord = Conecta Discord
+bug_check_discord_hint = Para poder responderte
+bug_check_title = Ponle un título
+bug_check_title_hint = Unas palabras sobre el problema
+bug_check_describe = Describe qué pasó
+bug_check_describe_hint = Al menos 20 caracteres: qué hiciste y qué falló
+bug_check_screenshot = Añade una captura
+bug_check_screenshot_hint = Ayuda mucho a encontrar el problema
+bug_report_tip = Los reportes con los pasos para que vuelva a pasar el problema se arreglan mucho antes.
 
 # UE4SS
 ue4ss_remap_hint = UE4SS activo — teclas reasignadas temporalmente:
@@ -649,6 +716,16 @@ rs_section_details = DETALLES
 rs_video_url = URL DEL VÍDEO
 rs_author = AUTOR / DESCUBIERTO POR
 rs_description = DESCRIPCIÓN
+rs_banner_pill = Se revisa antes de añadirse
+rs_check_name = Ponle nombre al skip
+rs_check_name_hint = Cómo se le suele llamar
+rs_check_chapter = Elige el capítulo
+rs_check_chapter_hint = Y su versión, si la sabes
+rs_check_video = Añade un vídeo
+rs_check_video_hint = Un enlace donde se vea el skip
+rs_check_details = Explica cómo se hace
+rs_check_details_hint = Quién lo descubrió y cómo se hace
+rs_tip = Cuantos más detalles, antes se añade a la lista.
 
 # Skips and glitches
 vt_window_title = Skips y glitches

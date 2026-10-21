@@ -2,21 +2,20 @@
 #include <string>
 #include <vector>
 #include "Services/App/ChangelogData.h"
-#include "UI/Widgets/Panel.h"
-#include "Windows/Main/Overlays/Overlay.h"
+#include "UI/Ui.h"
 
 namespace SpeedrunLauncher::Main {
 
-// The in-app changelog as a timeline: one card per version hanging from a vertical line (the
-// current version's node glows), "## " sections as coloured tags and bulleted changes with
-// @mention chips. The layout is computed once per width / language and only the cards on screen
-// are drawn, so opening it stays smooth with dozens of versions.
-class ChangelogOverlay : public Overlay {
+// The in-app changelog as a timeline (the CHANGELOG page of the updates menu): one card per
+// version hanging from a vertical line (the current version's node glows), "## " sections as
+// coloured tags and bulleted changes with @mention chips. The layout is computed once per width /
+// language and only the cards on screen are drawn, so it stays smooth with dozens of versions.
+class ChangelogView {
 public:
-    using Overlay::Overlay;
-    bool Visible() const override { return popup.Visible(); }
-    void Draw(UI::Ui& ui, const Rect& screen) override;
-    void Open();
+    // Back to the top, cards coming in again one after another
+    void Reset(double now);
+    // The scrolling list inside `area`
+    void Draw(UI::Ui& ui, const Rect& area);
 
 private:
     struct Line {
@@ -39,7 +38,6 @@ private:
     void BuildLayout(UI::Ui& ui, float width);
     void DrawCard(UI::Ui& ui, const Card& card, float x, float y, float w, int index);
 
-    UI::Popup popup;
     bool resetScroll = false;
     double openedAt = -10.0;
     // Cached layout
