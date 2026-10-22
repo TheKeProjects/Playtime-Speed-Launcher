@@ -76,6 +76,10 @@ void DiscordPresenceService::SetGameRunning(const Models::Chapter& c, const std:
     Set({ L"Running " + c.subTitle, NowUnix(), LauncherImageKey(), L"Playtime Speed Launcher", ChapterKey(c), c.subTitle }, version);
 }
 
+void DiscordPresenceService::SetMultiplayerRunning(const std::wstring& title) {
+    Set({ L"Running " + title, NowUnix(), LauncherImageKey(), L"Playtime Speed Launcher", L"", L"" }, L"Online");
+}
+
 void DiscordPresenceService::SetWatchingTutorial(const std::wstring& videoTitle, const std::wstring& chapter) {
     Set({ L"Watching tutorial  \x00B7  " + chapter, NowUnix(), LauncherImageKey(), L"Playtime Speed Launcher", L"checkpoint", videoTitle },
         videoTitle);

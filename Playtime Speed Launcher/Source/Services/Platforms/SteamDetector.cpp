@@ -73,6 +73,20 @@ std::wstring GetVersion(const std::wstring& gamePath, const std::wstring& basePa
     return L"Instalado";
 }
 
+// App id of the appmanifest_*.acf in a steamapps folder whose "installdir" is the given folder (0 = none)
+int FindAppIdByInstallDir(const std::wstring& steamapps, const std::wstring& installDir) {
+    static const std::wregex installDirRe(LR"re("installdir"\s+"([^"]+)")re");
+    static const std::wregex appIdRe(LR"re("appid"\s+"(\d+)")re");
+    for (const auto& acf : Files::ListFiles(steamapps, L"appmanifest_*.acf")) {
+        auto content = Files::ReadText(acf);
+        if (!content) continue;
+        std::wsmatch m;
+        if (!std::regex_search(*content, m, installDirRe) || !Text::Equals(m[1].str(), installDir, true)) continue;
+        if (std::regex_search(*content, m, appIdRe)) return std::stoi(m[1].str());
+    }
+    return 0;
+}
+
 std::vector<std::wstring> CollectSearchBases() {
     std::vector<std::wstring> result;
     const auto add = [&](const std::wstring& p) {
@@ -202,6 +216,7 @@ void DetectMultiplayers(std::vector<Models::MultiplayerGame>& games) {
             const std::wstring exe = Files::Combine(base, game.steamExe);
             if (!Files::Exists(exe)) continue;
             game.gameExePath = exe;
+            game.steamAppId = FindAppIdByInstallDir(Files::DirectoryName(base), Text::Split(game.steamExe, L'\\', true).front());
             break;
         }
     }

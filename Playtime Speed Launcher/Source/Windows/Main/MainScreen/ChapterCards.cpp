@@ -146,7 +146,7 @@ void ChapterCards::DrawCards(UI::Ui& ui, const Rect& area) {
             c.banner = Paths::Asset(L"Banners\\" + game.banner);
             c.title = Loc::Get("mp_" + game.key + "_title");
             c.subtitle = l.multiplayerRunning[i] ? Loc::Get("status_playing")
-                         : game.IsInstalled()     ? Loc::Get("status_installed")
+                         : game.IsInstalled()     ? Services::ChapterPlaytimeStore::Format(l.playtime.Seconds(game.playtimeId))
                                                   : Loc::Get("status_not_found");
             c.available = game.isAvailable;
             c.selected = static_cast<int>(i) == l.selectedMultiplayer;

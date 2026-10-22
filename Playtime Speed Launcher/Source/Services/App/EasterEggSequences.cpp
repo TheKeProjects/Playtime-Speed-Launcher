@@ -18,6 +18,7 @@ EasterEggSequences::EasterEggSequences() {
         { letters("GOKU"), L"Goku.mp4" },
         { letters("CATNAP"), L"Catnap.mp4" },
         { letters("BANME"), L"Aritro.png" },
+        { letters("OHNO"), L"Ohno.mp4" },
     };
 }
 

@@ -1,14 +1,6 @@
-4.1.4
+4.1.5
 ## Novedades
-Ya salió Escape From Playtime: el launcher encuentra tu instalación de Steam y lo abre
-Nuevo botón de Actualizaciones junto a Ajustes, con las páginas de Actualizaciones y Changelog una al lado de la otra (brilla en rojo cuando hay una versión nueva)
-Añadir a Steam ahora es un botón junto al de cerrar, con una ventana que muestra cada paso en directo
-Instalar o quitar el Load Manip y el FullBright muestra una pantalla de carga animada y el resultado en el mismo popup
-## Rediseños
-Nuevo aspecto para los reportes de errores y de skips, con una lista de pasos que se marca sola mientras los rellenas
-Nuevo aspecto para los popups de mods, partidas y checkpoints, LiveSplit, actualización manual, tutoriales y notificaciones
-Ajustes: interruptores ON / OFF que se deslizan y pestañas y opciones animadas
-## Temas de temporada
-Todos los menús y ventanas tienen ahora las decoraciones y partículas de la temporada
+Los juegos multijugador ahora tienen el overlay de FPS, el estado de Discord, el tiempo jugado en su tarjeta, la tecla para hacer clic y los easter eggs del juego, como los capítulos
+Añadido un nuevo easter egg
 ## Correcciones
-Arreglado que las fotos de los corredores no se vieran en las clasificaciones para mucha gente
+Arreglado que el online no funcionara en los juegos multijugador (Escape From Playtime) al abrirlos desde el launcher: ahora se inician a través de Steam

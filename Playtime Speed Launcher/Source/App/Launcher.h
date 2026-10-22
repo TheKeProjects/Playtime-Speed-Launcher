@@ -49,6 +49,7 @@ public:
     std::vector<Models::MultiplayerGame> multiplayers;
     int selectedMultiplayer = 0;
     std::vector<bool> multiplayerRunning;   // per multiplayer index (game watcher)
+    std::vector<uint32_t> multiplayerPid;
     bool InMultiplayers() const { return section == Section::Multiplayers; }
     Models::MultiplayerGame& SelectedMultiplayer() { return multiplayers[static_cast<size_t>(selectedMultiplayer)]; }
     bool AnyMultiplayerRunning() const;
@@ -68,7 +69,7 @@ public:
     // Thread-safe (also called from the input hook thread): uses the snapshot published by the
     // game watcher, never the vectors above.
     bool IsGameForeground() const;
-    int ForegroundChapter() const;   // number of the running chapter whose window has focus, 0 if none
+    int ForegroundChapter() const;   // number of the running chapter (or multiplayer playtimeId) whose window has focus, 0 if none
     void PublishRunningGames();      // game watcher: after updating gameRunning / runningPid
     // "*-Win64-Shipping" binary name for an install (cached per exe path)
     std::optional<std::wstring> ShippingExeName(const std::wstring& exePath);

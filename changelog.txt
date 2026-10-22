@@ -1,3 +1,11 @@
+4.1.5 | 22/10/2026
+## Additions
+- Multiplayer games now have the FPS overlay, Discord status, playtime on their card, key to click and the in-game easter eggs, like the chapters
+- Added a new easter egg
+
+## Bug Fixes
+- Fixed online not working in the multiplayer games (Escape From Playtime) when launched from the launcher: they now start through Steam
+
 4.1.4 | 21/10/2026
 ## Additions
 - Escape From Playtime is out: the launcher finds your Steam install and launches it

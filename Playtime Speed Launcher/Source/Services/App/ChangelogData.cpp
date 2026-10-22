@@ -6,6 +6,13 @@ namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
+        { L"4.1.5", L"22/10/2026", {
+            L"## Additions",
+            L"Multiplayer games now have the FPS overlay, Discord status, playtime on their card, key to click and the in-game easter eggs, like the chapters",
+            L"Added a new easter egg",
+            L"## Bug Fixes",
+            L"Fixed online not working in the multiplayer games (Escape From Playtime) when launched from the launcher: they now start through Steam",
+        } },
         { L"4.1.4", L"21/10/2026", {
             L"## Additions",
             L"Escape From Playtime is out: the launcher finds your Steam install and launches it",

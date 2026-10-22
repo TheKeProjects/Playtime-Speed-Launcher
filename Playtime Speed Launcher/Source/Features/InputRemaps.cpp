@@ -222,7 +222,7 @@ void InputRemaps::RefreshKeyClicks() {
 
 void InputRemaps::RefreshEasterEggHook() {
     // A dedicated hook so easter eggs can also be typed in-game; only while a chapter runs
-    const bool anyRunning = App::L().AnyGameRunning();
+    const bool anyRunning = App::L().AnyGameRunning() || App::L().AnyMultiplayerRunning();
     if (anyRunning && !eggKeyboard) {
         eggKeyboard = Input::Hooks::AddKeyboard([this](const Input::Hooks::KeyEvent& e) {
             if (e.down && !e.injected) return FeedEasterEgg(e.vk, e.time);

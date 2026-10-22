@@ -13,6 +13,8 @@ struct MultiplayerGame {
     std::wstring steamExe;                     // relative to steamapps\common
     std::optional<std::wstring> gameExePath;   // detected Steam install
     bool isAvailable = true;                   // false = not out yet (locked card)
+    int steamAppId = 0;                        // from the library's appmanifest (0 = not found)
+    int playtimeId = 0;                        // its key in the playtime store (past the chapter numbers)
 
     bool IsInstalled() const;
 

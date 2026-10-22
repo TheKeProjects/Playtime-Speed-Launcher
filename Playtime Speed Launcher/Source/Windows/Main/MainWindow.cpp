@@ -156,7 +156,10 @@ void MainWindow::StartBackgroundWork() {
         return games;
     }, [this](std::vector<Models::MultiplayerGame> detected) {
         auto& games = App::L().multiplayers;
-        for (size_t i = 0; i < games.size() && i < detected.size(); ++i) games[i].gameExePath = detected[i].gameExePath;
+        for (size_t i = 0; i < games.size() && i < detected.size(); ++i) {
+            games[i].gameExePath = detected[i].gameExePath;
+            games[i].steamAppId = detected[i].steamAppId;
+        }
         RefreshInfo();
     });
     updates->StartupCheck();
@@ -178,7 +181,7 @@ void MainWindow::SelectChapter(int index) {
     auto& l = App::L();
     if (index != l.selected) Services::Sfx::Play(Services::Sfx::Chapter);
     l.selected = index;
-    if (!l.AnyGameRunning()) l.discord->SetChapterSelected(l.Selected(), l.VersionLabel(l.Selected()));
+    if (!l.AnyGameRunning() && !l.AnyMultiplayerRunning()) l.discord->SetChapterSelected(l.Selected(), l.VersionLabel(l.Selected()));
     RefreshInfo();
 }
 
@@ -229,9 +232,14 @@ void MainWindow::ApplyWindowMode() { Invalidate(); }
 void MainWindow::PlaySelected() {
     auto& l = App::L();
     if (l.InMultiplayers()) {
-        const auto& exe = l.SelectedMultiplayer().gameExePath;
+        const auto& game = l.SelectedMultiplayer();
+        const auto& exe = game.gameExePath;
         if (!exe || !Files::Exists(*exe) || !Process::FindByName(Files::FileNameWithoutExtension(*exe)).empty()) return;
-        Process::Open(*exe, L"", Files::DirectoryName(*exe));
+        l.discord->SetMultiplayerRunning(Loc::Get("mp_" + game.key + "_title"));
+        if (Settings::Overlays::Current().fpsEnabled) l.fps.Prepare({ Files::FileNameWithoutExtension(*exe) });
+        // Through Steam: started straight from the Shipping exe the game can't reach the Steam API (no online)
+        if (game.steamAppId > 0) Process::OpenUrl(L"steam://rungameid/" + std::to_wstring(game.steamAppId));
+        else Process::Open(*exe, L"", Files::DirectoryName(*exe));
         return;
     }
     auto& ch = l.Selected();

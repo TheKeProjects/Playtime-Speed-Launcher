@@ -24,6 +24,7 @@ public:
     void SetChapterSelected(const Models::Chapter& chapter, const std::wstring& version);
     void SetInstalling(const Models::Chapter& chapter, const std::wstring& presetName);
     void SetGameRunning(const Models::Chapter& chapter, const std::wstring& version);
+    void SetMultiplayerRunning(const std::wstring& title);
     void SetWatchingTutorial(const std::wstring& videoTitle, const std::wstring& chapter);
     void SetSelectingCheckpoint(const Models::Chapter& chapter, const std::wstring& version);
 

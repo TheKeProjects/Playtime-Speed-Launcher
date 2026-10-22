@@ -5,6 +5,7 @@
 #include "Features/GameOverlays.h"
 #include "Features/GlobalHotkeys.h"
 #include "Features/InputRemaps.h"
+#include "Localization/Localization.h"
 #include "Windows/Main/MainWindow.h"
 
 namespace SpeedrunLauncher::Features {
@@ -51,15 +52,30 @@ void GameWatcher::Tick() {
         l.gameRunning[i] = running;
         if (running) anyRunning = true;
     }
-    l.PublishRunningGames();   // for the input hook thread
 
-    // Multiplayer games: only the PLAYING status and the resting scenery follow them
+    // Multiplayer games: FPS, playtime, Discord and the in-game hooks like the chapters (no
+    // checkpoint / tutorial toasts: those are chapter only)
     for (size_t i = 0; i < l.multiplayers.size(); ++i) {
-        const auto& exe = l.multiplayers[i].gameExePath;
-        const bool running = exe && !Process::FindByName(processes, Files::FileNameWithoutExtension(*exe)).empty();
+        const auto& game = l.multiplayers[i];
+        std::vector<uint32_t> pids;
+        if (game.gameExePath) pids = Process::FindByName(processes, Files::FileNameWithoutExtension(*game.gameExePath));
+        const bool running = !pids.empty();
+        l.multiplayerPid[i] = running ? pids[0] : 0;
+
+        if (running && !l.multiplayerRunning[i]) {
+            main.GameOverlays().StartFps(l.multiplayerPid[i]);
+            if (l.discord) l.discord->SetMultiplayerRunning(Loc::Get("mp_" + game.key + "_title"));
+        } else if (!running && l.multiplayerRunning[i]) {
+            main.GameOverlays().StopFps();
+        }
+
+        if (running) l.playtime.AddSeconds(game.playtimeId, IntervalMs / 1000.0);
+
         if (running != static_cast<bool>(l.multiplayerRunning[i])) stateChanged = true;
         l.multiplayerRunning[i] = running;
+        if (running) anyRunning = true;
     }
+    l.PublishRunningGames();   // for the input hook thread
 
     // Discord always reflects what's selected in the launcher once the game closes
     if (initialized && !anyRunning && stateChanged && l.discord)

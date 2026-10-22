@@ -23,6 +23,7 @@ void Launcher::Initialize() {
     chapters = Models::Chapter::All();
     multiplayers = Models::MultiplayerGame::All();
     multiplayerRunning.assign(multiplayers.size(), false);
+    multiplayerPid.assign(multiplayers.size(), 0);
     store = Services::InstallationsStore::Load();
     gameRunning.assign(chapters.size(), false);
     runningPid.assign(chapters.size(), 0);
@@ -100,6 +101,8 @@ void Launcher::PublishRunningGames() {
     std::vector<std::pair<uint32_t, int>> snapshot;
     for (size_t i = 0; i < chapters.size(); ++i)
         if (gameRunning[i] && runningPid[i]) snapshot.emplace_back(runningPid[i], chapters[i].number);
+    for (size_t i = 0; i < multiplayers.size(); ++i)
+        if (multiplayerRunning[i] && multiplayerPid[i]) snapshot.emplace_back(multiplayerPid[i], multiplayers[i].playtimeId);
     std::lock_guard lock(runningMutex);
     runningSnapshot = std::move(snapshot);
 }
