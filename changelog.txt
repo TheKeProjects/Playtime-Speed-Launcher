@@ -1,4 +1,4 @@
-4.2.0 | 31/10/2026
+4.2.0 | 08/11/2026
 ## Additions
 - New 100% tracker (beta) for Chapters 1 to 5, read live from the game, with an in-game overlay and an OBS browser source
 - New main screen: a side bar with every menu, the selected chapter with a screenshot carousel, and the chapters as cards at the bottom
