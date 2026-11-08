@@ -35,6 +35,8 @@ class AddToSteamOverlay;
 class HandModsOverlay;
 class TutorialPopups;
 class KeyClickWizard;
+class ThemePopup;
+class ThemeTransition;
 
 // The launcher's main window: the chapter carousel screen plus every in-window overlay.
 // Screen pieces live in MainScreen\, overlays in Overlays\ and Settings\, the background logic
@@ -54,6 +56,10 @@ public:
     void ApplyLanguage();
     void ApplySeasonalPalette();        // after the icon theme changes
     void ApplyIconTheme();
+    // Saves the theme and applies it at once: window icon, Discord, the season's colours and scenery
+    void ApplyTheme(const std::wstring& theme);
+    // The same with the sweep across the screen (the side rail's theme picker)
+    void ChangeTheme(const std::wstring& theme);
     void PlaySelected();
     void TogglePlatform();
     void Quit();
@@ -110,6 +116,7 @@ public:
     ModPopups& Mods() { return *mods; }
     EasterEggOverlay& EggVideo() { return *eggVideo; }
     TutorialPopups& Tutorials() { return *tutorials; }
+    ThemePopup& Themes() { return *themePopup; }
 
 protected:
     void OnFrame() override;
@@ -148,6 +155,8 @@ private:
     std::unique_ptr<HandModsOverlay> handMods;
     std::unique_ptr<TutorialPopups> tutorials;
     std::unique_ptr<KeyClickWizard> keyClickWizard;
+    std::unique_ptr<ThemePopup> themePopup;
+    std::unique_ptr<ThemeTransition> themeTransition;
     bool keyClickHotkeyOk = true;
     std::vector<unsigned> recentKeys;   // last key presses in the launcher (secret ↑↑↑↑↑↓↓↓↓↓)
     void CheckSpamCombo(unsigned vk);

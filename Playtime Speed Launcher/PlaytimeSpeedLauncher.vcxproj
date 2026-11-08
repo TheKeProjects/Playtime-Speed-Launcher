@@ -24,8 +24,8 @@
   <PropertyGroup Label="AppInfo">
     <LgbtqMode>false</LgbtqMode>
     <SummerMode>false</SummerMode>
-    <HalloweenMode>true</HalloweenMode>
-    <ChristmasMode>false</ChristmasMode>
+    <HalloweenMode>false</HalloweenMode>
+    <ChristmasMode>true</ChristmasMode>
     <ModeDefines></ModeDefines>
     <ModeDefines Condition="'$(LgbtqMode)' == 'true'">$(ModeDefines);LGBTQ_MODE</ModeDefines>
     <ModeDefines Condition="'$(SummerMode)' == 'true'">$(ModeDefines);SUMMER_MODE</ModeDefines>

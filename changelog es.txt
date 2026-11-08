@@ -1,6 +1,6 @@
-4.1.5
+4.2.0
 ## Novedades
-Los juegos multijugador ahora tienen el overlay de FPS, el estado de Discord, el tiempo jugado en su tarjeta, la tecla para hacer clic y los easter eggs del juego, como los capítulos
-Añadido un nuevo easter egg
-## Correcciones
-Arreglado que el online no funcionara en los juegos multijugador (Escape From Playtime) al abrirlos desde el launcher: ahora se inician a través de Steam
+Nuevo contador del 100% (beta) para los capítulos 1 a 5, leído en vivo del juego, con un overlay en el juego y una fuente de navegador para OBS
+Nueva pantalla principal: una barra lateral con todos los menús, el capítulo seleccionado con un carrusel de capturas y los capítulos como tarjetas abajo
+El tema ahora se cambia desde la barra lateral
+Nuevos fondos de Halloween, Verano y Navidad

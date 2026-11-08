@@ -12,16 +12,18 @@ void SteamUserBadge::Load() {
     visible = true;
 }
 
-void SteamUserBadge::Draw(UI::Ui& ui, float right, float bottom) {
+void SteamUserBadge::Draw(UI::Ui& ui, float right, const Rect& bar) {
     if (!visible) return;
-    // StackPanel Margin="0,0,20,14": name (13 bold, margin-right 12) + 44 px round avatar
-    const Rect avatar{ right - 20.f - 44.f, bottom - 14.f - 44.f, 44.f, 44.f };
+    // Name (11 bold) + 24 px round avatar, 16 px left of the bar's own items
+    const float size = 24.f;
+    const Rect avatar{ right - 16.f - size, bar.CY() - size * 0.5f, size, size };
     if (!avatarPath.empty()) {
-        if (auto image = Images::Load(avatarPath)) ui.g.DrawImageRounded(*image, avatar, 22.f);
+        if (auto image = Images::Load(avatarPath)) ui.g.DrawImageRounded(*image, avatar, size * 0.5f);
     }
-    const TextStyle style = UI::Mono(13.f, true);
+    ui.g.StrokeEllipse(avatar.CX(), avatar.CY(), size * 0.5f, size * 0.5f, Hex(0x1A3A55), 1.f);
+    const TextStyle style = UI::Mono(11.f, true);
     const float w = ui.g.Measure(persona, style).w + 2.f;
-    ui.g.Text(persona, { avatar.x - 12.f - w, avatar.y, w, avatar.h }, Hex(0x3A6A8A), style);
+    ui.g.Text(persona, { avatar.x - 8.f - w, bar.y, w, bar.h }, Hex(0x3A6A8A), style);
 }
 
 } // namespace SpeedrunLauncher::Main

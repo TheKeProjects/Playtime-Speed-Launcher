@@ -62,6 +62,7 @@ void Initialize(const std::wstring& poppyFontPath) {
     Family poppy;
     if (LoadPrivate(poppyFontPath, poppy)) families[static_cast<int>(Font::Poppy)] = poppy;
     else families[static_cast<int>(Font::Poppy)] = families[static_cast<int>(Font::Mono)];
+
 }
 
 const Family& Get(Font font) { return families[static_cast<int>(font)]; }

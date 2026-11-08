@@ -11,7 +11,7 @@
 
 namespace SpeedrunLauncher::Main::TopBar {
 
-void Draw(UI::Ui& ui, MainWindow& main, const Rect& area) {
+float Draw(UI::Ui& ui, MainWindow& main, const Rect& area) {
     auto& g = ui.g;
     const auto& palette = Seasonal::Current();
     g.FillRect(area, palette.bar);
@@ -49,6 +49,7 @@ void Draw(UI::Ui& ui, MainWindow& main, const Rect& area) {
         ui.Tooltip(ui.MakeId("minimize"), L"Minimize");
         if (b.Clicked()) main.Minimize();
     }
+    return right;
 }
 
 } // namespace SpeedrunLauncher::Main::TopBar

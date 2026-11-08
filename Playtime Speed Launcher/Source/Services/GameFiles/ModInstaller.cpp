@@ -38,6 +38,7 @@ void UninstallFullBrightKeepConfig(const Target& t, const FullBrightZips& z) {
     FullBrightFiles::Uninstall(*t.paks, *t.win64, *z.pak, *z.ue4ss, *z.marker, std::nullopt);
 }
 
+
 } // namespace
 
 Target Resolve(int chapter) {

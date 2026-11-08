@@ -10,11 +10,15 @@
 #include "Seasonal/SeasonalTheme.h"
 
 // Full-window seasonal scenery drawn behind the whole launcher UI:
-//   Halloween — night sky, big moon, haunted house, graveyard, bare trees, drifting fog, bunting.
-//   Summer    — tropical sunset, setting sun over the sea, palm silhouettes, drifting clouds, bunting.
-//   Christmas — starry sky with aurora, snowy hills, pine forest, warm cabin, string lights.
-// Extra life: mouse parallax per layer, shooting stars, lightning (Halloween), sea glints (Summer),
-// a swaying aurora (Christmas). Everything follows the seasonal clock, so it all eases to a stop
+//   Halloween — huge moon with clouds and circling bats, jagged mountains, haunted house, glowing
+//               eyes, fog, a graveyard with jack-o'-lanterns, bunting.
+//   Summer    — sunset with lit clouds, sun setting over the sea, islands and a sailboat mirrored
+//               in the water, a beach with palms, umbrella and the surf lapping, bunting.
+//   Christmas — moon and a three-colour aurora, snowy mountains mirrored on a frozen lake, village
+//               lights, pine forest, cabin with rising smoke, street lamp, tree, string lights.
+// The focal pieces sit in the open sky between the chapter text and the poster, the props on the
+// ground next to the chapter cards. Extra life: mouse parallax per layer, shooting stars, lightning
+// (Halloween), sea glints (Summer). Everything follows the seasonal clock, so it all eases to a stop
 // while a game is running.
 namespace SpeedrunLauncher::Seasonal::Backdrop {
 
@@ -387,111 +391,6 @@ void DrawFence(Graphics& g, float x0, float x1, float baseY, float w, float h, f
     }
 }
 
-void DrawHalloween(Graphics& g, float w, float h, float garlandTop) {
-    FillVerticalRect(g, { 0, 0, w, h }, { { 0.f, Rgba(8, 4, 14) }, { 0.45f, Rgba(20, 9, 34) }, { 0.78f, Rgba(52, 18, 58) }, { 1.f, Rgba(16, 7, 22) } });
-
-    // Orange horizon glow
-    {
-        Layer layer(g, 0.1f);
-        GlowEllipse(g, w * 0.5f, h * 0.86f, w * 0.65f, h * 0.22f, Rgba(255, 110, 30, 70));
-    }
-    {
-        Layer layer(g, 0.15f);
-        DrawStars(g, w, h * 0.6f, 140, Rgba(230, 210, 255));
-        DrawShootingStars(g, w, h * 0.55f, Rgba(235, 220, 255));
-    }
-
-    // Big moon rising behind the hills (below the chapter cards, where the sky is visible), with a bat
-    // crossing it; its halo breathes slowly
-    const float moonR = std::clamp(h * 0.075f, 40.f, 110.f);
-    const float mx = w * 0.8f, my = h * 0.77f;
-    {
-        Layer layer(g, 0.25f);
-        const float breathe = 1.f + 0.06f * static_cast<float>(std::sin(Clock() * 0.8));
-        GlowEllipse(g, mx, my, moonR * 4.5f * breathe, moonR * 3.f * breathe, Rgba(255, 200, 120, 55));
-        Art::Halloween::DrawMoon(g, mx, my, moonR);
-        Art::Halloween::DrawBat(g, mx - moonR * 0.3f, my - moonR * 0.3f, moonR / 32);
-        Art::Halloween::DrawBat(g, mx + moonR * 0.35f, my - moonR * 0.6f, moonR / 48);
-    }
-
-    // Thin clouds drifting across the sky
-    {
-        Layer layer(g, 0.35f);
-        DrawLooping(g, w, DriftSlow(w), [&](float ox) {
-            const Color cloud = Rgba(120, 70, 160, 40);
-            GlowEllipse(g, ox + w * 0.2f, h * 0.14f, w * 0.16f, h * 0.03f, cloud);
-            GlowEllipse(g, ox + w * 0.62f, h * 0.09f, w * 0.12f, h * 0.025f, cloud);
-            GlowEllipse(g, ox + w * 0.86f, h * 0.26f, w * 0.1f, h * 0.02f, cloud);
-        });
-    }
-
-    // Lightning: the whole sky flashes and a bolt strikes behind the hills
-    long long boltSeed = 0;
-    float boltX = 0.f;
-    if (const float flash = Lightning(w, boltSeed, boltX); flash > 0.f) {
-        g.FillRect({ 0, 0, w, h }, Rgba(190, 170, 255).Fade(0.26f * flash));
-        if (flash > 0.2f) {
-            Layer layer(g, 0.3f);
-            DrawBolt(g, boltX, h * 0.78f, boltSeed, flash);
-        }
-    }
-
-    const float farBase = h * 0.8f;
-    const float midBase = h * 0.87f;
-    const float groundBase = h * 0.93f;
-    const float u = h / 1000.f;
-    // Far hills with the haunted house on the left one
-    {
-        Layer layer(g, 0.45f);
-        const float houseX = w * 0.15f;
-        DrawHauntedHouse(g, houseX, static_cast<float>(HillY(houseX, w, farBase, h * 0.05, 1.2)) + 6.f, h / 560.f);
-        FillStroke(g, Hills(w, farBase, h, h * 0.05, 1.2), HwFarHill, HwRim);
-    }
-
-    // Middle hills with bare trees
-    {
-        Layer layer(g, 0.7f);
-        FillStroke(g, Hills(w, midBase, h, h * 0.035, 4.0), HwMidHill, HwRim);
-        const struct { float fx, height; int seed; } trees[] = { { 0.035f, 0.22f, 3 }, { 0.25f, 0.12f, 8 }, { 0.73f, 0.13f, 5 }, { 0.965f, 0.24f, 11 } };
-        for (const auto& t : trees) {
-            const float x = w * t.fx;
-            DrawBareTree(g, x, static_cast<float>(HillY(x, w, midBase, h * 0.035, 4.0)) + 4.f, h * t.height, t.seed, HwGround);
-        }
-    }
-
-    // Fog drifting through the valley
-    {
-        Layer layer(g, 0.8f);
-        DrawLooping(g, w, Drift(w), [&](float ox) {
-            for (int i = 0; i < 6; ++i)
-                GlowEllipse(g, ox + w * (0.08f + i * 0.17f), h * (0.88f + (i % 2) * 0.03f), w * 0.14f, h * 0.05f, Rgba(190, 160, 230, 34));
-        });
-    }
-
-    // Graveyard ground: tombstones, crosses, a fence and glowing pumpkins
-    {
-        Layer layer(g, 1.f);
-        FillStroke(g, Hills(w, groundBase, h, h * 0.015, 2.5), HwGround, HwRim);
-        for (double fx : { 0.06, 0.15, 0.31, 0.69, 0.86, 0.93 }) {
-            const float x = static_cast<float>(w * fx);
-            const float y = static_cast<float>(HillY(x, w, groundBase, h * 0.015, 2.5)) + 6 * u;
-            if (static_cast<int>(fx * 100) % 3 == 0) DrawCross(g, x, y, u);
-            else DrawTombstone(g, x, y, u);
-        }
-        DrawFence(g, w * 0.36f, w * 0.45f, groundBase, w, h, u);
-        DrawFence(g, w * 0.55f, w * 0.64f, groundBase, w, h, u);
-        const struct { float fx, sc; } pumpkins[] = { { 0.1f, 2.2f }, { 0.2f, 1.6f }, { 0.75f, 1.8f }, { 0.9f, 2.4f } };
-        for (const auto& p : pumpkins) {
-            const float x = w * p.fx;
-            Art::Halloween::DrawPumpkin(g, x, static_cast<float>(HillY(x, w, groundBase, h * 0.015, 2.5)) - 6 * u, p.sc * u * 1.1f);
-        }
-    }
-
-    DrawBunting(g, w, garlandTop,
-                { Rgba(255, 122, 26), Rgba(106, 47, 181), Rgba(30, 16, 44), Rgba(255, 167, 77), Rgba(155, 93, 229) },
-                Pen{ Rgba(80, 50, 110), 1.2f }, true);
-}
-
 // ── Summer ──────────────────────────────────────────────────────────────────
 
 constexpr Color SmSilhouette = Rgba(22, 10, 30);
@@ -510,151 +409,6 @@ void DrawPalmSilhouette(Graphics& g, float x, float baseY, float s, int lean) {
     }
     Ellipse(g, -2.f, 3.f, 3.4f, 3.4f, SmSilhouette);
     Ellipse(g, 3.f, 4.f, 3.4f, 3.4f, SmSilhouette);
-}
-
-void DrawSummer(Graphics& g, float w, float h, float garlandTop) {
-    const float horizon = h * 0.8f;
-    FillVerticalRect(g, { 0, 0, w, h }, {
-        { 0.f, Rgba(8, 22, 48) }, { 0.4f, Rgba(46, 28, 84) }, { 0.66f, Rgba(150, 50, 100) }, { 0.8f, Rgba(255, 128, 64) },
-        { 0.8001f, Rgba(255, 128, 64) }, { 0.83f, Rgba(70, 34, 86) }, { 1.f, Rgba(14, 22, 48) },
-    });
-
-    {
-        Layer layer(g, 0.15f);
-        DrawStars(g, w, h * 0.35f, 70, Rgba(255, 240, 220));
-        DrawShootingStars(g, w, h * 0.3f, Rgba(255, 245, 230));
-    }
-
-    // Setting sun: banded disc clipped at the horizon, with a big glow that breathes slowly.
-    // The sun and its reflection only shift sideways, so they stay on the horizon line.
-    const float sunR = std::clamp(h * 0.13f, 70.f, 170.f);
-    const float sx = w * 0.76f;   // off-centre so the chapter title / PLAY button stay readable
-    {
-    Layer sunLayer(g, 0.25f, 0.f);
-    const float breathe = 1.f + 0.05f * static_cast<float>(std::sin(Clock() * 0.9));
-    GlowEllipse(g, sx, horizon, sunR * 3.4f * breathe, sunR * 2.2f * breathe, Rgba(255, 170, 70, 110));
-    {
-        auto* sun = Cached("sun", [=] {
-            auto disc = Geometry::Ellipse(sx, horizon + sunR * 0.25f, sunR, sunR);
-            std::vector<ComPtr<ID2D1RectangleGeometry>> rects;
-            std::vector<ID2D1Geometry*> parts;
-            for (int i = 0; i < 6; ++i) {
-                const float bh = 3.f + i * 2.2f;
-                const float by = horizon - sunR * 0.75f + i * sunR * 0.17f;
-                rects.push_back(Geometry::Rectangle(D2D1::RectF(sx - sunR, by, sx + sunR, by + bh)));
-                parts.push_back(rects.back().Get());
-            }
-            ComPtr<ID2D1GeometryGroup> bands;
-            Device::Get().D2DFactory()->CreateGeometryGroup(D2D1_FILL_MODE_ALTERNATE, parts.data(), static_cast<UINT32>(parts.size()), &bands);
-            return AsGeometry(Geometry::Build([&](ID2D1GeometrySink* sink) {
-                if (disc && bands) disc->CombineWithGeometry(bands.Get(), D2D1_COMBINE_MODE_EXCLUDE, nullptr, sink);
-            }, D2D1_FILL_MODE_ALTERNATE));
-        });
-        if (sun) {
-            D2D1_RECT_F bounds{};
-            sun->GetBounds(nullptr, &bounds);
-            g.PushClip({ 0, 0, w, horizon });
-            FillVertical(g, sun, bounds, { { 0.f, Rgba(255, 236, 140) }, { 1.f, Rgba(255, 96, 90) } });
-            g.PopClip();
-        }
-    }
-
-    // Sun reflection shimmering on the sea (the two lines of a row never overlap, so fading each
-    // one is the same as the old per-row opacity group)
-    const float pulse = Pulse();
-    for (int i = 0; i < 9; ++i) {
-        const float y = horizon + 8 + i * (h - horizon) / 11;
-        const float half = sunR * (0.9f - i * 0.07f);
-        const float fade = 1.f - i * 0.09f;
-        Line(g, sx - half, y, sx + half, y, Pen{ Rgba(255, 214, 150).Fade(pulse * fade), 2.4f, false });
-        Line(g, sx - half * 0.5f, y + 3, sx + half * 0.6f, y + 3, Pen{ SmShine.color.Fade(fade), SmShine.width });
-    }
-
-    // Glints: small sparkles flashing on the water around the sun's reflection
-    {
-        SeededRandom rnd(4242);
-        const double now = Clock();
-        for (int i = 0; i < 40; ++i) {
-            const double depth = std::pow(rnd.NextDouble(), 1.3);
-            const float gy = horizon + 6.f + static_cast<float>(depth) * (h - horizon - 10.f);
-            const float gx = sx + static_cast<float>((rnd.NextDouble() * 2.0 - 1.0) * sunR * (0.8 + depth * 1.4));
-            const double period = 1.6 + rnd.NextDouble() * 2.2, phase = rnd.NextDouble();
-            const float size = static_cast<float>(2.0 + rnd.NextDouble() * 3.0);
-            const float wave = static_cast<float>(std::sin((now / period + phase) * Pi * 2.0));
-            if (wave <= 0.f) continue;
-            const float a = std::pow(wave, 8.f);
-            if (a < 0.02f) continue;
-            const Pen pen{ Rgba(255, 244, 210).Fade(a), 1.f, true };
-            Line(g, gx - size, gy, gx + size, gy, pen);
-            Line(g, gx, gy - size * 0.6f, gx, gy + size * 0.6f, pen);
-        }
-    }
-    }   // sun layer
-
-    // Waves rolling across the sea (one copy built once, drawn at both offsets)
-    auto* waves = Cached("waves", [=] {
-        return AsGeometry(Geometry::Build([&](ID2D1GeometrySink* sink) {
-            for (int row = 0; row < 5; ++row) {
-                const float y = horizon + 16 + row * (h - horizon) / 6;
-                for (float x = static_cast<float>((row % 2) * 40); x < w; x += 90.f + row * 14.f) {
-                    sink->BeginFigure(D2D1::Point2F(x, y), D2D1_FIGURE_BEGIN_HOLLOW);
-                    sink->AddBezier(D2D1::BezierSegment(D2D1::Point2F(x + 10, y - 5), D2D1::Point2F(x + 20, y - 5), D2D1::Point2F(x + 30, y)));
-                    sink->EndFigure(D2D1_FIGURE_END_OPEN);
-                }
-            }
-        }, D2D1_FILL_MODE_ALTERNATE));
-    });
-    {
-        Layer layer(g, 0.6f, 0.f);
-        DrawLooping(g, w, Drift(w), [&](float ox) {
-            Push shift(g, Translate(ox, 0.f));
-            Stroke(g, waves, SmWave);
-        });
-    }
-
-    // Pink clouds drifting
-    {
-        Layer layer(g, 0.35f);
-        DrawLooping(g, w, DriftSlow(w), [&](float ox) {
-            const Color c1 = Rgba(255, 150, 170, 80), c2 = Rgba(200, 110, 180, 70);
-            GlowEllipse(g, ox + w * 0.18f, h * 0.55f, w * 0.14f, h * 0.025f, c1);
-            GlowEllipse(g, ox + w * 0.24f, h * 0.5f, w * 0.08f, h * 0.02f, c2);
-            GlowEllipse(g, ox + w * 0.72f, h * 0.6f, w * 0.12f, h * 0.022f, c1);
-            GlowEllipse(g, ox + w * 0.82f, h * 0.42f, w * 0.1f, h * 0.02f, c2);
-        });
-    }
-
-    // Islands and palm silhouettes on both sides
-    const float u = h / 1000.f;
-    {
-        Layer layer(g, 1.f);
-        auto* islands = Cached("islands", [=] {
-            return AsGeometry(Geometry::Build([&](ID2D1GeometrySink* sink) {
-                // Past the window edges so the parallax shift never uncovers a gap
-                sink->BeginFigure(P(-kBleed, h + kBleed), D2D1_FIGURE_BEGIN_FILLED);
-                sink->AddLine(P(-kBleed, h * 0.83));
-                sink->AddLine(P(0, h * 0.83));
-                sink->AddBezier(D2D1::BezierSegment(P(w * 0.08, h * 0.8), P(w * 0.18, h * 0.84), P(w * 0.24, h * 0.9)));
-                sink->AddLine(P(w * 0.28, h + kBleed));
-                sink->EndFigure(D2D1_FIGURE_END_CLOSED);
-                sink->BeginFigure(P(w + kBleed, h + kBleed), D2D1_FIGURE_BEGIN_FILLED);
-                sink->AddLine(P(w + kBleed, h * 0.81));
-                sink->AddLine(P(w, h * 0.81));
-                sink->AddBezier(D2D1::BezierSegment(P(w * 0.92, h * 0.79), P(w * 0.84, h * 0.84), P(w * 0.78, h * 0.9)));
-                sink->AddLine(P(w * 0.74, h + kBleed));
-                sink->EndFigure(D2D1_FIGURE_END_CLOSED);
-            }, D2D1_FILL_MODE_ALTERNATE));
-        });
-        Fill(g, islands, SmSilhouette);
-        DrawPalmSilhouette(g, w * 0.05f, h * 0.84f, u * 2.6f, 1);
-        DrawPalmSilhouette(g, w * 0.12f, h * 0.85f, u * 1.9f, -1);
-        DrawPalmSilhouette(g, w * 0.94f, h * 0.83f, u * 2.8f, -1);
-        DrawPalmSilhouette(g, w * 0.86f, h * 0.85f, u * 1.8f, 1);
-    }
-
-    DrawBunting(g, w, garlandTop,
-                { Rgba(255, 112, 67), Rgba(255, 213, 79), Rgba(38, 198, 218), Rgba(255, 245, 225), Rgba(240, 98, 146) },
-                Pen{ Rgba(255, 230, 200, 140), 1.2f }, false);
 }
 
 // ── Christmas ───────────────────────────────────────────────────────────────
@@ -728,11 +482,6 @@ void DrawPine(Graphics& g, float x, float baseY, float s, bool snowy) {
 void DrawCabin(Graphics& g, float x, float baseY, float s) {
     Push at(g, Translate(x, baseY));
     Push size(g, Scale(s));
-    // Chimney smoke
-    const Color smoke = Rgba(200, 210, 225, 70);
-    GlowEllipse(g, 14, -46, 5, 4, smoke);
-    GlowEllipse(g, 18, -54, 7, 5, smoke);
-    GlowEllipse(g, 24, -63, 9, 6, smoke);
     Rectangle(g, { 11, -42, 6, 12 }, XmCabin);
     Rectangle(g, { -22, -24, 44, 24 }, XmCabin);
     Fill(g, Path("M -27,-22 L 0,-40 L 27,-22 L 24,-19 L 0,-35 L -24,-19 Z"), XmRoof);
@@ -744,57 +493,557 @@ void DrawCabin(Graphics& g, float x, float baseY, float s) {
     Rectangle(g, { -3.5f, -13, 7, 13 }, Rgba(30, 18, 14));
 }
 
-void DrawChristmas(Graphics& g, float w, float h, float garlandTop) {
-    FillVerticalRect(g, { 0, 0, w, h }, { { 0.f, Rgba(4, 8, 22) }, { 0.5f, Rgba(8, 22, 40) }, { 0.8f, Rgba(16, 44, 58) }, { 1.f, Rgba(10, 26, 34) } });
+// ── Shared scenery pieces (new layout) ──────────────────────────────────────
+// The main screen leaves the sky in the middle open (between the chapter text on the left and the
+// poster on the right) and the ground at the bottom right (next to the chapter cards): the focal
+// pieces (moon, sun, aurora) go in that open sky and the props on that ground.
 
+// Mirrors what's drawn after it around the horizontal line y (reflections on water / ice)
+M Mirror(float y) { return M::Scale(1.f, -1.f) * M::Translation(0.f, 2.f * y); }
+
+// Jagged mountain ridge: sharp peaks (1 - |sin|) over a few octaves
+double RidgeY(double x, double w, double baseY, double amp, double seed) {
+    const double t = x / std::max(w, 1.0) * Pi * 2;
+    const double a = 1.0 - std::abs(std::sin(t * 1.6 + seed));
+    const double b = 1.0 - std::abs(std::sin(t * 4.3 + seed * 1.7));
+    const double c = std::sin(t * 13.0 + seed * 0.5);
+    return baseY - amp * (0.62 * std::pow(a, 1.4) + 0.3 * b + 0.04 * c);
+}
+
+ID2D1Geometry* Ridge(double w, double baseY, double bottom, double amp, double seed) {
+    const std::string key = "ridge" + std::to_string(baseY) + "/" + std::to_string(amp) + "/" + std::to_string(seed);
+    return Cached(key, [=] {
+        return AsGeometry(Geometry::Build([&](ID2D1GeometrySink* sink) {
+            sink->BeginFigure(P(-kBleed, bottom + kBleed), D2D1_FIGURE_BEGIN_FILLED);
+            constexpr int steps = 180;
+            for (int i = 0; i <= steps; ++i) {
+                const double x = -kBleed + (w + 2.0 * kBleed) * i / steps;
+                sink->AddLine(P(x, RidgeY(x, w, baseY, amp, seed)));
+            }
+            sink->AddLine(P(w + kBleed, bottom + kBleed));
+            sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+        }, D2D1_FILL_MODE_ALTERNATE));
+    });
+}
+
+// A mountain range: rock gradient, then snow on the peaks above the snowline (0 = highest peak,
+// 1 = the range's base; a transparent `snow` leaves them bare)
+void DrawRange(Graphics& g, float w, float baseY, float bottom, float amp, float seed, Color top, Color base, Color snow, float snowline) {
+    auto* geo = Ridge(w, baseY, bottom, amp, seed);
+    const D2D1_RECT_F box{ 0.f, baseY - amp, w, baseY };
+    FillVertical(g, geo, box, { { 0.f, top }, { 1.f, base } });
+    if (!snow.Transparent())
+        FillVertical(g, geo, box, { { 0.f, snow }, { snowline, snow.Fade(0.8f) }, { snowline + 0.08f, snow.WithAlpha(0.f) }, { 1.f, snow.WithAlpha(0.f) } });
+}
+
+// Soft horizontal band of haze (between mountain layers, so they read as far apart)
+void Haze(Graphics& g, float w, float y, float height, Color color) {
+    FillVerticalRect(g, { -kBleed, y, w + 2.f * kBleed, height }, { { 0.f, color.WithAlpha(0.f) }, { 0.5f, color }, { 1.f, color.WithAlpha(0.f) } });
+}
+
+// Darkens the left side (under the chapter title / PLAY button) and the very top, so the scenery
+// never fights with the text
+void Vignette(Graphics& g, float w, float h, Color dark) {
+    g.FillLinear({ 0.f, 0.f, w * 0.52f, h }, 0.f, { { 0.f, dark.WithAlpha(0.62f) }, { 0.55f, dark.WithAlpha(0.3f) }, { 1.f, dark.WithAlpha(0.f) } },
+                 { 0.f, 0.f }, { 1.f, 0.f });
+    g.FillLinear({ 0.f, 0.f, w, h * 0.16f }, 0.f, { { 0.f, dark.WithAlpha(0.4f) }, { 1.f, dark.WithAlpha(0.f) } }, { 0.f, 0.f }, { 0.f, 1.f });
+}
+
+// y of a cubic Bézier at a given x (x grows along the curve)
+float BezierYAtX(D2D1_POINT_2F p0, D2D1_POINT_2F p1, D2D1_POINT_2F p2, D2D1_POINT_2F p3, float x) {
+    const auto at = [&](float t, float a, float b, float c, float d) {
+        const float u = 1.f - t;
+        return u * u * u * a + 3.f * u * u * t * b + 3.f * u * t * t * c + t * t * t * d;
+    };
+    float lo = 0.f, hi = 1.f;
+    for (int i = 0; i < 24; ++i) {
+        const float mid = (lo + hi) * 0.5f;
+        if (at(mid, p0.x, p1.x, p2.x, p3.x) < x) lo = mid;
+        else hi = mid;
+    }
+    return at((lo + hi) * 0.5f, p0.y, p1.y, p2.y, p3.y);
+}
+
+// ── Halloween ───────────────────────────────────────────────────────────────
+
+// Glowing eyes peeking out of the dark: each pair fades in and out slowly and blinks now and then
+void DrawEyes(Graphics& g, float x, float y, float u, int i) {
+    const double now = Clock();
+    const float visible = std::max(0.f, static_cast<float>(std::sin(now * 0.35 + i * 2.1)));
+    if (visible < 0.02f) return;
+    const double period = 3.2 + i * 0.7;
+    const bool closed = std::fmod(now + i * 1.3, period) < 0.14;
+    if (closed) return;
+    const Color eye = Rgba(255, 214, 70).Fade(visible);
+    GlowEllipse(g, x, y, 14.f * u, 7.f * u, Rgba(255, 190, 40, 60).Fade(visible));
+    Ellipse(g, x - 4.f * u, y, 2.f * u, 1.3f * u, eye);
+    Ellipse(g, x + 4.f * u, y, 2.f * u, 1.3f * u, eye);
+}
+
+void DrawHalloween(Graphics& g, float w, float h, float garlandTop) {
+    const float u = h / 1000.f;
+    FillVerticalRect(g, { 0, 0, w, h }, { { 0.f, Rgba(6, 3, 12) }, { 0.38f, Rgba(22, 9, 38) }, { 0.6f, Rgba(62, 20, 66) },
+                                          { 0.71f, Rgba(130, 44, 54) }, { 0.78f, Rgba(44, 15, 42) }, { 1.f, Rgba(12, 5, 16) } });
     {
-        Layer layer(g, 0.15f);
-        DrawStars(g, w, h * 0.7f, 190, Rgba(230, 245, 255));
-        DrawShootingStars(g, w, h * 0.5f, Rgba(225, 245, 255));
+        Layer layer(g, 0.12f);
+        DrawStars(g, w, h * 0.6f, 170, Rgba(230, 210, 255));
+        DrawShootingStars(g, w, h * 0.45f, Rgba(235, 220, 255));
     }
 
-    // Aurora: soft green / teal ribbons pulsing slowly, low in the sky between the cards and the
-    // hills. Each ribbon also drifts sideways and stretches up and down like a curtain in the wind.
+    // The moon: huge, in the open sky, with a breathing halo, clouds sliding across it and a flock of
+    // bats circling it (the ones on the far side of their loop pass behind it)
+    const float moonR = std::clamp(h * 0.15f, 70.f, 190.f);
+    const float mx = w * 0.6f, my = h * 0.3f;
     {
-        Layer layer(g, 0.3f);
+        Layer layer(g, 0.2f);
         const double now = Clock();
-        g.PushOpacity(Pulse());
-        {
-            Push sway(g, Translate(static_cast<float>(std::sin(now * 0.11)) * w * 0.025f, 0.f));
-            Push stretch(g, M::Scale(1.f, 1.f + 0.12f * static_cast<float>(std::sin(now * 0.27)), D2D1::Point2F(0.f, h * 0.62f)));
-            DrawAurora(g, w, h, h * 0.62f, Rgba(80, 255, 170), 80, 0.0);
+        const float breathe = 1.f + 0.06f * static_cast<float>(std::sin(now * 0.8));
+        GlowEllipse(g, mx, my, moonR * 4.2f * breathe, moonR * 3.2f * breathe, Rgba(255, 150, 90, 46));
+        GlowEllipse(g, mx, my, moonR * 2.2f, moonR * 2.2f, Rgba(255, 200, 130, 50));
+        const auto bats = [&](bool behind) {
+            for (int i = 0; i < 7; ++i) {
+                const double a = now * (0.32 + i * 0.045) + i * 0.9;
+                if ((std::sin(a) < 0.0) != behind) continue;
+                const float rx = moonR * (1.3f + 0.14f * (i % 3)), ry = moonR * (0.5f + 0.12f * (i % 2));
+                const float x = mx + static_cast<float>(std::cos(a)) * rx, y = my - moonR * 0.1f + static_cast<float>(std::sin(a)) * ry;
+                const float s = moonR / 70.f * (behind ? 0.6f : 0.85f) * (0.75f + 0.15f * (i % 3));
+                Art::Halloween::DrawBat(g, x, y, s);
+            }
+        };
+        bats(true);
+        Art::Halloween::DrawMoon(g, mx, my, moonR);
+        // Clouds crossing the moon: dark bodies with a faint lit edge
+        DrawLooping(g, w, Loop(0.f, -w, 160.0), [&](float ox) {
+            const struct { float fx, fy, rx, ry; } clouds[] = {
+                { 0.58f, -0.35f, 0.13f, 0.016f }, { 0.9f, 0.45f, 0.1f, 0.013f }, { 0.25f, 0.1f, 0.12f, 0.015f }, { 0.7f, 0.75f, 0.09f, 0.012f },
+            };
+            for (const auto& c : clouds) {
+                const float cx = ox + w * c.fx, cy = my + moonR * c.fy;
+                GlowEllipse(g, cx, cy - h * 0.006f, w * c.rx, h * c.ry, Rgba(220, 150, 230, 34));
+                GlowEllipse(g, cx, cy, w * c.rx, h * c.ry, Rgba(28, 10, 40, 200));
+            }
+        });
+        bats(false);
+    }
+
+    // Lightning: the sky flashes and a bolt strikes behind the mountains
+    long long boltSeed = 0;
+    float boltX = 0.f;
+    if (const float flash = Lightning(w, boltSeed, boltX); flash > 0.f) {
+        g.FillRect({ 0, 0, w, h }, Rgba(190, 170, 255).Fade(0.24f * flash));
+        if (flash > 0.2f) {
+            Layer layer(g, 0.3f);
+            DrawBolt(g, boltX, h * 0.7f, boltSeed, flash);
         }
-        {
-            Push sway(g, Translate(static_cast<float>(std::sin(now * 0.08 + 1.7)) * w * 0.03f, 0.f));
-            Push stretch(g, M::Scale(1.f, 1.f + 0.1f * static_cast<float>(std::sin(now * 0.21 + 0.9)), D2D1::Point2F(0.f, h * 0.67f)));
-            DrawAurora(g, w, h, h * 0.67f, Rgba(60, 200, 255), 55, 2.0);
+    }
+
+    // Far jagged mountains, then haze
+    {
+        Layer layer(g, 0.35f);
+        DrawRange(g, w, h * 0.72f, h, h * 0.17f, 1.9f, Rgba(52, 22, 70), Rgba(26, 10, 38), Colors::Transparent, 0.f);
+        Haze(g, w, h * 0.66f, h * 0.1f, Rgba(170, 80, 200, 40));
+    }
+    // Hills with the haunted house standing against the moonlight, and bare trees
+    const float midBase = h * 0.8f;
+    {
+        Layer layer(g, 0.55f);
+        const float houseX = w * 0.7f;
+        DrawHauntedHouse(g, houseX, static_cast<float>(HillY(houseX, w, midBase, h * 0.04, 1.2)) + 8.f, h / 430.f);
+        FillStroke(g, Hills(w, midBase, h, h * 0.04, 1.2), HwMidHill, HwRim);
+        const struct { float fx, height; int seed; } trees[] = { { 0.47f, 0.13f, 8 }, { 0.56f, 0.1f, 5 }, { 0.82f, 0.15f, 3 } };
+        for (const auto& t : trees) {
+            const float x = w * t.fx;
+            DrawBareTree(g, x, static_cast<float>(HillY(x, w, midBase, h * 0.04, 1.2)) + 4.f, h * t.height, t.seed, HwGround);
         }
+        const struct { float fx, fy; } eyes[] = { { 0.5f, 0.815f }, { 0.64f, 0.8f }, { 0.86f, 0.81f }, { 0.77f, 0.83f } };
+        for (int i = 0; i < 4; ++i) DrawEyes(g, w * eyes[i].fx, h * eyes[i].fy, u, i);
+    }
+    // Fog rolling through the valley
+    {
+        Layer layer(g, 0.75f);
+        DrawLooping(g, w, Drift(w), [&](float ox) {
+            for (int i = 0; i < 7; ++i)
+                GlowEllipse(g, ox + w * (0.05f + i * 0.15f), h * (0.84f + (i % 2) * 0.03f), w * 0.13f, h * 0.05f, Rgba(190, 150, 235, 40));
+        });
+    }
+    // Graveyard on the ground next to the chapter cards: tombstones, crosses, a fence, glowing
+    // jack-o'-lanterns and a big dead tree on the right edge
+    const float groundBase = h * 0.92f;
+    {
+        Layer layer(g, 1.f);
+        FillStroke(g, Hills(w, groundBase, h, h * 0.018, 2.5), HwGround, HwRim);
+        const auto groundY = [&](float x) { return static_cast<float>(HillY(x, w, groundBase, h * 0.018, 2.5)); };
+        DrawBareTree(g, w * 0.985f, groundY(w * 0.985f) + 4.f, h * 0.36f, 11, HwGround);
+        int k = 0;
+        for (double fx : { 0.66, 0.7, 0.72, 0.81, 0.87, 0.925 }) {
+            const float x = static_cast<float>(w * fx);
+            if (k++ % 3 == 2) DrawCross(g, x, groundY(x) + 6 * u, u * 1.2f);
+            else DrawTombstone(g, x, groundY(x) + 6 * u, u * 1.2f);
+        }
+        DrawFence(g, w * 0.735f, w * 0.795f, groundBase, w, h, u * 1.15f);
+        const double now = Clock();
+        const struct { float fx, sc; } pumpkins[] = { { 0.685f, 2.4f }, { 0.84f, 1.8f }, { 0.9f, 2.1f }, { 0.96f, 2.8f } };
+        int i = 0;
+        for (const auto& p : pumpkins) {
+            const float x = w * p.fx, y = groundY(x) - 6 * u;
+            const float flicker = 0.8f + 0.2f * static_cast<float>(std::sin(now * 9.0 + i * 1.7) * std::sin(now * 5.3 + i));
+            GlowEllipse(g, x, y - 4 * u, 40 * u * p.sc / 2.f, 26 * u * p.sc / 2.f, Rgba(255, 130, 30, 90).Fade(flicker));
+            Art::Halloween::DrawPumpkin(g, x, y, p.sc * u * 1.25f);
+            ++i;
+        }
+        // Low ground fog in front
+        DrawLooping(g, w, Loop(0.f, -w, 50.0), [&](float ox) {
+            for (int j = 0; j < 6; ++j) GlowEllipse(g, ox + w * (0.1f + j * 0.18f), h * 0.97f, w * 0.12f, h * 0.035f, Rgba(200, 170, 240, 34));
+        });
+    }
+
+    Vignette(g, w, h, Rgba(6, 3, 12));
+    DrawBunting(g, w, garlandTop,
+                { Rgba(255, 122, 26), Rgba(106, 47, 181), Rgba(30, 16, 44), Rgba(255, 167, 77), Rgba(155, 93, 229) },
+                Pen{ Rgba(80, 50, 110), 1.2f }, true);
+}
+
+// ── Summer ──────────────────────────────────────────────────────────────────
+
+void DrawSailboat(Graphics& g, float x, float y, float s, Color color) {
+    Push at(g, Translate(x, y));
+    Push size(g, Scale(s));
+    Fill(g, Path("M -14,0 L 14,0 L 10,4 L -10,4 Z"), color);
+    Line(g, 0.f, 0.f, 0.f, -27.f, Pen{ color, 1.f });
+    Fill(g, Path("M 1,-26 L 1,-2 L 14,-2 Z"), color);
+    Fill(g, Path("M -1,-22 L -1,-2 L -11,-2 Z"), color);
+}
+
+void DrawSummer(Graphics& g, float w, float h, float garlandTop) {
+    const float u = h / 1000.f;
+    const float horizon = h * 0.66f;
+    // Sunset sky down to the horizon, then the sea
+    FillVerticalRect(g, { 0, 0, w, horizon }, { { 0.f, Rgba(12, 14, 50) }, { 0.3f, Rgba(54, 30, 98) }, { 0.58f, Rgba(150, 52, 118) },
+                                                { 0.8f, Rgba(240, 96, 104) }, { 0.93f, Rgba(255, 152, 88) }, { 1.f, Rgba(255, 204, 120) } });
+    FillVerticalRect(g, { 0, horizon, w, h - horizon }, { { 0.f, Rgba(250, 150, 104) }, { 0.12f, Rgba(170, 70, 108) },
+                                                          { 0.5f, Rgba(52, 30, 84) }, { 1.f, Rgba(12, 16, 44) } });
+    {
+        Layer layer(g, 0.12f);
+        DrawStars(g, w, h * 0.28f, 80, Rgba(255, 240, 220));
+        DrawShootingStars(g, w, h * 0.25f, Rgba(255, 245, 230));
+    }
+
+    // Long clouds lit from below, drifting slowly
+    {
+        Layer layer(g, 0.25f);
+        DrawLooping(g, w, DriftSlow(w), [&](float ox) {
+            const struct { float fx, fy, rx, ry; Color c; } clouds[] = {
+                { 0.15f, 0.16f, 0.16f, 0.012f, Rgba(120, 70, 150, 90) },  { 0.55f, 0.12f, 0.2f, 0.014f, Rgba(110, 60, 140, 90) },
+                { 0.82f, 0.3f, 0.15f, 0.013f, Rgba(255, 120, 150, 90) },  { 0.35f, 0.38f, 0.18f, 0.014f, Rgba(255, 130, 140, 100) },
+                { 0.7f, 0.5f, 0.22f, 0.013f, Rgba(255, 170, 120, 120) },  { 0.1f, 0.56f, 0.16f, 0.01f, Rgba(255, 180, 120, 110) },
+                { 0.95f, 0.6f, 0.14f, 0.009f, Rgba(255, 200, 140, 120) },
+            };
+            for (const auto& c : clouds) {
+                GlowEllipse(g, ox + w * c.fx, h * c.fy, w * c.rx, h * c.ry, c.c);
+                GlowEllipse(g, ox + w * (c.fx + 0.04f), h * c.fy - h * 0.006f, w * c.rx * 0.6f, h * c.ry * 0.8f, c.c.Fade(0.8f));
+            }
+        });
+    }
+
+    // The sun setting in the open sky: banded disc cut by the horizon, a big glow that breathes
+    const float sunR = std::clamp(h * 0.14f, 80.f, 190.f);
+    const float sx = w * 0.6f;
+    {
+        Layer sunLayer(g, 0.2f, 0.f);
+        const float breathe = 1.f + 0.05f * static_cast<float>(std::sin(Clock() * 0.9));
+        GlowEllipse(g, sx, horizon, sunR * 4.f * breathe, sunR * 2.4f * breathe, Rgba(255, 170, 70, 110));
+        auto* sun = Cached("sun", [=] {
+            auto disc = Geometry::Ellipse(sx, horizon + sunR * 0.2f, sunR, sunR);
+            std::vector<ComPtr<ID2D1RectangleGeometry>> rects;
+            std::vector<ID2D1Geometry*> parts;
+            for (int i = 0; i < 6; ++i) {
+                const float bh = 3.f + i * 2.4f;
+                const float by = horizon - sunR * 0.72f + i * sunR * 0.16f;
+                rects.push_back(Geometry::Rectangle(D2D1::RectF(sx - sunR, by, sx + sunR, by + bh)));
+                parts.push_back(rects.back().Get());
+            }
+            ComPtr<ID2D1GeometryGroup> bands;
+            Device::Get().D2DFactory()->CreateGeometryGroup(D2D1_FILL_MODE_ALTERNATE, parts.data(), static_cast<UINT32>(parts.size()), &bands);
+            return AsGeometry(Geometry::Build([&](ID2D1GeometrySink* sink) {
+                if (disc && bands) disc->CombineWithGeometry(bands.Get(), D2D1_COMBINE_MODE_EXCLUDE, nullptr, sink);
+            }, D2D1_FILL_MODE_ALTERNATE));
+        });
+        if (sun) {
+            D2D1_RECT_F bounds{};
+            sun->GetBounds(nullptr, &bounds);
+            g.PushClip({ 0, 0, w, horizon });
+            FillVertical(g, sun, bounds, { { 0.f, Rgba(255, 240, 150) }, { 1.f, Rgba(255, 90, 96) } });
+            g.PopClip();
+        }
+
+        // Its reflection: a shimmering column of lines, and glints flashing around it
+        const float pulse = Pulse();
+        for (int i = 0; i < 12; ++i) {
+            const float y = horizon + 6 + i * (h - horizon) / 14;
+            const float half = sunR * (0.95f - i * 0.05f) * (1.f + 0.08f * static_cast<float>(std::sin(Clock() * 1.3 + i)));
+            const float fade = 1.f - i * 0.07f;
+            Line(g, sx - half, y, sx + half, y, Pen{ Rgba(255, 214, 150).Fade(pulse * fade), 2.4f, false });
+            Line(g, sx - half * 0.5f, y + 3, sx + half * 0.6f, y + 3, Pen{ SmShine.color.Fade(fade), SmShine.width });
+        }
+        SeededRandom rnd(4242);
+        const double now = Clock();
+        for (int i = 0; i < 50; ++i) {
+            const double depth = std::pow(rnd.NextDouble(), 1.3);
+            const float gy = horizon + 6.f + static_cast<float>(depth) * (h - horizon - 10.f);
+            const float gx = sx + static_cast<float>((rnd.NextDouble() * 2.0 - 1.0) * sunR * (0.8 + depth * 1.8));
+            const double period = 1.6 + rnd.NextDouble() * 2.2, phase = rnd.NextDouble();
+            const float size = static_cast<float>(2.0 + rnd.NextDouble() * 3.0);
+            const float wave = static_cast<float>(std::sin((now / period + phase) * Pi * 2.0));
+            if (wave <= 0.f) continue;
+            const float a = std::pow(wave, 8.f);
+            if (a < 0.02f) continue;
+            const Pen pen{ Rgba(255, 244, 210).Fade(a), 1.f, true };
+            Line(g, gx - size, gy, gx + size, gy, pen);
+            Line(g, gx, gy - size * 0.6f, gx, gy + size * 0.6f, pen);
+        }
+    }
+
+    // Distant islands on the horizon, mirrored faintly in the sea
+    auto* islands = Cached("islands-far", [=] {
+        return AsGeometry(Geometry::Build([&](ID2D1GeometrySink* sink) {
+            const struct { float cx, half, height; } bumps[] = { { 0.2f, 0.12f, 0.05f }, { 0.31f, 0.06f, 0.025f }, { 0.82f, 0.1f, 0.06f }, { 0.93f, 0.07f, 0.03f } };
+            for (const auto& b : bumps) {
+                const double cx = w * b.cx, half = w * b.half, top = horizon - h * b.height;
+                sink->BeginFigure(P(cx - half, horizon + 1), D2D1_FIGURE_BEGIN_FILLED);
+                sink->AddBezier(D2D1::BezierSegment(P(cx - half * 0.5, top + (horizon - top) * 0.2), P(cx - half * 0.15, top), P(cx + half * 0.1, top)));
+                sink->AddBezier(D2D1::BezierSegment(P(cx + half * 0.4, top), P(cx + half * 0.6, top + (horizon - top) * 0.5), P(cx + half, horizon + 1)));
+                sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+            }
+        }, D2D1_FILL_MODE_WINDING));
+    });
+    {
+        Layer layer(g, 0.4f, 0.f);
+        Fill(g, islands, Rgba(92, 38, 92));
+        Push mirror(g, Mirror(horizon));
+        g.PushOpacity(0.28f);
+        Fill(g, islands, Rgba(92, 38, 92));
         g.PopLayer();
     }
 
-    const float u = h / 1000.f;
-
-    // Far mountains / hills with a pine forest
-    const float farBase = h * 0.8f;
+    // A sailboat crossing the horizon very slowly
     {
-        Layer layer(g, 0.5f);
-        Fill(g, Hills(w, farBase, h, h * 0.06, 0.4), XmFarHill);
-        SeededRandom rnd(77);
-        for (double x = 0.0; x < w; x += 26 * u + rnd.NextDouble() * 34 * u) {
-            if (x > w * 0.3 && x < w * 0.7) continue;   // keep the middle clear for the title / PLAY button
-            const double y = HillY(x, w, farBase, h * 0.06, 0.4) + 6;
-            DrawPine(g, static_cast<float>(x), static_cast<float>(y), static_cast<float>((1.3 + rnd.NextDouble() * 1.1) * u * 1.6), true);
+        Layer layer(g, 0.45f, 0.f);
+        const double p = std::fmod(Clock() / 260.0 + 0.35, 1.0);
+        const float bx = -80.f + static_cast<float>(p) * (w + 160.f);
+        const float bob = 1.2f * static_cast<float>(std::sin(Clock() * 1.3));
+        DrawSailboat(g, bx, horizon + 3.f * u + bob, u * 1.6f, Rgba(60, 24, 66));
+        Push mirror(g, Mirror(horizon + 3.f * u + bob + 4.f * u * 1.6f));
+        g.PushOpacity(0.25f);
+        DrawSailboat(g, bx, horizon + 3.f * u + bob, u * 1.6f, Rgba(60, 24, 66));
+        g.PopLayer();
+    }
+
+    // Waves rolling across the sea (one copy built once, drawn at both offsets)
+    auto* waves = Cached("waves", [=] {
+        return AsGeometry(Geometry::Build([&](ID2D1GeometrySink* sink) {
+            for (int row = 0; row < 6; ++row) {
+                const float y = horizon + 14 + row * (h - horizon) / 7;
+                for (float x = static_cast<float>((row % 2) * 40); x < w; x += 80.f + row * 16.f) {
+                    const float span = 26.f + row * 6.f;
+                    sink->BeginFigure(D2D1::Point2F(x, y), D2D1_FIGURE_BEGIN_HOLLOW);
+                    sink->AddBezier(D2D1::BezierSegment(D2D1::Point2F(x + span / 3, y - 4 - row * 0.6f), D2D1::Point2F(x + span * 2 / 3, y - 4 - row * 0.6f),
+                                                        D2D1::Point2F(x + span, y)));
+                    sink->EndFigure(D2D1_FIGURE_END_OPEN);
+                }
+            }
+        }, D2D1_FILL_MODE_ALTERNATE));
+    });
+    {
+        Layer layer(g, 0.6f, 0.f);
+        DrawLooping(g, w, Drift(w), [&](float ox) {
+            Push shift(g, Translate(ox, 0.f));
+            Stroke(g, waves, SmWave);
+        });
+    }
+
+    // The beach next to the chapter cards: warm sand with the surf lapping at its edge, palms,
+    // an umbrella, a beach ball, a crab and a few shells
+    const D2D1_POINT_2F s0{ w * 0.44f, h * 0.99f }, s1{ w * 0.55f, h * 0.86f }, s2{ w * 0.75f, h * 0.83f }, s3{ w + kBleed, h * 0.815f };
+    const auto sandY = [&](float x) { return BezierYAtX(s0, s1, s2, s3, x); };
+    {
+        Layer layer(g, 1.f);
+        auto* beach = Cached("beach", [=] {
+            return AsGeometry(Geometry::Build([&](ID2D1GeometrySink* sink) {
+                sink->BeginFigure(P(s0.x, h + kBleed), D2D1_FIGURE_BEGIN_FILLED);
+                sink->AddLine(s0);
+                sink->AddBezier(D2D1::BezierSegment(s1, s2, s3));
+                sink->AddLine(P(w + kBleed, h + kBleed));
+                sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+            }, D2D1_FILL_MODE_ALTERNATE));
+        });
+        auto* surf = Cached("surf", [=] {
+            return AsGeometry(Geometry::Build([&](ID2D1GeometrySink* sink) {
+                sink->BeginFigure(s0, D2D1_FIGURE_BEGIN_HOLLOW);
+                sink->AddBezier(D2D1::BezierSegment(s1, s2, s3));
+                sink->EndFigure(D2D1_FIGURE_END_OPEN);
+            }));
+        });
+        // Wet sand + foam: the surf line slides up and down the shore
+        const float lap = static_cast<float>(std::sin(Clock() * 0.7));
+        {
+            Push wash(g, Translate(-6.f * u * lap, 4.f * u * lap));
+            Stroke(g, surf, Pen{ Rgba(255, 236, 220).Fade(0.35f + 0.25f * (1.f - lap) * 0.5f), 7.f * u });
+        }
+        FillVertical(g, beach, { 0.f, h * 0.81f, w, h }, { { 0.f, Rgba(255, 196, 136) }, { 0.45f, Rgba(214, 140, 106) }, { 1.f, Rgba(120, 66, 80) } });
+        Stroke(g, surf, Pen{ Rgba(255, 246, 236, 150), 2.f * u });
+
+        DrawPalmSilhouette(g, w * 0.975f, sandY(w * 0.975f) + 6 * u, u * 3.6f, -1);
+        DrawPalmSilhouette(g, w * 0.92f, sandY(w * 0.92f) + 6 * u, u * 2.7f, 1);
+        Art::Summer::DrawUmbrella(g, w * 0.685f, sandY(w * 0.685f) + 8 * u, u * 3.6f, -8.f);
+        Art::Summer::DrawBeachBall(g, w * 0.745f, sandY(w * 0.745f) + 4 * u, u * 2.3f);
+        Art::Summer::DrawCrab(g, w * 0.8f, sandY(w * 0.8f) + 22 * u, u * 2.f);
+        Art::Summer::DrawStarfish(g, w * 0.655f, sandY(w * 0.655f) + 34 * u, u * 1.8f, 18.f);
+        Art::Summer::DrawShell(g, w * 0.86f, sandY(w * 0.86f) + 30 * u, u * 1.7f, -12.f);
+        Art::Summer::DrawShell(g, w * 0.72f, sandY(w * 0.72f) + 48 * u, u * 1.4f, 20.f);
+    }
+
+    Vignette(g, w, h, Rgba(12, 14, 50));
+    DrawBunting(g, w, garlandTop,
+                { Rgba(255, 112, 67), Rgba(255, 213, 79), Rgba(38, 198, 218), Rgba(255, 245, 225), Rgba(240, 98, 146) },
+                Pen{ Rgba(255, 230, 200, 140), 1.2f }, false);
+}
+
+// ── Christmas ───────────────────────────────────────────────────────────────
+
+// Smoke puffs rising from a chimney and drifting with the wind
+void DrawSmoke(Graphics& g, float x, float y, float s) {
+    const double now = Clock();
+    for (int i = 0; i < 7; ++i) {
+        const float t = static_cast<float>(std::fmod(now * 0.16 + i / 7.0, 1.0));
+        const float px = x + (t * 34.f + static_cast<float>(std::sin(t * 6.0 + i)) * 4.f) * s;
+        const float py = y - t * 90.f * s;
+        const float r = (3.f + t * 13.f) * s;
+        const float a = static_cast<float>(std::sin(Pi * t)) * 0.38f;
+        GlowEllipse(g, px, py, r * 1.3f, r, Rgba(215, 225, 240).Fade(a));
+    }
+}
+
+// Street lamp with a warm halo and a pool of light on the snow
+void DrawLamp(Graphics& g, float x, float baseY, float s) {
+    Push at(g, Translate(x, baseY));
+    Push size(g, Scale(s));
+    GlowEllipse(g, 0.f, 0.f, 26.f, 6.f, Rgba(255, 200, 120, 70));
+    Line(g, 0.f, 0.f, 0.f, -34.f, Pen{ Rgba(18, 24, 32), 2.f });
+    GlowEllipse(g, 0.f, -36.f, 24.f, 24.f, WindowGlow().Fade(0.45f));
+    Rectangle(g, { -3.f, -40.f, 6.f, 7.f }, Rgba(18, 24, 32));
+    Ellipse(g, 0.f, -36.5f, 2.f, 2.4f, Rgba(255, 224, 160));
+    Rectangle(g, { -4.f, -41.5f, 8.f, 1.8f }, XmRoof);
+}
+
+void DrawChristmas(Graphics& g, float w, float h, float garlandTop) {
+    const float u = h / 1000.f;
+    FillVerticalRect(g, { 0, 0, w, h }, { { 0.f, Rgba(3, 6, 18) }, { 0.35f, Rgba(8, 18, 42) }, { 0.52f, Rgba(16, 42, 66) },
+                                          { 0.61f, Rgba(34, 76, 96) }, { 0.66f, Rgba(16, 36, 52) }, { 1.f, Rgba(10, 22, 32) } });
+    {
+        Layer layer(g, 0.12f);
+        DrawStars(g, w, h * 0.62f, 230, Rgba(230, 245, 255));
+        DrawShootingStars(g, w, h * 0.45f, Rgba(225, 245, 255));
+    }
+
+    // Pale moon high up in the open sky
+    {
+        Layer layer(g, 0.16f);
+        const float r = std::clamp(h * 0.042f, 24.f, 56.f);
+        const float mx = w * 0.47f, my = h * 0.15f;
+        GlowEllipse(g, mx, my, r * 6.f, r * 6.f, Rgba(160, 210, 255, 34));
+        GlowEllipse(g, mx, my, r * 2.4f, r * 2.4f, Rgba(200, 230, 255, 70));
+        Ellipse(g, mx, my, r, r, Rgba(232, 240, 250));
+        Ellipse(g, mx - r * 0.3f, my - r * 0.2f, r * 0.2f, r * 0.2f, Rgba(204, 216, 232));
+        Ellipse(g, mx + r * 0.35f, my + r * 0.3f, r * 0.14f, r * 0.14f, Rgba(204, 216, 232));
+    }
+
+    // Aurora: three ribbons (green, teal, violet) across the open sky, pulsing, drifting sideways
+    // and stretching like curtains in the wind
+    const auto aurora = [&](float opacity) {
+        const double now = Clock();
+        g.PushOpacity(Pulse() * opacity);
+        const struct { float y; Color c; int alpha; double phase, speed; } ribbons[] = {
+            { 0.2f, Rgba(80, 255, 170), 95, 0.0, 0.11 }, { 0.27f, Rgba(60, 210, 255), 70, 2.0, 0.08 }, { 0.33f, Rgba(170, 110, 255), 50, 4.0, 0.06 },
+        };
+        for (const auto& r : ribbons) {
+            Push sway(g, Translate(static_cast<float>(std::sin(now * r.speed + r.phase)) * w * 0.03f, 0.f));
+            Push stretch(g, M::Scale(1.f, 1.f + 0.14f * static_cast<float>(std::sin(now * (r.speed * 2.4) + r.phase)), D2D1::Point2F(0.f, h * r.y)));
+            DrawAurora(g, w, h, h * r.y, r.c, r.alpha, r.phase);
+        }
+        g.PopLayer();
+    };
+    {
+        Layer layer(g, 0.25f);
+        aurora(1.f);
+    }
+
+    // Far snowy mountains, haze, nearer mountains
+    const float farBase = h * 0.6f, nearBase = h * 0.63f, shore = h * 0.635f;
+    const auto mountains = [&] {
+        DrawRange(g, w, farBase, h, h * 0.21f, 0.7f, Rgba(74, 104, 140), Rgba(30, 50, 72), Rgba(236, 244, 252, 235), 0.42f);
+        Haze(g, w, h * 0.51f, h * 0.12f, Rgba(120, 180, 210, 36));
+        DrawRange(g, w, nearBase, h, h * 0.12f, 2.3f, Rgba(46, 70, 98), Rgba(20, 34, 50), Rgba(225, 236, 248, 220), 0.32f);
+    };
+    {
+        Layer layer(g, 0.4f);
+        mountains();
+    }
+
+    // Frozen lake in front of them: the mountains and the aurora mirrored on the ice, with a few
+    // cold glints sliding over it
+    const float lakeBottom = h * 0.76f;
+    {
+        Layer layer(g, 0.4f);
+        FillVerticalRect(g, { -kBleed, shore, w + 2 * kBleed, lakeBottom - shore }, { { 0.f, Rgba(40, 84, 104) }, { 1.f, Rgba(14, 32, 46) } });
+        g.PushClip({ -kBleed, shore, w + 2 * kBleed, lakeBottom - shore });
+        {
+            Push mirror(g, Mirror(shore));
+            g.PushOpacity(0.32f);
+            mountains();
+            g.PopLayer();
+            aurora(0.35f);
+        }
+        const double now = Clock();
+        for (int i = 0; i < 9; ++i) {
+            const float y = shore + (lakeBottom - shore) * (0.15f + i * 0.09f);
+            const float x = static_cast<float>(std::fmod(now * (10.0 + i * 3.0) + i * 211.0, static_cast<double>(w) + 300.0)) - 150.f;
+            Line(g, x, y, x + 60.f + i * 8.f, y, Pen{ Rgba(220, 240, 255, 50), 1.f, true });
+        }
+        g.PopClip();
+    }
+
+    // Village lights twinkling on the far shore, and a pine forest along it
+    {
+        Layer layer(g, 0.55f);
+        SeededRandom rnd(911);
+        const double now = Clock();
+        for (int i = 0; i < 16; ++i) {
+            const float x = static_cast<float>(w * (0.4 + rnd.NextDouble() * 0.2));
+            const float y = shore - static_cast<float>(rnd.NextDouble() * h * 0.006);
+            const float flicker = 0.65f + 0.35f * static_cast<float>(std::sin(now * (1.0 + rnd.NextDouble() * 2.0) + i));
+            GlowEllipse(g, x, y, 7.f * u, 4.f * u, Rgba(255, 190, 100, 110).Fade(flicker));
+            Ellipse(g, x, y, 1.3f * u, 1.3f * u, Rgba(255, 220, 160).Fade(flicker));
+        }
+        SeededRandom forest(77);
+        for (double x = -kBleed; x < w + kBleed; x += (10.0 + forest.NextDouble() * 16.0) * u) {
+            const double fx = x / w;
+            const double y = shore + 3 * u + forest.NextDouble() * h * 0.004;
+            const double scale = (0.8 + forest.NextDouble() * 0.7) * u * 1.25;
+            if (fx > 0.39 && fx < 0.61 && forest.NextDouble() < 0.6) continue;   // a gap for the village
+            DrawPine(g, static_cast<float>(x), static_cast<float>(y), static_cast<float>(scale), true);
         }
     }
+
     Layer front(g, 1.f);   // everything below is the foreground
 
-    // Snowy hills in front, with the cabin and a decorated tree
+    // Snowy hills in front, with the cabin, a lamp, the decorated tree, gifts and a snowman on the
+    // ground next to the chapter cards
     const float midBase = h * 0.9f;
     const float midTop = midBase - h * 0.06f;
     auto* hillGeo = Hills(w, midBase, h, h * 0.03, 3.3);
-    const std::vector<GradientStop> hillStops = { { 0.f, Rgba(225, 238, 250) }, { 0.35f, Rgba(150, 178, 204) }, { 1.f, Rgba(40, 60, 82) } };
-    auto* hillFill = g.LinearBrush(hillStops, { 0.f, midTop }, { 0.f, h });
-    if (hillFill) g.FillGeometry(hillGeo, hillFill);
+    const std::vector<GradientStop> hillStops = { { 0.f, Rgba(232, 242, 252) }, { 0.35f, Rgba(158, 186, 210) }, { 1.f, Rgba(40, 60, 82) } };
+    if (auto* hillFill = g.LinearBrush(hillStops, { 0.f, midTop }, { 0.f, h })) g.FillGeometry(hillGeo, hillFill);
+    Haze(g, w, midTop - h * 0.04f, h * 0.06f, Rgba(200, 225, 245, 30));
 
     // Lowest point of the slope under an object, so nothing floats with one corner in the air
     const auto ground = [&](float x, float halfWidth) {
@@ -802,40 +1051,48 @@ void DrawChristmas(Graphics& g, float w, float h, float garlandTop) {
                                            std::max(HillY(x - halfWidth, w, midBase, h * 0.03, 3.3), HillY(x + halfWidth, w, midBase, h * 0.03, 3.3))));
     };
 
-    const float cabinX = w * 0.15f;
-    const float cabinS = u * 2.4f;
+    const float cabinX = w * 0.7f;
+    const float cabinS = u * 2.7f;
     const float cabinY = ground(cabinX, 22 * cabinS) + 2;
+    DrawSmoke(g, cabinX + 14 * cabinS, cabinY - 42 * cabinS, cabinS);
     DrawCabin(g, cabinX, cabinY, cabinS);
-    // Snow drift piled against the cabin's base (same absolute gradient as the hills)
     if (auto* drift = g.LinearBrush(hillStops, { 0.f, midTop }, { 0.f, h })) {
         auto ellipse = Geometry::Ellipse(cabinX, cabinY + 2 * cabinS, 30 * cabinS, 5 * cabinS);
         g.FillGeometry(ellipse.Get(), drift);
     }
-    const struct { float fx, sc; } pines[] = { { 0.035f, 3.2f }, { 0.27f, 2.2f }, { 0.74f, 2.4f }, { 0.97f, 3.4f } };
+    const float lampX = w * 0.655f;
+    DrawLamp(g, lampX, ground(lampX, 4.f) + 3.f, u * 2.4f);
+
+    const struct { float fx, sc; } pines[] = { { 0.975f, 3.8f } };
     for (const auto& p : pines) {
         const float x = w * p.fx;
         DrawPine(g, x, static_cast<float>(HillY(x, w, midBase, h * 0.03, 3.3)) + 8, p.sc * u * 1.6f, true);
     }
 
-    // Decorated tree with the gifts and snowman beside it (not on top of its branches).
-    // Tree half-width is 15 units, gifts 9 units, snowman 7.5 units.
-    const float treeX = w * 0.86f;
-    const float treeS = u * 5;
+    // Decorated tree with gifts on both sides and the snowman next to it
+    const float treeX = w * 0.865f;
+    const float treeS = u * 5.2f;
+    GlowEllipse(g, treeX, ground(treeX, 15 * treeS) - 50 * treeS * 0.5f, 34 * treeS, 40 * treeS, Rgba(255, 210, 120, 26));
     Art::Christmas::DrawTree(g, treeX, ground(treeX, 15 * treeS) + 2, treeS);
     const float redS = u * 2.2f;
     const float redX = treeX + 15 * treeS + 9 * redS + 6 * u;
     Art::Christmas::DrawGift(g, redX, ground(redX, 9 * redS) + 3, redS, Art::Christmas::OrnRed);
-    const float blueS = u * 1.8f;
+    const float goldS = u * 1.6f;
+    const float goldX = redX + 9 * redS + 9 * goldS + 2 * u;
+    Art::Christmas::DrawGift(g, goldX, ground(goldX, 9 * goldS) + 3, goldS, Art::Christmas::OrnGold);
+    const float blueS = u * 1.9f;
     const float blueX = treeX - 15 * treeS - 9 * blueS - 6 * u;
     Art::Christmas::DrawGift(g, blueX, ground(blueX, 9 * blueS) + 3, blueS, Art::Christmas::OrnBlue);
-    const float snowmanS = u * 3.2f;
-    const float snowmanX = blueX - 9 * blueS - 7.5f * snowmanS - 8 * u;
+    const float snowmanS = u * 3.3f;
+    const float snowmanX = blueX - 9 * blueS - 7.5f * snowmanS - 6 * u;
     Art::Christmas::DrawSnowman(g, snowmanX, ground(snowmanX, 7.5f * snowmanS) + 3, snowmanS);
 
     // Low mist over the snow
     DrawLooping(g, w, Drift(w), [&](float ox) {
-        for (int i = 0; i < 5; ++i) GlowEllipse(g, ox + w * (0.1f + i * 0.2f), h * 0.9f, w * 0.15f, h * 0.04f, Rgba(220, 235, 255, 28));
+        for (int i = 0; i < 5; ++i) GlowEllipse(g, ox + w * (0.1f + i * 0.2f), h * 0.9f, w * 0.15f, h * 0.04f, Rgba(220, 235, 255, 30));
     });
+
+    Vignette(g, w, h, Rgba(3, 6, 18));
 }
 
 void DrawChristmasLights(Graphics& g, float w, float garlandTop) {

@@ -13,6 +13,10 @@
 #include "Features/EasterEggs.h"
 #include "Input/KeyInjector.h"
 #include "Input/LowLevelHooks.h"
+#include "Localization/Localization.h"
+#include "Services/Collectibles/CollectiblesMemory.h"
+#include "Services/Collectibles/CollectiblesProgress.h"
+#include "Settings/CollectiblesSettings.h"
 #include "Settings/CoresSettings.h"
 #include "Settings/KeyClickSettings.h"
 #include "Windows/Main/MainWindow.h"
@@ -86,6 +90,7 @@ struct KeyClickState {
 void InputRemaps::Initialize() {
     RefreshCores();
     RefreshKeyClicks();
+    RefreshCollectiblesReset();
     auto& f11 = App::L().f11;
     f11.onRawKeyDown = [this](unsigned vk, unsigned time) { FeedEasterEgg(vk, time); };
     f11.Load();
@@ -94,7 +99,7 @@ void InputRemaps::Initialize() {
 
 void InputRemaps::Shutdown() {
     StopKeyClicks();
-    for (int* id : { &coresKeyboard, &eggKeyboard })
+    for (int* id : { &coresKeyboard, &eggKeyboard, &collectResetKeyboard })
         if (*id) Input::Hooks::RemoveKeyboard(*id), *id = 0;
 }
 
@@ -119,6 +124,43 @@ void InputRemaps::RefreshCores() {
         }
         return false;
     });
+}
+
+void InputRemaps::RefreshCollectiblesReset() {
+    if (collectResetKeyboard) Input::Hooks::RemoveKeyboard(collectResetKeyboard);
+    collectResetKeyboard = 0;
+    const unsigned vk = Settings::Collectibles::Current().resetVk;
+    if (!vk) return;
+    // Hook thread: only while a chapter is in front (elsewhere the key works as usual), once per press
+    // (not on the keyboard's auto-repeat). The key still reaches the game.
+    auto held = std::make_shared<std::atomic<bool>>(false);
+    collectResetKeyboard = Input::Hooks::AddKeyboard([this, vk, held](const Input::Hooks::KeyEvent& e) {
+        if (e.injected || e.vk != vk) return false;
+        if (e.up) {
+            *held = false;
+            return false;
+        }
+        if (e.down && !held->exchange(true) && App::L().IsGameForeground()) Async::Post([this] { ResetCollectibles(); });
+        return false;
+    });
+}
+
+void InputRemaps::ResetCollectibles() {
+    Services::Collectibles::Memory::ResetAll();
+    Services::Collectibles::Progress::Refresh();
+    main.Invalidate();
+    const Color color = Rgba(232, 54, 79);
+    Toasts::Spec spec;
+    spec.width = 340.f;
+    spec.padding = { 14.f, 10.f, 14.f, 10.f };
+    spec.duration = 3.5;
+    spec.fadeIn = 0.2;
+    spec.fadeOut = 0.4;
+    spec.accent = color;
+    spec.anchor = Toasts::Spec::Anchor::TopLeft;
+    spec.lines = { { Loc::Get("collect_reset_all_toast"), 16.f, true, color, 0.f },
+                   { Loc::Get("collect_reset_all_toast_sub"), 10.f, false, Rgba(160, 190, 210, 120), 4.f } };
+    main.CoresToast().Show(spec);
 }
 
 void InputRemaps::StopKeyClicks() {

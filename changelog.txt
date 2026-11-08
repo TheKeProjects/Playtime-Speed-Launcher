@@ -1,3 +1,10 @@
+4.2.0 | 31/10/2026
+## Additions
+- New 100% tracker (beta) for Chapters 1 to 5, read live from the game, with an in-game overlay and an OBS browser source
+- New main screen: a side bar with every menu, the selected chapter with a screenshot carousel, and the chapters as cards at the bottom
+- The theme is now changed from the side bar
+- New Halloween, Summer and Christmas backgrounds
+
 4.1.5 | 22/10/2026
 ## Additions
 - Multiplayer games now have the FPS overlay, Discord status, playtime on their card, key to click and the in-game easter eggs, like the chapters

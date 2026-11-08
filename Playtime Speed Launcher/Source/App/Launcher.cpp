@@ -4,6 +4,7 @@
 #include "Core/Process.h"
 #include "Core/Text.h"
 #include "Localization/Localization.h"
+#include "Services/Collectibles/CollectiblesServer.h"
 #include "Services/GameFiles/FullBrightFiles.h"
 #include "Services/GameFiles/LoadManipFiles.h"
 #include "Services/GameFiles/ModFiles.h"
@@ -29,12 +30,15 @@ void Launcher::Initialize() {
     runningPid.assign(chapters.size(), 0);
     modStates.assign(chapters.size(), ChapterModState{});
     discord = std::make_unique<Services::DiscordPresenceService>();
+    // 100%: the OBS link works from launch once the window has been used
+    Services::Collectibles::Server::StartIfEnabled();
 }
 
 void Launcher::Shutdown() {
     cores.RestoreIfActive();
     fps.Stop();
     discord.reset();
+    Services::Collectibles::Server::Stop();
 }
 
 Models::Chapter* Launcher::ChapterByNumber(int number) {

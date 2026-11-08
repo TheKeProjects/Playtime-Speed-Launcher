@@ -78,8 +78,10 @@ void GameWatcher::Tick() {
     l.PublishRunningGames();   // for the input hook thread
 
     // Discord always reflects what's selected in the launcher once the game closes
-    if (initialized && !anyRunning && stateChanged && l.discord)
-        l.discord->SetChapterSelected(l.Selected(), l.VersionLabel(l.Selected()));
+    if (initialized && !anyRunning && stateChanged && l.discord) {
+        if (l.chapterPicked) l.discord->SetChapterSelected(l.Selected(), l.VersionLabel(l.Selected()));
+        else l.discord->SetBrowsing();
+    }
     if (stateChanged) main.RefreshInfo();
 
     main.Remaps().RefreshEasterEggHook();

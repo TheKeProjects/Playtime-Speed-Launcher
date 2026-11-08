@@ -6,6 +6,13 @@ namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
+        { L"4.2.0", L"31/10/2026", {
+            L"## Additions",
+            L"New 100% tracker (beta) for Chapters 1 to 5, read live from the game, with an in-game overlay and an OBS browser source",
+            L"New main screen: a side bar with every menu, the selected chapter with a screenshot carousel, and the chapters as cards at the bottom",
+            L"The theme is now changed from the side bar",
+            L"New Halloween, Summer and Christmas backgrounds",
+        } },
         { L"4.1.5", L"22/10/2026", {
             L"## Additions",
             L"Multiplayer games now have the FPS overlay, Discord status, playtime on their card, key to click and the in-game easter eggs, like the chapters",

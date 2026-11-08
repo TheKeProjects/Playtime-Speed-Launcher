@@ -7,13 +7,12 @@
 #include "Core/Files.h"
 #include "Graphics/Animation.h"
 #include "Localization/Localization.h"
-#include "Seasonal/SeasonalCardArt.h"
 #include "Seasonal/SeasonalTheme.h"
 #include "Services/Audio/SoundEffects.h"
-#include "UI/Icons.h"
-#include "UI/Style.h"
 #include "UI/Widgets/Button.h"
+#include "UI/Style.h"
 #include "UI/Widgets/ScrollArea.h"
+#include "Windows/Main/MainScreen/MainLayout.h"
 #include "Windows/Main/MainWindow.h"
 
 namespace SpeedrunLauncher::Main {
@@ -22,15 +21,13 @@ namespace {
 
 using Section = App::Launcher::Section;
 
-constexpr float kCardW = 340.f, kCardH = 520.f, kSelectedW = 400.f, kSelectedH = 610.f;
-constexpr Color kCardBorder = Rgba(13, 42, 59, 50);
-constexpr float kButtonPadX = 10.f, kButtonPadY = 5.f;
-constexpr float kTabsH = 56.f, kTabH = 38.f;
+constexpr float kCardW = 168.f, kCardH = 236.f, kGap = 16.f;
+constexpr float kHeaderH = 54.f, kTabH = 32.f;
+constexpr float kSidePad = MainLayout::ContentPad;
 
-Color Accent(int alpha) { return Seasonal::Current().accent.WithAlpha(alpha / 255.f); }
+} // namespace
 
-// Resolved once per chapter: the assets don't change while the launcher runs, and this is asked every frame
-const std::wstring& BannerPath(int chapter) {
+const std::wstring& ChapterCards::BannerPath(int chapter) {
     static std::map<int, std::wstring> paths;
     auto it = paths.find(chapter);
     if (it != paths.end()) return it->second;
@@ -38,14 +35,16 @@ const std::wstring& BannerPath(int chapter) {
     return paths[chapter] = Files::Exists(jpg) ? jpg : Paths::Asset(L"Banners\\Chapter " + std::to_wstring(chapter) + L".png");
 }
 
-UI::ButtonStyle CardButtonStyle(float height) {
-    return { Rgba(9, 20, 30, 180), Accent(140), 1.f, 3.f, { kButtonPadX, kButtonPadY }, 0.f, height };
-}
-
-} // namespace
-
 void ChapterCards::Draw(UI::Ui& ui, const Rect& area) {
-    DrawTabs(ui, area.Top(kTabsH));
+    auto& g = ui.g;
+    const auto& palette = Seasonal::Current();
+    // The shelf darkens towards the bottom so the cards read over any scenery
+    g.FillLinear(area, 0.f, { { 0.f, palette.background.WithAlpha(0.f) }, { 0.35f, palette.background.WithAlpha(0.55f) },
+                              { 1.f, palette.background.WithAlpha(0.8f) } },
+                 { 0.f, 0.f }, { 0.f, 1.f });
+    g.FillRect({ area.x + kSidePad, area.y + kHeaderH - 1.f, area.w - kSidePad * 2.f, 1.f }, palette.barBorder.WithAlpha(0.6f));
+
+    DrawTabs(ui, area.Top(kHeaderH));
 
     // Switching tabs: the new cards fade in sliding from the side of the tab that was picked
     auto& l = App::L();
@@ -57,18 +56,18 @@ void ChapterCards::Draw(UI::Ui& ui, const Rect& area) {
     const bool entering = enter < 1.f;
     if (entering) {
         const float from = l.InMultiplayers() ? 60.f : -60.f;
-        ui.g.PushOpacity(enter);
+        g.PushOpacity(enter);
         ui.PushTranslate((1.f - enter) * from, 0.f);
         ui.KeepAnimating();
     }
-    DrawCards(ui, area.CutTop(kTabsH));
+    DrawCards(ui, area.CutTop(kHeaderH));
     if (entering) {
         ui.PopTransform();
-        ui.g.PopLayer();
+        g.PopLayer();
     }
 }
 
-// Pill with the two tabs; a glowing indicator slides under the selected one.
+// The two tabs as underlined labels with a count; the underline slides to the selected one.
 void ChapterCards::DrawTabs(UI::Ui& ui, const Rect& area) {
     auto& g = ui.g;
     auto& l = App::L();
@@ -80,35 +79,29 @@ void ChapterCards::DrawTabs(UI::Ui& ui, const Rect& area) {
         size_t count;
     };
     const Tab tabs[] = {
-        { Section::Chapters, wchar_t(0xE8F1), Loc::Get("section_chapters"), l.chapters.size() },        // library
-        { Section::Multiplayers, wchar_t(0xE716), Loc::Get("section_multiplayers"), l.multiplayers.size() },   // people
+        { Section::Chapters, wchar_t(0xE8F1), Loc::Get("section_chapters"), l.chapters.size() },              // library
+        { Section::Multiplayers, wchar_t(0xE716), Loc::Get("section_multiplayers"), l.multiplayers.size() },  // people
     };
     const TextStyle label = UI::Mono(11.f, true);
     const TextStyle chip = UI::Mono(9.f, true).Center();
-    constexpr float kPad = 4.f, kGap = 4.f, kChipW = 22.f;
-    float textW[2], widths[2];
-    float total = kPad * 2.f + kGap;
-    for (int i = 0; i < 2; ++i) {
-        textW[i] = g.Measure(tabs[i].text, label).w;
-        widths[i] = 16.f + 14.f + 8.f + textW[i] + 10.f + kChipW + 14.f;
-        total += widths[i];
-    }
-    const Rect bar{ area.CX() - total * 0.5f, area.y + 12.f + (area.h - 12.f - kTabH - kPad * 2.f) * 0.5f, total, kTabH + kPad * 2.f };
-    g.Border(bar, bar.h * 0.5f, palette.bar.WithAlpha(0.88f), palette.barBorder, 1.f);
+    constexpr float kChipW = 22.f;
 
     Rect slots[2];
-    float x = bar.x + kPad;
+    float textW[2];
+    float x = area.x + kSidePad - 10.f;
+    const float y = area.B() - 8.f - kTabH;
     for (int i = 0; i < 2; ++i) {
-        slots[i] = { x, bar.y + kPad, widths[i], kTabH };
-        x += widths[i] + kGap;
+        textW[i] = g.Measure(tabs[i].text, label).w;
+        const float w = 10.f + 14.f + 8.f + textW[i] + 8.f + kChipW + 10.f;
+        slots[i] = { x, y, w, kTabH };
+        x += w + 8.f;
     }
-    // Sliding indicator
     const int current = l.InMultiplayers() ? 1 : 0;
-    const float indX = ui.Animate(ui.MakeId("section-ind-x"), slots[current].x - bar.x, 16.f);
-    const float indW = ui.Animate(ui.MakeId("section-ind-w"), slots[current].w, 16.f);
-    const Rect ind{ bar.x + indX, slots[current].y, indW, kTabH };
-    g.GlowRound(ind, kTabH * 0.5f, palette.accent, 14.f, 0.3f);
-    g.Border(ind, kTabH * 0.5f, palette.accent.WithAlpha(0.16f), palette.accent.WithAlpha(0.7f), 1.f);
+    const float indX = ui.Animate(ui.MakeId("section-ind-x"), slots[current].x + 10.f, 16.f);
+    const float indW = ui.Animate(ui.MakeId("section-ind-w"), slots[current].w - 20.f, 16.f);
+    const Rect underline{ indX, area.B() - 3.f, indW, 3.f };
+    g.GlowRound(underline, 1.5f, palette.accent, 10.f, 0.5f);
+    g.FillRound(underline, 1.5f, palette.accent);
 
     for (int i = 0; i < 2; ++i) {
         const Tab& tab = tabs[i];
@@ -119,17 +112,36 @@ void ChapterCards::DrawTabs(UI::Ui& ui, const Rect& area) {
         if (it.clicked) main.SelectSection(tab.section);
         const float sel = ui.Animate(ui.MakeId("section-tab-sel", i), i == current ? 1.f : 0.f, 14.f);
         const float hover = ui.Animate(ui.MakeId("section-tab-hover", i), it.hovered ? 1.f : 0.f, 16.f);
-        if (hover > 0.01f && i != current) g.FillRound(r, kTabH * 0.5f, palette.accent.WithAlpha(0.06f * hover));
-        const Color text = Lerp(Lerp(palette.muted, Rgba(214, 228, 238), hover * 0.6f), palette.accent, sel);
+        if (hover > 0.01f && i != current) g.FillRound(r, 6.f, palette.accent.WithAlpha(0.06f * hover));
+        const Color text = Lerp(Lerp(palette.muted, Rgba(214, 228, 238), hover * 0.6f), Rgba(235, 242, 250), sel);
 
-        float tx = r.x + 16.f;
-        g.Text(std::wstring(1, tab.glyph), { tx, r.y, 14.f, r.h }, text, UI::IconFont(13.f));
+        float tx = r.x + 10.f;
+        g.Text(std::wstring(1, tab.glyph), { tx, r.y, 14.f, r.h }, Lerp(text, palette.accent, sel), UI::IconFont(13.f));
         tx += 14.f + 8.f;
         g.Text(tab.text, { tx, r.y, textW[i] + 2.f, r.h }, text, label);
-        tx += textW[i] + 10.f;
+        tx += textW[i] + 8.f;
         const Rect count{ tx, r.CY() - 9.f, kChipW, 18.f };
         g.FillRound(count, 9.f, Lerp(Rgba(13, 37, 53, 200), palette.accent.WithAlpha(0.25f), sel));
-        g.Text(std::to_wstring(tab.count), count, text, chip);
+        g.Text(std::to_wstring(tab.count), count, Lerp(text, palette.accent, sel), chip);
+    }
+
+    // On the right: the tab's total playtime
+    double total = 0.0;
+    if (current == 1)
+        for (const auto& game : l.multiplayers) total += l.playtime.Seconds(game.playtimeId);
+    else
+        for (const auto& chapter : l.chapters) total += l.playtime.Seconds(chapter.number);
+    const std::wstring caption = Loc::Get("shelf_total");
+    const std::wstring value = Services::ChapterPlaytimeStore::Format(total);
+    const TextStyle captionStyle = UI::Mono(9.f, true);
+    const TextStyle valueStyle = UI::Mono(13.f, true);
+    const float vw = g.Measure(value, valueStyle).w, cw = g.Measure(caption, captionStyle).w;
+    const float right = area.R() - kSidePad;
+    const Rect valueRect{ right - vw - 2.f, y, vw + 2.f, kTabH };
+    if (valueRect.x - 14.f - cw - 20.f > x) {   // only when it doesn't run into the tabs
+        g.Text(value, valueRect, Rgba(225, 236, 245), valueStyle);
+        UI::Glyph(ui, wchar_t(0xE916), { valueRect.x - 20.f, y, 14.f, kTabH }, 11.f, palette.accent);   // stopwatch
+        g.Text(caption, { valueRect.x - 20.f - 10.f - cw - 2.f, y, cw + 2.f, kTabH }, palette.muted, captionStyle);
     }
 }
 
@@ -137,7 +149,6 @@ void ChapterCards::DrawCards(UI::Ui& ui, const Rect& area) {
     auto& l = App::L();
     const bool multiplayer = l.InMultiplayers();
 
-    // What each card of the current tab shows
     std::vector<Card> cards;
     if (multiplayer) {
         for (size_t i = 0; i < l.multiplayers.size(); ++i) {
@@ -145,11 +156,12 @@ void ChapterCards::DrawCards(UI::Ui& ui, const Rect& area) {
             Card c;
             c.banner = Paths::Asset(L"Banners\\" + game.banner);
             c.title = Loc::Get("mp_" + game.key + "_title");
-            c.subtitle = l.multiplayerRunning[i] ? Loc::Get("status_playing")
-                         : game.IsInstalled()     ? Services::ChapterPlaytimeStore::Format(l.playtime.Seconds(game.playtimeId))
-                                                  : Loc::Get("status_not_found");
+            c.running = i < l.multiplayerRunning.size() && l.multiplayerRunning[i];
+            c.subtitle = c.running              ? Loc::Get("status_playing")
+                         : game.IsInstalled()   ? Services::ChapterPlaytimeStore::Format(l.playtime.Seconds(game.playtimeId))
+                                                : Loc::Get("status_not_found");
             c.available = game.isAvailable;
-            c.selected = static_cast<int>(i) == l.selectedMultiplayer;
+            c.selected = l.multiplayerPicked && static_cast<int>(i) == l.selectedMultiplayer;
             cards.push_back(std::move(c));
         }
     } else {
@@ -158,164 +170,96 @@ void ChapterCards::DrawCards(UI::Ui& ui, const Rect& area) {
             Card c;
             c.banner = BannerPath(chapter.number);
             c.title = Loc::Get("ch" + std::to_string(chapter.number) + "_title");
-            c.subtitle = Services::ChapterPlaytimeStore::Format(l.playtime.Seconds(chapter.number));
+            c.running = i < l.gameRunning.size() && l.gameRunning[i];
+            c.subtitle = c.running ? Loc::Get("status_playing") : Services::ChapterPlaytimeStore::Format(l.playtime.Seconds(chapter.number));
             c.available = chapter.isAvailable;
-            c.selected = static_cast<int>(i) == l.selected;
-            c.chapterIndex = static_cast<int>(i);
+            c.selected = l.chapterPicked && static_cast<int>(i) == l.selected;
+            c.font = Font::Poppy;
             cards.push_back(std::move(c));
         }
     }
     const size_t count = cards.size();
+    // Nothing picked yet: no card is dimmed, they all invite a click
+    if (!l.HasSelection())
+        for (Card& c : cards) c.dimmed = false;
     const int64_t idBase = multiplayer ? 1000 : 0;   // each tab keeps its own card animations
 
-    const bool seasonal = Seasonal::IsSeasonal();
-    // Room above / below the cards for decorations that sit on their top edge
-    const float margin = seasonal ? 56.f : 8.f;
-    // Selecting a card grows it (and shrinks the previous one) smoothly
-    std::vector<float> widths(count), heights(count);
-    float contentW = 0.f;
-    for (size_t i = 0; i < count; ++i) {
-        widths[i] = ui.Animate(ui.MakeId("card-w", idBase + static_cast<int64_t>(i)), cards[i].selected ? kSelectedW : kCardW, 13.f);
-        heights[i] = ui.Animate(ui.MakeId("card-h", idBase + static_cast<int64_t>(i)), cards[i].selected ? kSelectedH : kCardH, 13.f);
-        contentW += widths[i];
-    }
-    const float panelH = kSelectedH + margin * 2.f;
-
-    // ScrollViewer Margin="24,0": horizontal only, the 6 px thumb sits below the cards
-    const Rect viewportArea = area.Inset(Edges{ 24.f, 0.f });
-    const bool scrollable = contentW > viewportArea.w;
-    const float viewH = panelH + (scrollable ? 8.f : 0.f);
+    // Horizontal row, left aligned; room above the cards for the hover lift
+    const float contentW = count ? count * kCardW + (count - 1) * kGap : 0.f;
+    const Rect viewportArea = area.Inset(Edges{ kSidePad - 8.f, 0.f });
+    const float viewH = kCardH + 22.f;
     const Rect viewport{ viewportArea.x, area.CY() - viewH * 0.5f, viewportArea.w, viewH };
-    const UI::Id scrollId = ui.MakeId(multiplayer ? "multiplayerScroll" : "cardsScroll");
-    UI::ScrollArea scroll(ui, scrollId, viewport, true, 120.f);
-    scroll.SetContentSize(contentW);
+    UI::ScrollArea scroll(ui, ui.MakeId(multiplayer ? "multiplayerScroll" : "cardsScroll"), viewport, true, 120.f);
+    scroll.SetContentSize(contentW + 16.f);
 
-    float x = viewport.x + (scrollable ? 0.f : (viewport.w - contentW) * 0.5f);
-    const float centerY = viewport.y + panelH * 0.5f;
+    float x = viewport.x + 8.f;
+    const float y = viewport.y + 10.f;
     for (size_t i = 0; i < count; ++i) {
         const Card& card = cards[i];
-        const float w = widths[i], h = heights[i];
-        const Rect r{ x, centerY - h * 0.5f, w, h };
-        x += w;
+        const Rect r{ x, y, kCardW, kCardH };
+        x += kCardW + kGap;
 
         ui.PushId(idBase + static_cast<int64_t>(i));
         const UI::Interaction it = ui.Interact(ui.MakeId("card"), r, true, false);   // hit area stays put while lifting
+        if (it.hovered) ui.SetCursor(IDC_HAND);
         if (it.entered) Services::Sfx::Play(Services::Sfx::Hover, true);
         if (it.hovered && ui.In().pressed[0]) {
             if (multiplayer) main.SelectMultiplayer(static_cast<int>(i));
             else main.SelectChapter(static_cast<int>(i));
         }
-
-        // Hovered cards brighten and lift a little; both ease in / out
-        float target = card.selected ? 1.f : card.available ? 0.55f : 0.28f;
-        if (!card.selected && it.hovered) target = 0.85f;
-        const float opacity = ui.Animate(ui.MakeId("card-opacity"), target, 16.f);
-        const float lift = ui.Animate(ui.MakeId("card-lift"), !card.selected && it.hovered ? -6.f : 0.f, 16.f);
-        DrawCard(ui, card, static_cast<int>(i), r.Offset(0.f, lift), opacity);
+        const float hover = ui.Animate(ui.MakeId("card-hover"), it.hovered ? 1.f : 0.f, 16.f);
+        const float lift = ui.Animate(ui.MakeId("card-lift"), card.selected ? -6.f : it.hovered ? -4.f : 0.f, 16.f);
+        DrawCard(ui, card, r.Offset(0.f, lift), hover);
         ui.PopId();
     }
 }
 
-void ChapterCards::DrawCard(UI::Ui& ui, const Card& card, int index, const Rect& r, float opacity) {
+void ChapterCards::DrawCard(UI::Ui& ui, const Card& card, const Rect& r, float hover) {
     auto& g = ui.g;
-    const bool selected = card.selected;
-    const bool seasonal = Seasonal::IsSeasonal();
     const auto& palette = Seasonal::Current();
+    const float sel = ui.Animate(ui.MakeId("card-sel"), card.selected ? 1.f : 0.f, 14.f);
 
-    // Seasonal themes: the selected card glows; dimming uses a background-coloured layer instead of
-    // opacity so the scenery doesn't show through the card art.
-    if (selected && seasonal) g.GlowRound(r, 6.f, palette.accent, 34.f, 0.55f);
-    const bool fade = !seasonal && opacity < 1.f;
-    if (fade) g.PushOpacity(opacity);
-
-    g.PushRoundClip(r, 6.f);
+    if (sel > 0.01f) g.GlowRound(r, 8.f, palette.accent, 22.f, 0.55f * sel);
+    g.PushRoundClip(r, 8.f);
+    g.FillRect(r, palette.bar);
     if (auto banner = Images::Load(card.banner)) g.DrawImage(*banner, r, 1.f, Stretch::UniformToFill);
-    g.FillLinear(r, 0.f, { { 0.30f, Rgba(0, 0, 0, 0) }, { 0.85f, Rgba(5, 10, 18, 210) } }, { 0.f, 0.f }, { 0.f, 1.f });
+    g.FillLinear(r, 0.f, { { 0.40f, Rgba(0, 0, 0, 0) }, { 1.f, Rgba(4, 8, 14, 235) } }, { 0.f, 0.f }, { 0.f, 1.f });
 
-    // Bottom stack: title, playtime / status, action buttons (Margin="12,0,12,12")
-    const float innerW = r.w - 24.f;
-    TextStyle titleStyle = UI::Mono(12.f);
-    titleStyle.weight = DWRITE_FONT_WEIGHT_SEMI_BOLD;
+    // Title + playtime / status at the bottom
+    TextStyle titleStyle = UI::Mono(card.font == Font::Mono ? 11.f : 14.f, card.font == Font::Mono);
+    titleStyle.font = card.font;
     titleStyle.wrap = true;
-    titleStyle.valign = VAlign::Top;
-    const float titleH = g.Measure(card.title, titleStyle, innerW).h;
+    titleStyle.valign = VAlign::Bottom;
     const TextStyle subtitleStyle = UI::Mono(10.f);
-    const float subtitleH = g.Measure(card.subtitle, subtitleStyle).h;
-    const bool buttons = card.chapterIndex >= 0;
-    const float buttonH = buttons ? g.Measure(L"+", UI::Mono(12.f, true)).h + kButtonPadY * 2.f + 2.f + 8.f : 0.f;
-    float y = r.B() - 12.f - buttonH - subtitleH - 2.f - titleH;
-    g.Text(card.title, { r.x + 12.f, y, innerW, titleH + 2.f }, Rgba(230, 240, 255, 230), titleStyle);
-    y += titleH + 2.f;
-    g.Text(card.subtitle, { r.x + 12.f, y, innerW, subtitleH }, Accent(120), subtitleStyle);
-    y += subtitleH + 8.f;
-    if (buttons) DrawCardButtons(ui, static_cast<size_t>(card.chapterIndex), r.x + 12.f, y);
+    const Rect sub{ r.x + 12.f, r.B() - 10.f - 14.f, r.w - 24.f, 14.f };
+    g.Text(card.title, { r.x + 12.f, r.y, r.w - 24.f, sub.y - r.y - 2.f }, Rgba(235, 242, 250), titleStyle);
+    g.Text(card.subtitle, sub, card.running ? palette.accent : palette.accent.WithAlpha(0.6f), subtitleStyle);
 
-    // "Coming soon" lock
+    // "Coming soon": darkened, with an accent wash from the bottom
     if (!card.available) {
-        g.FillRect(r, Rgba(5, 10, 18, 170));
-        // Images::Load caches a missing file too: no disk check every frame
-        const ImagePtr image = Images::Load(Paths::Asset(L"Images\\BLOQUEADO.png"));
-        const TextStyle soon = UI::Mono(9.f).Center().Wrap();
-        const std::wstring soonText = Loc::Get("coming_soon");
-        const float soonH = g.Measure(soonText, soon, r.w - 24.f).h;
-        const float stackH = (image ? 120.f + 10.f : 0.f) + soonH;
-        float sy = r.CY() - stackH * 0.5f;
-        if (image) {
-            const Rect box{ r.CX() - 60.f, sy, 120.f, 120.f };
-            g.GlowRound(box, 8.f, Accent(255), 20.f, 0.8f);
-            g.Border(box, 8.f, Rgba(9, 20, 30, 160), Accent(255), 2.f);
-            g.DrawImage(*image, box.Center(90.f, 90.f));
-            sy += 130.f;
-        }
-        g.Text(soonText, { r.x + 12.f, sy, r.w - 24.f, soonH + 2.f }, Accent(120), soon);
+        g.FillRect(r, Rgba(5, 10, 18, 150));
+        g.FillLinear(r, 0.f, { { 0.f, palette.accent.WithAlpha(0.f) }, { 1.f, palette.accent.WithAlpha(0.10f) } }, { 0.f, 0.f }, { 0.f, 1.f });
     }
-    if (seasonal && opacity < 1.f) g.FillRect(r, palette.background.WithAlpha(1.f - opacity));
+    // Not selected: dimmed a little, less while hovered
+    const float dim = card.dimmed ? (1.f - sel) * (0.42f - 0.32f * hover) : 0.f;
+    if (dim > 0.01f) g.FillRect(r, palette.background.WithAlpha(dim));
+    // The lock goes over the dimming so it still reads on an unselected card
+    if (!card.available) {
+        const Rect ring = r.Center(64.f, 64.f).Offset(0.f, -18.f);
+        g.Border(ring, 32.f, Rgba(9, 20, 30, 170), palette.accent.WithAlpha(0.35f + 0.35f * hover), 1.5f);
+        if (const ImagePtr image = Images::Load(Paths::Asset(L"Images\\BLOQUEADO.png"))) g.DrawImage(*image, ring.Center(38.f, 38.f), 0.9f);
+    }
     g.PopLayer();
 
-    // Border on top (2 px accent when selected)
-    if (selected) g.StrokeRound(r, 6.f, palette.accent, 2.f);
-    else g.StrokeRound(r, 6.f, kCardBorder, 1.f);
-    if (fade) g.PopLayer();
-
-    // Seasonal decorations on the card's top edge
-    if (seasonal) Seasonal::CardArt::Draw(g, r, index, 1.f);
-}
-
-void ChapterCards::DrawCardButtons(UI::Ui& ui, size_t index, float x, float y) {
-    auto& g = ui.g;
-    auto& l = App::L();
-    const int number = l.chapters[index].number;
-    const auto& mods = l.ModState(index);
-    const float buttonH = g.Measure(L"+", UI::Mono(12.f, true)).h + kButtonPadY * 2.f + 2.f;
-    const TextStyle smallText = UI::Mono(9.f, true);
-
-    // Save checkpoint button: save glyph + "+"
-    {
-        const float w = 11.f + 4.f + g.Measure(L"+", UI::Mono(12.f, true)).w + kButtonPadX * 2.f + 2.f;
-        UI::ButtonScope b(ui, ui.MakeId("save"), { x, y, w, buttonH }, CardButtonStyle(buttonH));
-        UI::Glyph(ui, UI::Glyphs::Save, { b.content.x, b.content.y, 11.f, b.content.h }, 11.f, Accent(200));
-        g.Text(L"+", { b.content.x + 15.f, b.content.y, 12.f, b.content.h }, Accent(200), UI::Mono(12.f, true));
-        if (b.Clicked()) main.OpenSaveCard(number);
-        x += w + 6.f;
+    if (sel > 0.01f) g.StrokeRound(r, 8.f, palette.accent.WithAlpha(sel), 2.f);
+    else g.StrokeRound(r, 8.f, Lerp(Rgba(13, 42, 59, 120), palette.accent.WithAlpha(0.5f), hover), 1.f);
+    // A dot under the selected card
+    if (sel > 0.01f) g.FillEllipse(r.CX(), r.B() + 8.f, 2.5f * sel, 2.5f * sel, palette.accent);
+    // Playing: a pulsing dot in the corner
+    if (card.running) {
+        g.FillEllipse(r.R() - 12.f, r.y + 12.f, 7.f, 7.f, palette.accent.WithAlpha(0.25f));
+        g.FillEllipse(r.R() - 12.f, r.y + 12.f, 4.f, 4.f, palette.accent);
     }
-    const auto textButton = [&](const char* id, const std::wstring& text, bool installed, bool withIcon) {
-        const float iconW = withIcon ? 12.f + 5.f : 0.f;
-        const float w = iconW + g.Measure(text, smallText).w + kButtonPadX * 2.f + 2.f;
-        if (!installed) g.PushOpacity(0.3f);
-        bool clicked = false;
-        {
-            UI::ButtonScope b(ui, ui.MakeId(id), { x, y, w, buttonH }, CardButtonStyle(buttonH));
-            if (withIcon) UI::Icons::LoadManip(g, { b.content.x, b.content.CY() - 6.f, 12.f, 12.f });
-            g.Text(text, b.content.CutLeft(iconW), Accent(200), smallText);
-            clicked = b.Clicked();
-        }
-        if (!installed) g.PopLayer();
-        x += w + 6.f;
-        return clicked;
-    };
-    if (textButton("ue4ss", L"UE4SS", mods.ue4ss, false)) main.OpenUe4ss(number);
-    if ((number == 1 || number == 4 || number == 5) && textButton("manip", L"MANIP", mods.loadManip, true)) main.OpenLoadManip(number);
-    if ((number == 1 || number == 4 || number == 5) && textButton("fullbright", L"FULLBRIGHT", mods.fullBright, false)) main.OpenFullBright(number);
 }
 
 } // namespace SpeedrunLauncher::Main

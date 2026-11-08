@@ -7,13 +7,17 @@ namespace SpeedrunLauncher::Main {
 
 class MainWindow;
 
-// The Chapters / Multiplayers tabs and, under them, the horizontal strip of cards (banner, title,
-// playtime or status, Save / UE4SS / MANIP / FULLBRIGHT buttons, "coming soon" lock). Mouse wheel
-// scrolls it sideways; switching tabs slides the new cards in.
+// The shelf at the bottom of the main screen: the Chapters / Multiplayers tabs and, under them, a
+// row of small poster cards (banner, title, playtime or status, "coming soon" lock). Clicking one
+// selects it (the hero above shows it); the mouse wheel scrolls the row sideways; switching tabs
+// slides the new cards in.
 class ChapterCards {
 public:
     explicit ChapterCards(MainWindow& window) : main(window) {}
     void Draw(UI::Ui& ui, const Rect& area);
+
+    // Chapters' banner (jpg, else png), resolved once per chapter
+    static const std::wstring& BannerPath(int chapter);
 
 private:
     // What one card shows (a chapter or a multiplayer game)
@@ -23,13 +27,14 @@ private:
         std::wstring subtitle;   // playtime / status
         bool available = true;
         bool selected = false;
-        int chapterIndex = -1;   // chapters only: the Save / mod buttons
+        bool running = false;
+        bool dimmed = true;      // unselected cards are dimmed (not while nothing is picked)
+        Font font = Font::Mono;   // chapters: the Poppy Playtime font
     };
 
     void DrawTabs(UI::Ui& ui, const Rect& area);
     void DrawCards(UI::Ui& ui, const Rect& area);
-    void DrawCard(UI::Ui& ui, const Card& card, int index, const Rect& r, float opacity);
-    void DrawCardButtons(UI::Ui& ui, size_t index, float x, float y);
+    void DrawCard(UI::Ui& ui, const Card& card, const Rect& r, float hover);
 
     MainWindow& main;
     App::Launcher::Section shownSection = App::Launcher::Section::Chapters;

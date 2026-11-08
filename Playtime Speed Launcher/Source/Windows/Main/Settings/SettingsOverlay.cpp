@@ -3,6 +3,7 @@
 #include "Core/Async.h"
 #include "Graphics/Animation.h"
 #include "Localization/Localization.h"
+#include "Services/Collectibles/InGameOverlay.h"
 #include "UI/Widgets/Button.h"
 #include "UI/Widgets/MenuKit.h"
 #include "UI/Widgets/ScrollArea.h"
@@ -31,7 +32,7 @@ constexpr std::array<TabInfo, SettingsOverlay::TabCount> kTabs{ {
     { "settings_tab_discord", SettingsTabs::Discord },
     { "settings_tab_livesplit", SettingsTabs::LiveSplit },
     { "settings_tab_overlays", SettingsTabs::Overlays },
-    { "settings_tab_icontheme", SettingsTabs::IconTheme },
+    { "settings_tab_collectibles", SettingsTabs::Collectibles },
 } };
 
 constexpr float kSidebarWidth = 155.f;
@@ -47,6 +48,8 @@ void SettingsOverlay::Open(Tab t) {
 
 void SettingsOverlay::Close() {
     capture.Cancel();
+    // 100%: never leave the overlay over the game grabbing the mouse
+    if (Services::Collectibles::InGameOverlay::Moving()) Services::Collectibles::InGameOverlay::EndMove();
     langOpen = false;
     popup.Close();
 }

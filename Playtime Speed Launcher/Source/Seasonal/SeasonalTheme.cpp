@@ -1,4 +1,5 @@
 #include "Seasonal/SeasonalTheme.h"
+#include <windows.h>
 #include <algorithm>
 #include <cmath>
 #include <unordered_map>
@@ -10,7 +11,11 @@ namespace SpeedrunLauncher::Seasonal {
 namespace {
 
 Season Resolve() {
-    const std::wstring t = Settings::IconTheme::Current().EffectiveTheme();
+    std::wstring t = Settings::IconTheme::Current().EffectiveTheme();
+#ifdef _DEBUG
+    // Debug builds: PSL_SEASON=halloween|summer|christmas|classic previews a season without touching the settings
+    if (wchar_t forced[32]{}; GetEnvironmentVariableW(L"PSL_SEASON", forced, 32) > 0) t = forced;
+#endif
     if (t == L"halloween") return Season::Halloween;
     if (t == L"summer") return Season::Summer;
     if (t == L"christmas") return Season::Christmas;

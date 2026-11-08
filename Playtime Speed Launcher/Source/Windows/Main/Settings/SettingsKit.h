@@ -47,6 +47,7 @@ enum CaptureTarget {
     CaptureCh5Freeze, CaptureCh5Normal, CaptureCh5Unlit, CaptureCh5Lit,
     CaptureCh4Freeze, CaptureCh4Slow, CaptureCh4Normal, CaptureCh4Unlit, CaptureCh4Lit,
     CaptureKeyClickAdd, CaptureKeyClickToggle,
+    CaptureCollectReset,
     CaptureF11Slot = 1000,       // + binding index
     CaptureKeyClickSlot = 2000,  // + binding index
 };
@@ -103,7 +104,7 @@ void Controller(SettingsContext& c);
 void Discord(SettingsContext& c);
 void LiveSplit(SettingsContext& c);
 void Overlays(SettingsContext& c);
-void IconTheme(SettingsContext& c);
+void Collectibles(SettingsContext& c);   // 100%
 } // namespace SettingsTabs
 
 } // namespace SpeedrunLauncher::Main

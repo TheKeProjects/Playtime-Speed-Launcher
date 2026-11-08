@@ -1,6 +1,7 @@
 #include "Windows/Standalone/StandaloneWindows.h"
 #include <memory>
 #include "App/Launcher.h"
+#include "Services/Collectibles/InGameOverlay.h"
 #include "Services/Discord/DiscordPresenceService.h"
 #include "Windows/Main/MainWindow.h"
 #include "Windows/Standalone/BeginnerTutorialWindow.h"
@@ -57,7 +58,7 @@ void ToggleCheckpointOverlay() {
 void ToggleVideoTutorialOverlay() {
     Toggle(videoTutorial, [](Windows::VideoTutorialWindow& w) { return w.Open(); }, [] {
         auto& launcher = App::L();
-        if (!launcher.chapters.empty()) launcher.discord->SetChapterSelected(launcher.Selected(), launcher.VersionLabel(launcher.Selected()));
+        if (!launcher.chapters.empty() && launcher.chapterPicked) launcher.discord->SetChapterSelected(launcher.Selected(), launcher.VersionLabel(launcher.Selected()));
         else launcher.discord->SetBrowsing();
     });
 }
@@ -84,6 +85,7 @@ void CloseAll() {
     leaderboard.reset();
     beginner.reset();
     manualUpdate.reset();
+    Services::Collectibles::InGameOverlay::Shutdown();
 }
 
 } // namespace SpeedrunLauncher::Standalone

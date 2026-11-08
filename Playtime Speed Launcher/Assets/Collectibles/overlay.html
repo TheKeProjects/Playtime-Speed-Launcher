@@ -1,0 +1,1234 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>100% - Poppy Collectibles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --panel: rgba(22, 12, 26, 0.80);
+    --panel-edge: rgba(255, 255, 255, 0.10);
+    --text: #f6f1f8;
+    --muted: #a092ad;
+    --poppy: #e8364f;
+    --huggy: #2e6be6;
+    --gold: #ffd23f;
+    --ok: #4ade80;
+    --dim: 0.32;
+    --scale: 1;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; color: var(--text); font-family: "Fredoka", system-ui, sans-serif; }
+
+  /* ---------- overlay ---------- */
+  #overlay { display: none; flex-direction: column; gap: 10px; padding: 12px; width: max-content; max-width: 100vw;
+             transform: scale(var(--scale)); transform-origin: top left; }
+  body.live { overflow: hidden; }   /* never scrollbars inside an OBS source */
+  body.live #overlay { display: flex; }
+  body.right #overlay { margin-left: auto; transform-origin: top right; }
+  .panel { background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 14px; padding: 10px 12px;
+           box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+  body.nobg .panel { background: transparent; border-color: transparent; box-shadow: none; }
+  .panel h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+              display: flex; justify-content: space-between; gap: 12px; }
+  .panel h3 b { color: var(--text); font-weight: 600; }
+
+  /* header: chapter + total */
+  #p-total { position: relative; overflow: hidden; min-width: 250px; }
+  .total { display: flex; align-items: center; gap: 10px; }
+  /* aligned right: the chapter art against the right edge, the numbers towards it */
+  body.right .total { flex-direction: row-reverse; }
+  body.right .total .line { justify-content: flex-end; }
+  body.right #p-total .bar i { margin-left: auto; }
+  /* the chapter's Steam art, cropped to its right part (the corner has Steam's DLC mark) */
+  .chbadge { flex: none; width: 80px; height: 44px; border-radius: 10px; background: #000 var(--art) right center / auto 100% no-repeat;
+             box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset, 0 2px 8px rgba(0,0,0,.5); }
+  .total .num { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; display: inline-block; }
+  .total .num .of { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .total .pct { font-size: 14px; color: var(--muted); }
+  .total .col { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+  .total .line { display: flex; align-items: baseline; gap: 8px; }
+  .bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; border-radius: inherit; transition: width .8s cubic-bezier(.3,1.2,.5,1);
+           background: linear-gradient(90deg, var(--huggy), var(--poppy)); }
+  #p-total.done .bar i { background: linear-gradient(90deg, var(--gold), #fff6c8, var(--gold)); }
+  #p-total.done .num { color: var(--gold); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); align-self: flex-start; flex: none;
+                animation: breathe 2.4s ease-out infinite; }
+  .status-dot.off { background: #f87171; animation: none; }
+  @keyframes breathe { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.55); } 70%, 100% { box-shadow: 0 0 0 7px rgba(74,222,128,0); } }
+  #p-total::after { content: ""; position: absolute; inset: 0; pointer-events: none; transform: translateX(-100%);
+                    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.08) 50%, transparent 65%);
+                    animation: sweep 9s ease-in-out infinite 2s; }
+  @keyframes sweep { 0%, 82% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+  #msg { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  #msg:empty { display: none; }
+
+  /* categories */
+  .gi { display: block; width: 100%; height: 100%; background: currentColor; flex: none;
+        -webkit-mask: var(--img) center / contain no-repeat; mask: var(--img) center / contain no-repeat; }
+  .cats { display: grid; grid-template-columns: repeat(var(--ccols, 1), minmax(220px, 1fr)); gap: 5px 10px; }
+  .cat { display: grid; grid-template-columns: 30px 1fr auto; grid-template-rows: auto 4px; column-gap: 10px; row-gap: 3px; align-items: center;
+         padding: 5px 10px 6px; border-radius: 10px; background: rgba(255,255,255,.04); position: relative; }
+  .cat .ic { grid-row: span 2; width: 30px; height: 30px; color: var(--cc); filter: drop-shadow(0 1px 2px rgba(0,0,0,.8)); }
+  .cat .nm { font-size: 15px; white-space: nowrap; }
+  .cat .ct { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; display: inline-block; }
+  .cat .ct .of { color: var(--muted); font-weight: 400; }
+  .cat .bar { grid-column: 2 / span 2; height: 4px; }
+  /* a group's total (Chapter 4: notes + journals), its categories indented under it */
+  .cat .ic .gi, .toast .gi, .grp .gi, #guide .gh .gi { transform: scale(1.3); }   /* the textures have a margin */
+  .cat.group .nm { font-weight: 600; }
+  .cat.child { margin-left: 22px; grid-template-columns: 24px 1fr auto; padding-top: 3px; padding-bottom: 4px; }
+  .cat.child .ic { width: 24px; height: 24px; }
+  .cat.played .nm::before { content: "\25B6"; font-size: 10px; margin-right: 6px; color: var(--cc); vertical-align: 1px; }
+  .cat.child .nm { font-size: 14px; }
+  .cat.child .ct { font-size: 15px; }
+  .sep { grid-column: 1 / -1; height: 2px; margin: 4px 6px; border-radius: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent); }
+  .cat .bar i { background: var(--cc); }
+  .cat.full .ct { background: linear-gradient(90deg, var(--gold) 0%, #fff6c8 25%, var(--gold) 50%) 0 0 / 200% 100%;
+                  -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 3.5s linear infinite; }
+  .cat.full .ct .of { color: transparent; }
+  .cat.full .bar i { background: linear-gradient(90deg, var(--gold), #fff6c8, var(--gold)); }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .cat.got { animation: got 1.1s ease-out; }
+  @keyframes got { 0% { background-color: color-mix(in srgb, var(--cc) 55%, transparent); transform: scale(1.04); } 100% { background-color: rgba(255,255,255,.04); transform: none; } }
+  .cat.got .ic { animation: hop .8s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes hop { 35% { transform: translateY(-6px) scale(1.25) rotate(-12deg); } 70% { transform: translateY(1px) scale(.95) rotate(6deg); } }
+  .cat.got .ct { animation: ctpop .6s ease-out; }
+  .cat.full.got .ct { animation: ctpop .6s ease-out, shimmer 3.5s linear infinite; }
+  @keyframes ctpop { 30% { transform: scale(1.45); text-shadow: 0 0 10px var(--cc); } }
+  .cat.wink .ic { animation: wink .7s ease-in-out; }
+  @keyframes wink { 25% { transform: rotate(-14deg) scale(1.1); } 60% { transform: rotate(10deg); } }
+
+  /* checklist */
+  .list { display: grid; grid-template-columns: repeat(var(--lcols, 1), minmax(200px, auto)); gap: 2px 14px;
+          max-height: calc(var(--lmax, 9999) * 1px); overflow: hidden; }
+  .grp { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; margin: 6px 0 2px; font-size: 12px; letter-spacing: .08em;
+         text-transform: uppercase; color: var(--cc); }
+  .grp:first-child { margin-top: 0; }
+  .grp .gi { width: 15px; height: 15px; }
+  .grp b { color: var(--muted); font-weight: 400; margin-left: auto; letter-spacing: 0; }
+  .it { display: flex; align-items: center; gap: 7px; font-size: 13.5px; white-space: nowrap; padding: 1px 4px; border-radius: 6px;
+        transition: opacity .35s; }
+  .it .ck { width: 14px; height: 14px; flex: none; border-radius: 4px; border: 1.5px solid rgba(255,255,255,.3); display: grid; place-items: center; }
+  .it.yes .ck { background: var(--cc); border-color: var(--cc); }
+  .it.yes .ck::after { content: ""; width: 7px; height: 4px; border: 2px solid #1a0f1d; border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg); }
+  .it.no { opacity: var(--dim); }
+  body.missing .it.yes { display: none; }
+  body.missing .it.no { opacity: 1; }
+  body.missing .grp.full { display: none; }
+  .it.new { animation: pop 1.2s ease-out; }
+  @keyframes pop { 0% { transform: scale(1.25); background: color-mix(in srgb, var(--cc) 45%, transparent); } 100% { transform: none; background: transparent; } }
+  /* Chapter 1: the tapes side by side in their own color, a light under each once it's in its VHS player */
+  .tapes { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 6px; padding: 4px 4px 2px; }
+  .tape { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 46px; }
+  .tape .cs { position: relative; width: 42px; height: 27px; border-radius: 5px; background: var(--tc); opacity: .2;
+              box-shadow: inset 0 0 0 2px rgba(0,0,0,.35); transition: opacity .4s, box-shadow .4s, transform .4s; }
+  /* the window with the two reels */
+  .tape .cs::before { content: ""; position: absolute; left: 7px; right: 7px; top: 7px; height: 10px; border-radius: 5px; background:
+                      radial-gradient(circle at 7px 5px, var(--tc) 0 2.5px, #1a0f1d 3px 5px, transparent 5.5px),
+                      radial-gradient(circle at calc(100% - 7px) 5px, var(--tc) 0 2.5px, #1a0f1d 3px 5px, transparent 5.5px), rgba(0,0,0,.55); }
+  .tape.yes .cs { opacity: 1; box-shadow: inset 0 0 0 2px rgba(0,0,0,.35), 0 0 12px color-mix(in srgb, var(--tc) 70%, transparent); }
+  .tape.new .cs { animation: tapein 1.1s ease-out; }
+  @keyframes tapein { 30% { transform: translateY(-6px) scale(1.18) rotate(-6deg); } 65% { transform: translateY(1px) scale(.96); } }
+  .tape .pl { display: grid; place-items: center; width: 22px; height: 14px; border-radius: 7px; font-size: 8px; line-height: 1;
+              color: rgba(255,255,255,.25); background: rgba(255,255,255,.06); transition: background .4s, color .4s, box-shadow .4s; }
+  .tape.played .pl { color: #1a0f1d; background: var(--tc); box-shadow: 0 0 8px var(--tc); }
+  .tape.justplayed .pl { animation: plin 1.2s ease-out; }
+  @keyframes plin { 0% { transform: scale(1.8); } 100% { transform: none; } }
+  .it .pl { display: none; margin-left: 6px; font-size: 10px; color: var(--cc); }
+  .it.played .pl { display: inline; }
+  .list .alldone { grid-column: 1 / -1; color: var(--gold); font-weight: 600; font-size: 15px; display: none; }
+  body.missing .list.complete .alldone { display: block; }
+
+  .spark, .flyer { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 20; border-radius: 50%; }
+  /* ?ingame=1 (the launcher's overlay over the game): nothing that animates forever, so the window stays
+     still between pickups (while it moves, Windows composes it with the game on every frame) */
+  body.ingame .status-dot, body.ingame #p-total::after, body.ingame .cat.full .ct, body.ingame #p-total.done .bar i { animation: none !important; }
+  body.ingame #p-total::after { display: none; }
+  body.noanim #overlay *, body.noanim #overlay *::before, body.noanim #overlay *::after { animation: none !important; }
+  /* ?move=1: the launcher's overlay over the game while it's being dragged (Settings → 100% → Move) */
+  body.moving::before { content: ""; position: fixed; inset: 0; border: 2px dashed var(--gold); border-radius: 12px;
+                        background: rgba(255,210,63,.06); pointer-events: none; z-index: 30; }
+  body.moving::after { content: attr(data-move); position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 31;
+                       background: var(--gold); color: #1a0f1d; font-weight: 700; font-size: 14px; padding: 6px 14px; border-radius: 999px;
+                       white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+
+  #toasts { position: fixed; right: 16px; bottom: 16px; display: grid; justify-items: end;
+            --dx: 40px; transform: scale(var(--scale)); transform-origin: bottom right; z-index: 1; }
+  /* in the overlay: a pile of cards right under the panels, against the same edge. The front one is the
+     current notification; the next ones peek out behind it, smaller and dimmer (see toast() in the script) */
+  body.live .panel { position: relative; z-index: 2; }
+  /* A card wider than the panels overflows on the "end" side: aligned right, the pile runs right to left
+     (the cards themselves stay left to right) so its start, where cards stick, is the right edge */
+  #toasts.stack { position: relative; inset: auto; transform: none; justify-items: start; contain: inline-size; }
+  body.right #toasts.stack { direction: rtl; }
+  /* all as wide as the panels, like a pile of folders: the ones behind peek out on the inner side */
+  #toasts.stack .toast { width: 100%; min-width: 0; }
+  #toasts.stack .toast > span { min-width: 0; overflow: hidden; }
+  #toasts.stack .toast > span, #toasts.stack .toast small { overflow: hidden; text-overflow: ellipsis; }
+  #toasts .toast { direction: ltr; grid-area: 1 / 1; white-space: nowrap; animation: none; transform-origin: left center;
+                   background: #21152a;   /* opaque: the cards behind only peek out at the side */
+                   transition: transform .45s cubic-bezier(.2,.8,.3,1), opacity .45s, filter .45s; }
+  body.right #toasts .toast, #toasts:not(.stack):not(.c-bl):not(.c-tl) .toast { transform-origin: right center; }
+  body.toastview #overlay { display: none !important; }
+  #toasts.c-tr { bottom: auto; top: 16px; transform-origin: top right; }
+  #toasts.c-tl { right: auto; bottom: auto; left: 16px; top: 16px; align-items: flex-start; transform-origin: top left; --dx: -40px; }
+  #toasts.c-bl { right: auto; left: 16px; align-items: flex-start; transform-origin: bottom left; --dx: -40px; }
+  .toast { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid color-mix(in srgb, var(--cc, var(--gold)) 70%, transparent);
+           color: var(--text); padding: 9px 16px 9px 12px; border-radius: 12px; font-size: 18px; font-weight: 600; box-shadow: 0 6px 18px rgba(0,0,0,.45);
+           animation: tin .35s ease-out, tout .5s ease-in forwards; animation-delay: 0s, var(--life, 4.5s); }
+  .toast .gi { width: 26px; height: 26px; color: var(--cc, var(--gold)); flex: none; }
+  .toast em { font-style: normal; color: var(--cc, var(--gold)); }
+  .toast small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+  .toast.big { font-size: 22px; border-color: var(--gold); --cc: var(--gold); }
+  @keyframes tin { from { transform: translateX(var(--dx)); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes tout { to { transform: translateX(var(--dx)); opacity: 0; } }
+
+  /* ---------- setup page ---------- */
+  body.setup { background: radial-gradient(1200px 500px at 50% -200px, #3a1230 0%, #120c16 60%) #120c16 fixed; }
+  #titlebar { display: none; position: fixed; inset: 0 0 auto 0; height: 36px; z-index: 50; align-items: center;
+              background: rgba(18, 12, 22, .88); backdrop-filter: blur(8px); border-bottom: 1px solid #2c1d33;
+              app-region: drag; -webkit-app-region: drag; user-select: none; }
+  body.framed #titlebar { display: flex; }
+  body.framed #scroller { position: fixed; inset: 36px 0 0 0; overflow-y: auto; }
+  body.framed #setup { padding-top: 16px; }
+  #scroller::-webkit-scrollbar { width: 10px; }
+  #scroller::-webkit-scrollbar-thumb { background: #3b2846; border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+  #scroller::-webkit-scrollbar-thumb:hover { background-color: #523862; }
+  #titlebar .tt { flex: 1; display: flex; align-items: center; gap: 8px; padding-left: 12px; font-size: 13px; color: #ddd0e4; }
+  #titlebar .tt svg { width: 16px; height: 16px; }
+  #titlebar .wb { app-region: no-drag; -webkit-app-region: no-drag; width: 46px; height: 36px; padding: 0; border-radius: 0;
+                  background: transparent; color: #ddd0e4; display: grid; place-items: center; transition: background .12s; }
+  #titlebar .wb:hover { background: rgba(255,255,255,.08); filter: none; }
+  #titlebar .wb.close:hover { background: #c42b1c; color: #fff; }
+  #titlebar .wb svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 1.2; fill: none; }
+  #titlebar .wb .restore { display: none; }
+  body.maximized #titlebar .wb .restore { display: block; }
+  body.maximized #titlebar .wb .maximize { display: none; }
+  #resizetop { position: absolute; inset: 0 0 auto 0; height: 4px; cursor: ns-resize; app-region: no-drag; -webkit-app-region: no-drag; }
+  body.maximized #resizetop { display: none; }
+  #setup { display: none; max-width: 780px; margin: 0 auto; padding: 18px 16px 48px; }
+  body.setup #setup { display: block; }
+  #setup header { display: flex; align-items: center; gap: 12px; margin: 4px 2px 14px; }
+  #setup header svg { width: 38px; height: 38px; flex: none; filter: drop-shadow(0 0 10px rgba(232,54,79,.45)); }
+  #setup h1 { font-size: 24px; margin: 0; line-height: 1.1; }
+  #setup h1 span { color: var(--poppy); }
+  #setup header small { display: block; color: var(--muted); font-size: 13px; }
+  #setup p { color: #c4b8cc; line-height: 1.5; margin: 0 0 10px; font-size: 14px; }
+  .card { background: rgba(32, 20, 38, .92); border: 1px solid #3a2844; border-radius: 16px; padding: 16px 18px; margin: 12px 0; }
+  .card h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted);
+             display: flex; align-items: center; gap: 8px; }
+  .card h2 .n { width: 20px; height: 20px; border-radius: 50%; background: #3a2844; color: var(--text); display: grid;
+                place-items: center; font-size: 11px; letter-spacing: 0; }
+  .card h2 .hint { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .card.link { border-color: rgba(232,54,79,.55); background: linear-gradient(180deg, rgba(232,54,79,.14), rgba(32,20,38,.92) 70%);
+               box-shadow: 0 8px 30px rgba(232,54,79,.12); }
+  .card.link h2 { color: #ff8fa0; }
+  .url-row { display: flex; gap: 8px; }
+  .url-row input { flex: 1; min-width: 0; }
+  .link-name { margin: 12px 0 6px; font-size: 15px; font-weight: 600; display: flex; align-items: baseline; gap: 8px; }
+  .link-name:first-of-type { margin-top: 0; }
+  .link-name .hint { font-size: 12.5px; font-weight: 400; color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 10px 0 0; }
+  .sub { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 0; }
+  label { font-size: 14px; color: #ddd0e4; display: flex; align-items: center; gap: 6px; }
+  input[type=text], input[type=number], select { background: #120c16; color: var(--text); border: 1px solid #4a3556;
+         border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 15px; }
+  input:focus, select:focus { outline: 2px solid rgba(232,54,79,.6); outline-offset: 1px; }
+  input[type=number] { width: 76px; }
+  button { background: var(--poppy); color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font: inherit;
+           font-weight: 600; cursor: pointer; transition: filter .15s; }
+  button:hover { filter: brightness(1.15); }
+  button.ghost { background: #3a2844; }
+  #url { font-family: ui-monospace, monospace; font-size: 13px; }
+  .seg { display: inline-flex; border: 1px solid #4a3556; border-radius: 999px; overflow: hidden; }
+  .seg button { background: #120c16; color: #ddd0e4; border-radius: 0; padding: 7px 14px; font-weight: 400; }
+  .seg button + button { border-left: 1px solid #4a3556; }
+  .seg button.on { background: rgba(232,54,79,.22); color: var(--text); }
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .tg { cursor: pointer; padding: 7px 12px 7px 10px; border-radius: 999px; background: #120c16; border: 1px solid #4a3556;
+        transition: background .15s, border-color .15s; user-select: none; }
+  .tg input { appearance: none; margin: 0; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #6a4f7a; flex: none; }
+  .tg:has(input:checked) { background: rgba(232,54,79,.14); border-color: rgba(232,54,79,.6); color: var(--text); }
+  .tg input:checked { border-color: var(--poppy); background: radial-gradient(circle, var(--poppy) 45%, transparent 50%); }
+  /* detected saves */
+  .games { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .game { background: #120c16; border: 1px solid #3a2844; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .game.active { border-color: rgba(232,54,79,.7); box-shadow: 0 0 0 1px rgba(232,54,79,.3) inset; }
+  .game .top { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .game .top .pill { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: rgba(74,222,128,.18); color: var(--ok); font-weight: 600; }
+  .game .top .pill.off { background: rgba(255,255,255,.08); color: var(--muted); }
+  .game .top .big { margin-left: auto; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .game .file { font-size: 12px; color: var(--muted); word-break: break-all; }
+  .game button { align-self: flex-start; padding: 5px 10px; font-size: 13px; }
+  /* full checklist in the setup page */
+  #guide .gcat { margin-top: 12px; }
+  #guide .gcat:first-child { margin-top: 0; }
+  #guide .gh { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--cc); }
+  #guide .gh .gi { width: 20px; height: 20px; }
+  #guide .gh b { margin-left: auto; color: var(--text); font-variant-numeric: tabular-nums; }
+  #guide ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 4px 12px; }
+  #guide li { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; padding: 3px 6px; border-radius: 8px; }
+  #guide li .ck { margin-top: 3px; width: 14px; height: 14px; flex: none; border-radius: 4px; border: 1.5px solid rgba(255,255,255,.3); display: grid; place-items: center; }
+  #guide li.yes .ck { background: var(--cc); border-color: var(--cc); }
+  #guide li.yes .ck::after { content: ""; width: 7px; height: 4px; border: 2px solid #1a0f1d; border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg); }
+  #guide li.yes .t { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(255,255,255,.25); }
+  #guide li small { display: block; color: var(--muted); font-size: 12px; }
+  body.gmissing #guide li.yes { display: none; }
+  @media (max-width: 560px) { .games { grid-template-columns: 1fr; } .card h2 .hint { display: none; } }
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <div class="panel" id="p-total">
+    <div class="total">
+      <div class="chbadge" id="chart"></div>
+      <div class="col">
+        <div class="line"><span class="num" id="total">0</span><span class="pct" id="pct"></span></div>
+        <div class="bar"><i id="tbar"></i></div>
+      </div>
+      <span class="status-dot" id="dot"></span>
+    </div>
+    <div id="msg"></div>
+  </div>
+  <div class="panel" id="p-cats"><div class="cats" id="cats"></div></div>
+  <div class="panel" id="p-list"><h3><span id="listTitle"></span><b id="listSummary"></b></h3><div class="list" id="list"></div></div>
+</div>
+<div id="toasts"></div>
+
+<div id="titlebar">
+  <div id="resizetop"></div>
+  <div class="tt"><svg viewBox="0 0 24 24" aria-hidden="true" class="logo"></svg> 100% · Poppy Collectibles · Playtime Speed Launcher</div>
+  <button class="wb" data-win="minimize" title="Minimizar"><svg viewBox="0 0 10 10"><path d="M0 5.5h10"/></svg></button>
+  <button class="wb" data-win="maximize" title="Maximizar"><svg class="maximize" viewBox="0 0 10 10"><rect x=".6" y=".6" width="8.8" height="8.8"/></svg>
+    <svg class="restore" viewBox="0 0 10 10"><rect x=".6" y="2.6" width="6.8" height="6.8"/><path d="M2.6 2.6V.6h6.8v6.8H7.4"/></svg></button>
+  <button class="wb close" data-win="close" title="Cerrar"><svg viewBox="0 0 10 10"><path d="M.5.5l9 9M9.5.5l-9 9"/></svg></button>
+</div>
+
+<div id="scroller">
+<div id="setup">
+  <header>
+    <svg viewBox="0 0 24 24" aria-hidden="true" class="logo"></svg>
+    <div><h1><span>100%</span> Poppy Collectibles</h1><small>Coleccionables de Poppy Playtime Capítulos 1 a 5 en OBS, leídos de tu partida</small></div>
+  </header>
+
+  <div class="card link">
+    <h2>Enlace para OBS <span class="hint">una Fuente de navegador</span></h2>
+    <div class="link-name">Coleccionables y notificaciones <span class="hint">ancho 500, alto 1000 · los avisos salen abajo, en el lado elegido</span></div>
+    <div class="url-row">
+      <input type="text" id="url" readonly>
+      <button data-copy>Copiar URL</button>
+    </div>
+    <div class="row">
+      <button class="ghost" id="btn-open">Abrir overlay</button>
+      <button class="ghost" id="btn-demo">Ver demo</button>
+      <button class="ghost" id="btn-test" title="Lanza un coleccionable de prueba en los overlays abiertos (OBS incluido)">Probar en OBS</button>
+      <span id="testinfo" style="font-size:13px;color:var(--muted)"></span>
+    </div>
+    <p style="font-size:13px;margin:10px 0 0" id="noapp" hidden>⚠️ Esta página tiene que abrirse desde el launcher (botón 100%, http://127.0.0.1:…): es el que lee las partidas.</p>
+  </div>
+
+  <div class="card" id="gamecard" hidden>
+    <h2>Overlay en el juego <span class="hint">sin OBS</span></h2>
+    <p>Muestra estos mismos paneles y avisos encima del juego mientras tengas abierto un capítulo. Usa las opciones de
+      “Qué mostrar”, y el lado elegido es el lado de la pantalla. Los clics pasan al juego. Se ve en ventana o pantalla completa sin bordes
+      (en pantalla completa exclusiva Windows no deja dibujar encima).</p>
+    <div class="row">
+      <label class="tg"><input type="checkbox" id="f-ingame"> Mostrar encima del juego</label>
+      <button class="ghost" id="btn-preview" title="Lo muestra 10 segundos aunque el juego no esté abierto">Vista previa (10 s)</button>
+      <span id="ingameinfo" style="font-size:13px;color:var(--muted)"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">1</span> Partida detectada <span class="hint">se actualiza sola</span></h2>
+    <p>Con el juego abierto, el overlay lee el inventario directamente de la memoria del juego (solo lectura): cada coleccionable
+      aparece en cuanto lo coges. Con el juego cerrado, muestra la última partida guardada (<code>%LOCALAPPDATA%\Playtime_Chapter3</code> / <code>ch4_pro</code> / <code>ch5_pro</code>). Las cintas de los Capítulos 1 y 2 no se guardan: solo se ven con el juego abierto.</p>
+    <div class="games" id="games"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span> Qué mostrar</h2>
+    <div class="row" style="margin-top:0">
+      <span class="seg" id="seg-ch" title="Capítulo del overlay">
+        <button type="button" data-v="auto">Automático</button>
+        <button type="button" data-v="1">Capítulo 1</button>
+        <button type="button" data-v="2">Capítulo 2</button>
+        <button type="button" data-v="3">Capítulo 3</button>
+        <button type="button" data-v="4">Capítulo 4</button>
+        <button type="button" data-v="5">Capítulo 5</button>
+      </span>
+      <input type="hidden" id="f-ch" value="auto">
+    </div>
+    <p style="font-size:13px;margin:8px 0 0">Automático: el capítulo que tengas abierto o, si no hay ninguno, el último que guardó.</p>
+    <div class="toggles" style="margin-top:12px">
+      <label class="tg"><input type="checkbox" id="f-cats" checked> Contadores por tipo</label>
+      <label class="tg"><input type="checkbox" id="f-list"> Lista de coleccionables</label>
+      <label class="tg"><input type="checkbox" id="f-missing" checked> Lista: solo lo que falta</label>
+      <label class="tg"><input type="checkbox" id="f-toasts" checked> Notificaciones</label>
+      <label class="tg"><input type="checkbox" id="f-anim" checked> Animaciones</label>
+    </div>
+    <div class="sub">Apariencia</div>
+    <div class="toggles">
+      <label class="tg"><input type="checkbox" id="f-nobg"> Sin fondo en paneles</label>
+      <span class="seg" id="seg-align" title="Lado de la fuente de OBS: paneles, imagen del capítulo y notificaciones">
+        <button type="button" data-v="left">Izquierda</button>
+        <button type="button" data-v="right">Derecha</button>
+      </span>
+      <input type="hidden" id="f-align" value="left">
+    </div>
+    <div class="row">
+      <label>Idioma <select id="f-lang"><option value="es">Español</option><option value="en">English</option></select></label>
+      <label>Escala <input type="number" id="f-scale" value="1" min="0.3" max="3" step="0.1"></label>
+      <label>Columnas contadores <input type="number" id="f-ccols" value="1" min="1" max="5"></label>
+      <label>Columnas lista <input type="number" id="f-lcols" value="1" min="1" max="6"></label>
+      <label>Refresco (s) <input type="number" id="f-poll" value="0.5" min="0.25" max="30" step="0.25"></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span> Checklist para el 100% <span class="hint" id="guideSummary"></span></h2>
+    <div class="row" style="margin:0 0 12px">
+      <span class="seg" id="seg-gch">
+        <button type="button" data-v="1">Capítulo 1</button>
+        <button type="button" data-v="2">Capítulo 2</button>
+        <button type="button" data-v="3">Capítulo 3</button>
+        <button type="button" data-v="4">Capítulo 4</button>
+        <button type="button" data-v="5">Capítulo 5</button>
+      </span>
+      <label class="tg"><input type="checkbox" id="f-gmissing"> Solo lo que falta</label>
+    </div>
+    <div id="guide"></div>
+  </div>
+</div>
+</div>
+
+<script>
+(() => {
+  // ---------------- data ----------------
+  // Every collectible that counts for each chapter's achievements, with the key(s) it is saved under:
+  //  Chapter 3: a key of the inventory map (the item's Name in ItemDataTable), " <name> "
+  //  Chapter 4: a row of DT_Items in the inventory, stored as a length-prefixed name ("\0<row>\0")
+  //  Chapter 5: an item definition asset in the inventory ("/<ID_...>.<ID_...>_C")
+  // An item with several keys counts when any of them is there (alternative versions of the same pickup).
+  // Category icons taken from Chapter 5's inventory (PoppyUI/Menus/Inventory_v2/Textures/T_Icon*, now Assets/Web/Icons): white
+  // silhouettes, drawn as a mask in the category's color
+  const ICON_IMG = { vhs: "icons/VHS.png", audio: "icons/AudioTape.png", diary: "icons/Documents.png",
+                     note: "icons/Note.png", toy: "icons/Collection.png" };
+  const ICONS = Object.fromEntries(Object.entries(ICON_IMG).map(([k, v]) => [k, `<i class="gi" style="--img:url(${v})"></i>`]));
+  const LOGO = '<circle cx="12" cy="12" r="11" fill="#225cd6" stroke="#fff" stroke-width="1"/>' +
+    [0, 1, 2, 3, 4].map((i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / 5; return `<circle cx="${(12 + 4 * Math.cos(a)).toFixed(2)}" cy="${(12 + 4 * Math.sin(a)).toFixed(2)}" r="3.8" fill="#e81c3a"/>`; }).join("") +
+    '<circle cx="12" cy="12" r="2" fill="#ffd640"/>';
+
+  // Steam header of each chapter (Assets/Web/Chapters, from store_item_assets/steam/apps/3008670 and 4100940)
+  const ART = { 1: "chapters/Chapter1.jpg", 2: "chapters/Chapter2.jpg", 3: "chapters/Chapter3.jpg", 4: "chapters/Chapter4.jpg", 5: "chapters/Chapter5.jpg" };
+
+  const it = (k, n, a, h) => ({ k: Array.isArray(k) ? k : [k], n, a: a || "", h: h || "" });
+  // Chapter 1 saves no tapes: the launcher reads them live and names them by color, "\0vhs:<color>\0" once
+  // got. They're shown in a row (strip).
+  const tape = (color, hex, n, a, h) => ({ ...it("vhs:" + color, n, a, h), tc: hex });
+  const CHAPTERS = {
+    1: {
+      title: "A Tight Squeeze",
+      key: (k) => "\0" + k + "\0",
+      strip: true,
+      cats: [
+        { id: "vhs", es: "Cintas VHS", en: "VHS Tapes", one: { es: "Nueva VHS", en: "New VHS" }, c: "#ff5a76", icon: "vhs", items: [
+          tape("blue", "#4f8dff", "Security Tape", "Entrance", "Azul"),
+          tape("green", "#5ce08a", "Leith Pierre", "Entrance", "Verde"),
+          tape("yellow", "#ffd23f", "Rich Avery", "Storage", "Amarilla"),
+          tape("pink", "#ff7ac8", "Stella Greyber", "Machine Room", "Rosa"),
+          tape("black", "#b9b3c4", "The Scientist", "Catwalk", "Negra"),
+        ] },
+      ],
+    },
+    // Chapter 2: named by the launcher (live): "\0vhs:<Name>\0", "\0trophy:<Name>\0", "\0doc:<Name>\0"
+    2: {
+      title: "Fly in a Web",
+      key: (k) => "\0" + k + "\0",
+      cats: [
+        { id: "vhs", es: "Cintas VHS", en: "VHS Tapes", one: { es: "Nueva VHS", en: "New VHS" }, c: "#ff5a76", icon: "vhs", items: [
+          it("vhs:Ludwig", "Elliot Ludwig's Biography", "Intro"),
+          it("vhs:JimmyRoth", "Jimmy Roth", "Water Treatment"),
+          it("vhs:GreenHand", "Green Hand", "Molding Room"),
+          it("vhs:Manager", "Manager", "After the water puzzle"),
+          it("vhs:Scientist", "The Prototype (Scientist)", "Industrial Stairs"),
+          it("vhs:Scepticye", "Marcus Brickley", "Spiral Staircase"),
+          it("vhs:Rich", "Rich", "Revoked Toys"),
+        ] },
+        { id: "notes", es: "Notas", en: "Notes", one: { es: "Nueva nota", en: "New note" }, c: "#ffcf5a", icon: "note", items: [
+          it("doc:814", "Document 814"),
+          it("doc:Construction", "Construction"),
+          it("doc:Matteo", "Matteo Lata"),
+          it("doc:Proctoring", "Proctoring"),
+          it("doc:SaraAbella", "Sara Abella"),
+          it("doc:Transfer", "Transfer"),
+          it("doc:Windows", "Windows"),
+        ] },
+        { id: "trophies", es: "Trofeos", en: "Trophies", one: { es: "Nuevo trofeo", en: "New trophy" }, c: "#ffb13b", icon: "toy", items: [
+          it("trophy:Daisy", "Daisy", "Intro"),
+          it("trophy:Barry", "Barry", "Water Treatment (conveyor puzzle)"),
+          it("trophy:GreenHand", "Green Hand", "Molding Room"),
+          it("trophy:Claw", "Claw", "HUB"),
+          it("trophy:Train", "Mommy's Loco Motive (Train)", "HUB"),
+          it("trophy:PJ", "PJ Pugapillar", "Window escape hallway"),
+          it("trophy:Bunzo", "Bunzo", "Revoked Toys"),
+          it("trophy:Kissy", "Kissy Missy", "Spiral Staircase"),
+          it("trophy:Mommy", "Mommy Long Legs", "The end"),
+        ] },
+      ],
+    },
+    3: {
+      title: "Deep Sleep",
+      // A key of the inventory map: the item's Name in ItemDataTable (the tapes' include the quotes).
+      // Not tapes: Tape_01 ("Tape 1", a placeholder row) and Tape_12 ("THE HOUR OF JOY", in no map).
+      key: (k) => "\0" + k + "\0",
+      cats: [
+        { id: "vhs", es: "Cintas VHS", en: "VHS Tapes", one: { es: "Nueva VHS", en: "New VHS" }, c: "#ff5a76", icon: "vhs", items: [
+          it('"Claire Harper Debrief"', "Claire Harper Debrief", "Intro Tunnels", "Azul: tras el primer conducto"),
+          it('"Grabpack 2.0 Prototype"', "Grabpack 2.0 Prototype", "Gas Production Zone", "Lima: donde consigues el GrabPack 2.0"),
+          it('"WELCOME TO PLAYTIME"', "WELCOME TO PLAYTIME", "Nightmare", "Roja: al final de la pesadilla"),
+          it('"#1322 Report: VOID"', "#1322 Report: VOID", "Home Sweet Home", "Marrón: primera planta"),
+          it('"Samuel Lee\'s Last Day"', "Samuel Lee's Last Day", "Home Sweet Home", "Verde: segunda planta"),
+          it('"(Illegible Writing)"', "(Illegible Writing)", "School", "Amarilla: tras el segundo puzle eléctrico"),
+          it('"Stuart & Rich"', "Stuart & Rich", "Caves", "Naranja: en las cuevas, después de la Escuela"),
+          it('"CatNap Check-In"', "CatNap Check-In", "Playhouse", "Morada: después de las cuevas"),
+          it('"8/8/95 EMERGENCY ALERT"', "8/8/95 EMERGENCY ALERT", "Office", "Blanca: cerca del inicio de la Oficina"),
+          it('"Hartmann Incident"', "Hartmann Incident", "Office", "Rosa: sala de la llave del conducto"),
+          it('"Log 24459"', "Log 24459", "CatNap", "Negra: a la izquierda del ascensor, pelea con CatNap"),
+        ] },
+        { id: "notes", es: "Notas", en: "Notes", one: { es: "Nueva nota", en: "New note" }, c: "#ffcf5a", icon: "note", items: [
+          it("Note 1", "Teacher Note A", "School"),
+          it("Note 2", "Teacher Note B", "School"),
+          it("Note 3", "Teacher Note C", "School"),
+          it("Note 4", "Teacher Note D", "School"),
+          it("Note 5", "Teacher Note E", "School"),
+          it("Note 6", "Teacher Note F", "School"),
+        ] },
+      ],
+    },
+    4: {
+      title: "Safe Haven",
+      key: (k) => "\0" + k + "\0",
+      // Shown as one counter (the sum) above the two of its categories
+      groups: [{ id: "docs", es: "Notas y diarios", en: "Notes & journals", c: "#ffa95a", icon: "note", cats: ["notes", "diaries"] }],
+      cats: [
+        { id: "notes", es: "Notas", en: "Notes", one: { es: "Nueva nota", en: "New note" }, c: "#ffcf5a", icon: "note", items: [
+          it("RedSmokeDocumentation", "Caution: Red Smoke"),
+          it("CellBlocks_Observations1_Note", "Weekly Checkup: 1172", "Prison Cell Blocks"),
+          it("CellBlocks_Observations2_Note", "Weekly Checkup: 1424", "Prison Cell Blocks"),
+          it("CellBlocks_1163PrisonProfile_Note", "Prisoner Profile, Experiment 1163", "Prison Cell Blocks"),
+          it("CellBlocks_1166PrisonerProfile_Note", "Prisoner Profile, Experiment 1166", "Prison Cell Blocks"),
+          it("UtilityZone_ReconReport1_Note", "Reconnaissance Report: 12.15.04", "Prison Utility Zone"),
+          it("SafeHaven_ReconReport2_Note", "Reconnaissance Report: 01.10.05", "Safe Haven"),
+          it("SafeHaven_UntitledPoem_Note", "An Untitled Poem", "Safe Haven"),
+          it("SafeHaven_JacksParents_Note", "A Cryptic Letter", "Safe Haven"),
+          it("SafeHaven_SafeHavenProjectOverview", "Project Overview: Safe Haven", "Safe Haven"),
+          it("WasteWaterPlant_Subject1322C_Note", "Subject 1322C Report", "Waste Water Plant"),
+          it("NoMansLand_Propaganda_Notes", "Propaganda Flier", "No Man's Land"),
+          it("DoctorsDomain_MissionStatement_Notes", "Secondary Lab Mission Statement", "Doctor's Domain"),
+          it("DoctorsDomain_HSKT_Doc", "Secondary Lab Instructions", "Doctor's Domain"),
+          it("DoctorsHQ_HiddenDoc1_Notes", "Young Geniuses Program Removal Letter", "Doctor's Headquarters"),
+          it("Foundation_AccelerantNote", "Foundation Operator Note", "The Foundation"),
+        ] },
+        { id: "diaries", es: "Diarios", en: "Journals", one: { es: "Nuevo diario", en: "New journal" }, c: "#c08bff", icon: "diary", items: [
+          it("ToyGraveyard_Diary_00", "Riley Journal: Entry #1", "Toy Graveyard", "Sobre un barril en el Checkpoint 1A"),
+          it("ToyGraveyard_Diary_01", "Riley Journal: Entry #2", "Toy Graveyard"),
+          it("ToyGraveyard_Diary_02", "Riley Journal: Entry #3", "Toy Graveyard"),
+          it("ToyGraveyard_Diary_03", "Riley Journal: Entry #4", "Toy Graveyard"),
+          it("ToyGraveyard_Diary_04", "Riley Journal: Entry #5", "Toy Graveyard"),
+          it("CellBlocks_GuardNote1_Note", "Cole Journal: Entry #1", "Prison Cell Blocks"),
+          it("CellBlocks_GuardNote2_Note", "Cole Journal: Entry #2", "Prison Cell Blocks"),
+          it("CellBlocks_GuardNote3_note", "Cole Journal: Entry #3", "Prison Cell Blocks"),
+          it("CellBlocks_GuardNote4_Note", "Cole Journal: Entry #4", "Prison Cell Blocks"),
+        ] },
+        { id: "vhs", es: "Cintas VHS", en: "VHS Tapes", one: { es: "Nueva VHS", en: "New VHS" }, c: "#ff5a76", icon: "vhs", items: [
+          it("FlareGunSafetyVideo", "Flare Hand Safety Video", "", "Oficina junto al Checkpoint 1A, en la silla"),
+          it("BreakTimeVHSTape", "Break Time", "", "Utility Room, junto al tren (llave del Utility Room)"),
+          it("PrisonCellBlock_VHS_WardenOffice", "Warden Office 8/8/1995", "", "Despacho del alcaide, recepción de la prisión"),
+          it("TheDoctorVHSTape", "The Doctor", "", "Sala de servidores donde conoces a Yarnaby"),
+          it("StellaTape", "Stella Greyber Project Audit", "", "Archivos, tras la persecución de Yarnaby"),
+          it("TheaterIncidentVHSTape", "'93 Theater Incident", "", "Almacén del pasillo en T, tras conocer a Doey"),
+          it("OllieandPoppyVHSTape", "Ollie", "", "Estantería a la izquierda tras conocer a Poppy y Kissy Missy"),
+          it("ConstructionPlansTape", "Construction Plans: The Shelf", "", "Bajo una cama de la enfermería de Safe Haven"),
+          it("DoeyKevinTape", "1322 Report: Kevin", "", "Estanterías del fondo, sala de tratamiento de agua"),
+          it("CivilWar1VHSTape", "Security Feed 02.09.01", "", "Sala tras usar la cápsula, después de Yarnaby"),
+          it(["DoctorsAwakeningVHSTape", "FixedExperiment1354Tape"], "Experiment #1354", "", "Sobre un Smiling Critter, laberinto de gas"),
+          it("DoctorPrototypeVHSTape", "Time", "", "Despacho de Sawyer, sala de consolas del Doctor"),
+          it("ManagementRichTape", "Management: Rich", "", "Estantería de la zona vallada de Safe Haven"),
+          it("1322Report:Jack", "1322 Report: Jack", "", "Sobre un barril en The Foundation, por la pasarela"),
+          it("UntitledPoppyVHSTape", "Untitled Tape", "", "Estante bajo de la cueva, durante la persecución de Doey"),
+          it("CivilWar2Video", "A Reminder", "", "Oficina del almacén, tras el jefe Doey"),
+          it("TopSecretVideo", "TOP SECRET", "", "Final del capítulo: la cinta blanca (vuelve Huggy). Las guías no la cuentan para el logro"),
+        ] },
+      ],
+    },
+    5: {
+      title: "Broken Things",
+      key: (k) => "/" + k + ".",
+      cats: [
+        { id: "notes", es: "Notas", en: "Notes", one: { es: "Nueva nota", en: "New note" }, c: "#ffcf5a", icon: "note", items: [
+          it("ID_Notes_Level01_InterceptedCommunique", "An Intercepted Communique", "Harvest Processing Center 04"),
+          it("ID_Notes_Level01_PlaytimeManifest", "Shipping Manifest - July '95", "Harvest Processing Center 04"),
+          it("ID_Notes_Level01_ToyManifest", "Inventory - September '95", "Harvest Processing Center 04"),
+          it("ID_Notes_Level03_MorgueNote", "Work Procedures - Recycling & Reclamation", "Recycling & Reclamation"),
+          it("ID_Notes_Level03_OutimalNote", "Outimal Note", "Recycling & Reclamation"),
+          it("ID_Notes_Level03_OutimalBrandingNote", "Wrongside Outimal Branding Note", "Recycling & Reclamation"),
+          it("ID_Notes_Level04_GibletLetter", "Giblet's Checklist", "The Boilers"),
+          it("ID_Notes_Level04_BetterPressNewspaper", "The Better Press, Issue 14", "The Boilers"),
+          it("ID_Notes_Level05_LivingFruits", "Reminder", "Research & Development"),
+          it("ID_Notes_Level05_PoppyGelPlants", "Lab Report: Medium Growth & Plantlife", "Research & Development"),
+          it("ID_Notes_Level05_ScientistPersonalLetter1", "Dr. Arkins Personal Letter 1", "Research & Development"),
+          it("ID_Notes_Level05_MissingPrototypeHands", "GrabPack Hands Rejection", "Research & Development"),
+          it("ID_Notes_Level05_MasterBackup", "Master Backup?", "Research & Development", "Imperdible (historia)"),
+          it("ID_Notes_Level05_NegationPresentationSlide1", "Negation Compound Presentation (1 of 6)", "Research & Development", "Imperdible (historia)"),
+          it("ID_Notes_Level05_NegationPresentationSlide2", "Negation Compound Presentation (2 of 6)", "Research & Development", "Imperdible (historia)"),
+          it("ID_Notes_Level05_NegationPresentationSlide3", "Negation Compound Presentation (3 of 6)", "Research & Development", "Imperdible (historia)"),
+          it("ID_Notes_Level05_NegationPresentationSlide4", "Negation Compound Presentation (4 of 6)", "Research & Development", "Imperdible (historia)"),
+          it("ID_Notes_Level05_NegationPresentationSlide5", "Negation Compound Presentation (5 of 6)", "Research & Development", "Imperdible (historia)"),
+          it("ID_Notes_Level05_NegationPresentationSlide6", "Negation Compound Presentation (6 of 6)", "Research & Development", "Imperdible (historia)"),
+          it("ID_Notes_Level05_LeithLetter3", "Letter To Leith #2", "Research & Development"),
+          it("ID_Notes_Level05_MedicalReport", "Medical Report: Edward M.N. Ritterman", "Research & Development"),
+          it("ID_Notes_Level05_SurvivorNote2", "To Whomever Finds This", "Research & Development"),
+          it("ID_Notes_Level06_ExperimentsObservations", "Conditioning Observations", "Testing"),
+          it("ID_Notes_Level08_LilyProtoObs", "Observation: Lily", "Testing"),
+          it("ID_Notes_Level06_LetterstoLeith", "Letter To Leith #1", "Testing"),
+          it("ID_Notes_Level07_ScientistLetter2", "Dr. Arkins Personal Letter 2", "Extreme Aggression Under Stress"),
+          it("ID_Notes_Level09_LilyHairNote", "Experiment 1468 Proposal", "The Doll House"),
+          it("ID_Notes_Level09_MusicSheet1", "Music Sheet - Novice", "The Doll House"),
+          it("ID_Notes_Level09_NurseryDamage", "Nursery Damage", "The Doll House"),
+          it("ID_Notes_Level09_SweetStreetLog", "Observation Log: Sweet Street", "The Doll House"),
+          it(["ID_Notes_Level09_MusicSheet2", "ID_Notes_Level09_MusicSheet3", "ID_Notes_Level09_MusicSheet4"], "Music Sheet - Expert", "The Doll House"),
+          it("ID_Notes_Level09_LilyJournalEntry", "Lily Journal", "The Doll House"),
+          it("ID_Notes_Level11_LabNote1", "Dr. Arkins Personal Letter 3", "Reanimation"),
+          it("ID_Notes_Level11_ProtoObservation", "Experiment Notes", "Reanimation"),
+          it("ID_Notes_Level12_LeithJournal", "L.P. Journal Entry", "The End of the Line"),
+        ] },
+        { id: "vhs", es: "Cintas VHS", en: "VHS Tapes", one: { es: "Nueva VHS", en: "New VHS" }, c: "#ff5a76", icon: "vhs", items: [
+          it("ID_VHS_HuggyReanimation", "Experiment 1170: Executive Showcase", "Testing"),
+          it("ID_VHS_Level08", "Three P's of Diorama Safety", "Sweet Street"),
+          it("ID_VHS_Level11", "How to Maintain Your-- (Illegible)", "Reanimation"),
+        ] },
+        { id: "audio", es: "Cintas de audio", en: "Audio Tapes", one: { es: "Nueva cinta de audio", en: "New audio tape" }, c: "#4fc3ff", icon: "audio", items: [
+          it("ID_Cassette_PoppyKissy", "Sisters", "Recycling & Reclamation"),
+          it("ID_Cassette_Level04_Case", "The Case", "The Boilers"),
+          it("ID_Cassette_Level04_SecurityLog", "Security Log - 08081995-16", "The Boilers"),
+          it("ID_Cassette_Level05_OutimalsFocusGroup", "Focus Test: The Wrongside Outimals", "Research & Development"),
+          it("ID_Cassette_Level05_PierreAndRitterman", "Pierre/Ritterman, August '95", "Research & Development"),
+          it("ID_Cassette_GracieChum", "Field Test: Chum Chompkins", "Testing"),
+          it("ID_Cassette_Level08_Gracie", "'96 Isolation Day 122", "Sweet Street"),
+          it("ID_Cassette_Level09_AJustEnd", "A Just End", "The Doll House"),
+          it("ID_Cassette_Level11_ElliotProto", "Elliot / Prototype", "Reanimation"),
+          it("ID_Cassette_Level11_ProtoInterrogates", "Interrogation", "Reanimation"),
+        ] },
+        { id: "toys", es: "Coleccionables", en: "Collectibles", one: { es: "Nuevo coleccionable", en: "New collectible" }, c: "#5ce08a", icon: "toy", items: [
+          it("ID_Collectible_BindleBoogie", "Outimal: Bindle Boogie (plush)", "Recycling & Reclamation"),
+          it("ID_Collectible_Level04_GooberGutzPlushie", "Outimal: Goober GUTZ (plush)", "The Boilers"),
+          it("ID_Collectible_Level04_GoldenGibletTrophy", "Golden Giblet", "The Boilers"),
+          it("ID_Collectible_Level04_GooberGutzDoll", "Outimal: GOOBER Gutz (doll)", "The Boilers"),
+          it("ID_Collectible_BindleBoogieDoll", "Outimal: Bindle BOOGIE (doll)", "Research & Development"),
+          it("ID_Collectible_GoldenChumTrophy", "Golden Chum", "Research & Development"),
+          it("ID_Collectible_BlankyBlankzDoll", "Outimal: Blanky BLANKZ (plush)", "Extreme Aggression Under Stress"),
+          it("ID_Collectible_BlankyBlankz", "Outimal: BLANKY Blankz (doll)", "Extreme Aggression Under Stress"),
+          it("ID_Collectible_Lvl8_BooBooDoll", "Outimal: Dizzy BOOBOO (plush)", "Sweet Street"),
+          it("ID_Collectible_Lvl8_BooBoo", "Outimal: DIZZY Booboo (doll)", "Sweet Street"),
+          it("ID_Outimal_Level09_DoodleBones_Doll", "Outimal: Doodle Bones (doll)", "The Doll House"),
+          it("ID_Collectible_GoldenLilyTrophy", "Golden Lily", "The Doll House"),
+          it("ID_Notes_Level09_MsGracie_IDCard", "Ms. Gracie's Playtime ID", "The Doll House"),
+          it("ID_Outimal_Level09_DoodleBones_Plushie", "Outimal: Doodle Bones (plush)", "The Doll House"),
+          it("ID_Collectible_LoopsyNoodle", "Outimal: LOOPSY Noodle (doll)", "Reanimation"),
+          it("ID_Collectible_RedSmoke", "Red Smoke Sample", "Reanimation"),
+          it("ID_Collectible_GoldenLimonTrophy", "Golden Limon", "Reanimation"),
+          it("ID_Collectible_LoopsyNoodleDoll", "Outimal: Loopsy NOODLE (plush)", "Reanimation"),
+          it("ID_Collectible_Level12_GoldenPrototypeTrophy", "Golden Prototype", "The End of the Line"),
+        ] },
+      ],
+    },
+  };
+  for (const ch of Object.values(CHAPTERS)) ch.total = ch.cats.reduce((a, c) => a + c.items.length, 0);
+  // Tapes put in their VHS player: the launcher adds "\0played:<key>\0" (Chapters 1 to 4; Chapter 5 keeps
+  // its tapes in the inventory, nothing tells them apart). Shown as a "Tapes played" row under the tapes.
+  for (const [n, ch] of Object.entries(CHAPTERS)) {
+    if (+n > 4) continue;
+    const vhs = ch.cats.find((c) => c.id === "vhs");
+    if (!vhs) continue;
+    vhs.items.forEach((item) => item.played = item.k.map((k) => "\0played:" + k + "\0"));
+    ch.played = { es: "Cintas vistas", en: "Tapes played", c: vhs.c, icon: "vhs", cat: vhs };
+  }
+
+  const T = {
+    es: { chShort: "CAP.", chapter: "Capítulo", missing: "Faltan", list: "Coleccionables", allDone: "¡Todo conseguido! 🎉",
+          waiting: "Buscando partida…", waitingSave: "Partida nueva: esperando al primer checkpoint", liveonly: "Abre el capítulo: lo que recojas se apunta con el juego abierto",
+          played: "Cinta vista",  nosave: "Todavía no has recogido nada en el capítulo", noapp: "Abre el overlay desde el launcher (100%)",
+          neterr: "El launcher no responde (¿está abierto?)", complete: "¡Todas!", full: "100% de coleccionables", test: "prueba" },
+    en: { chShort: "CH.", chapter: "Chapter", missing: "Missing", list: "Collectibles", allDone: "All collected! 🎉",
+          waiting: "Looking for a save…", waitingSave: "New run: waiting for the first checkpoint", liveonly: "Open the chapter: what you pick up is recorded while the game is open",
+          played: "Tape played",  nosave: "Nothing picked up yet in chapter", noapp: "Open the overlay from the launcher (100%)",
+          neterr: "The launcher isn't responding (is it open?)", complete: "All of them!", full: "100% collectibles", test: "test" },
+  };
+
+  const q = new URLSearchParams(location.search);
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  document.querySelectorAll("svg.logo").forEach((s) => s.innerHTML = LOGO);
+  const FROM_APP = location.protocol === "http:" && /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
+
+  // Which items of a chapter are in the save: Set of "cat:index"
+  function collected(chapter, text) {
+    const ch = CHAPTERS[chapter], out = new Set();
+    if (!text) return out;
+    ch.cats.forEach((c) => c.items.forEach((item, i) => {
+      if (item.k.some((k) => text.includes(ch.key(k)))) out.add(c.id + ":" + i);
+    }));
+    return out;
+  }
+  function playedIn(chapter, text) {
+    const ch = CHAPTERS[chapter], out = new Set();
+    if (!text) return out;
+    ch.cats.forEach((c) => c.items.forEach((item, i) => { if (item.played && item.played.some((p) => text.includes(p))) out.add(c.id + ":" + i); }));
+    return out;
+  }
+  const countIn = (set, c) => c.items.reduce((n, _, i) => n + (set.has(c.id + ":" + i) ? 1 : 0), 0);
+
+  // The newest save of a chapter ("auto": the one the app picks), decompressed. Keeps one ETag per request kind.
+  const tags = {};
+  async function fetchSave(ch) {
+    const r = await fetch("/api/save?ch=" + ch, { cache: "no-store", headers: tags[ch] ? { "If-None-Match": tags[ch] } : {} });
+    if (r.status === 304) return undefined;
+    const chapter = +(r.headers.get("X-Chapter") || (ch === "auto" ? 5 : ch));
+    if (r.status === 204) {
+      // "waiting": the game is open but hasn't saved since (new run): its progress is zero for now
+      const waiting = r.headers.get("X-Save-State") === "waiting";
+      const tag = "none-" + chapter + (waiting ? "-w" : "");
+      if (tags[ch] === tag) return undefined;
+      tags[ch] = tag;
+      return { chapter, file: "", text: "", waiting };
+    }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    tags[ch] = r.headers.get("ETag") || "";
+    const text = new TextDecoder("latin1").decode(await r.arrayBuffer());
+    return { chapter, file: decodeURIComponent(r.headers.get("X-Save-File") || ""), text };
+  }
+
+  // ---------------- setup page ----------------
+  if (!q.get("view")) {
+    document.body.classList.add("setup");
+    const fields = ["ch", "cats", "list", "missing", "toasts", "anim", "nobg", "align", "lang", "scale", "ccols", "lcols", "poll", "gmissing"];
+    let guideCh = 5;
+    try {
+      const saved = JSON.parse(localStorage.getItem("poppy-overlay-setup") || "{}");
+      for (const k of fields) if (k in saved) {
+        const el = $("f-" + k);
+        if (el.type === "checkbox") el.checked = saved[k]; else el.value = saved[k];
+      }
+      if ([1, 2, 3, 4, 5].includes(saved.guideCh)) guideCh = saved.guideCh;
+    } catch (e) {}
+
+    // One link: the panels and, in the same source, the notifications (on the panels' side)
+    const build = (demo) => {
+      const p = new URLSearchParams();
+      p.set("view", "panel");
+      if (demo) p.set("demo", "1");
+      if ($("f-ch").value !== "auto") p.set("ch", $("f-ch").value);
+      const show = ["cats", "list"].filter((k) => $("f-" + k).checked);
+      p.set("show", show.join(","));
+      if ($("f-list").checked && $("f-missing").checked) p.set("missing", "1");
+      if ($("f-nobg").checked) p.set("bg", "0");
+      if ($("f-align").value === "right") p.set("align", "right");
+      if (+$("f-ccols").value !== 1) p.set("ccols", $("f-ccols").value);
+      if (+$("f-lcols").value !== 1) p.set("lcols", $("f-lcols").value);
+      if (!$("f-toasts").checked) p.set("toasts", "0");
+      if (!$("f-anim").checked) p.set("anim", "0");
+      if ($("f-lang").value !== "es") p.set("lang", $("f-lang").value);
+      if (+$("f-scale").value !== 1) p.set("scale", $("f-scale").value);
+      if (+$("f-poll").value !== 0.5) p.set("poll", $("f-poll").value);
+      return (FROM_APP ? location.origin : "http://127.0.0.1:8745") + "/overlay?" + p.toString();
+    };
+    const save = () => {
+      const s = { v: 1, guideCh };
+      for (const k of fields) { const el = $("f-" + k); s[k] = el.type === "checkbox" ? el.checked : el.value; }
+      try { localStorage.setItem("poppy-overlay-setup", JSON.stringify(s)); } catch (e) {}
+    };
+    let onRefresh = null;   // the in-game overlay follows the same options (set up below, inside the app's window)
+    const refresh = () => {
+      $("url").value = build(false);
+      document.body.classList.toggle("gmissing", $("f-gmissing").checked);
+      save();
+      if (onRefresh) onRefresh();
+    };
+    document.querySelectorAll("#setup input, #setup select").forEach((el) => el.addEventListener("input", refresh));
+    const seg = (id, field, after) => {
+      const sync = () => document.querySelectorAll(`#${id} button`).forEach((b) => b.classList.toggle("on", b.dataset.v === String(field.get())));
+      document.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => { field.set(b.dataset.v); sync(); refresh(); if (after) after(); });
+      sync();
+    };
+    seg("seg-ch", { get: () => $("f-ch").value, set: (v) => $("f-ch").value = v });
+    seg("seg-align", { get: () => $("f-align").value, set: (v) => $("f-align").value = v });
+    seg("seg-gch", { get: () => guideCh, set: (v) => guideCh = +v }, () => drawGuide());
+    refresh();
+
+    document.querySelectorAll("[data-copy]").forEach((b) => b.onclick = () => {
+      navigator.clipboard?.writeText(build(false));
+      b.textContent = "¡Copiada!"; setTimeout(() => b.textContent = "Copiar URL", 1500);
+    });
+    $("btn-open").onclick = () => window.open(build(false), "_blank");
+    $("btn-demo").onclick = () => window.open(build(true), "_blank");
+    $("btn-test").onclick = async () => {
+      try {
+        await fetch("/api/test?fire=1", { cache: "no-store" });
+        $("testinfo").textContent = "✓ Enviado: mira OBS";
+      } catch (e) { $("testinfo").textContent = "❌ " + e.message; }
+      setTimeout(() => $("testinfo").textContent = "", 3000);
+    };
+
+    // Detected saves and the full checklist
+    const have = { 1: new Set(), 2: new Set(), 3: new Set(), 4: new Set(), 5: new Set() }, files = { 1: "", 2: "", 3: "", 4: "", 5: "" };
+    let status = null;
+    function drawGames() {
+      $("games").innerHTML = [1, 2, 3, 4, 5].map((n) => {
+        const ch = CHAPTERS[n], info = status && status.chapters.find((c) => c.chapter === n);
+        const got = have[n].size, active = status && status.auto === n;
+        const state = !info ? "…" : info.running ? '<span class="pill">abierto</span>' : '<span class="pill off">cerrado</span>';
+        const file = !info ? "" : !info.exists ? "No encuentro la carpeta de partidas (¿has jugado este capítulo?)"
+          : files[n] === "live" ? "🔴 En vivo: leyendo el inventario del juego al momento"
+          : info.waiting ? "Partida nueva: esperando a que cargue (empieza en 0)"
+          : files[n] ? "Partida: " + esc(files[n]) : info.saves ? "Leyendo partida…" : "Sin partidas guardadas todavía";
+        return `<div class="game${active ? " active" : ""}"><div class="top">Capítulo ${n} ${state}
+            <span class="big">${got}<span style="color:var(--muted);font-weight:400">/${ch.total}</span></span></div>
+          <div class="file">${file}</div>
+          ${window.chrome && window.chrome.webview && info && info.exists ? `<button class="ghost" data-folder="${n}">Abrir carpeta</button>` : ""}</div>`;
+      }).join("");
+      document.querySelectorAll("[data-folder]").forEach((b) => b.onclick = () => window.chrome.webview.postMessage({ type: "openFolder", chapter: +b.dataset.folder }));
+    }
+    function drawGuide() {
+      const ch = CHAPTERS[guideCh], set = have[guideCh];
+      $("guideSummary").textContent = `${set.size}/${ch.total}`;
+      $("guide").innerHTML = ch.cats.map((c) => `<div class="gcat" style="--cc:${c.c}">
+          <div class="gh">${ICONS[c.icon]} ${c.es} <b>${countIn(set, c)}/${c.items.length}</b></div>
+          <ul>${c.items.map((item, i) => {
+            const meta = [item.a, item.h].filter(Boolean).join(" · ");
+            return `<li class="${set.has(c.id + ":" + i) ? "yes" : "no"}"><span class="ck"></span><span><span class="t">${esc(item.n)}</span>${meta ? `<small>${esc(meta)}</small>` : ""}</span></li>`;
+          }).join("")}</ul></div>`).join("");
+    }
+    drawGames();
+    drawGuide();
+
+    if (!FROM_APP) {
+      $("noapp").hidden = false;
+      $("btn-test").hidden = true;
+    } else {
+      const tick = async () => {
+        try { status = await (await fetch("/api/status", { cache: "no-store" })).json(); } catch (e) {}
+        for (const n of [1, 2, 3, 4, 5]) {
+          try {
+            const s = await fetchSave(n);
+            if (s !== undefined) { have[n] = collected(n, s.text); files[n] = s.file; if (n === guideCh) drawGuide(); }
+          } catch (e) {}
+        }
+        drawGames();
+      };
+      tick();
+      setInterval(tick, 2000);
+
+      const wv = window.chrome && window.chrome.webview;
+      if (wv) {
+        // In-game overlay (the launcher keeps whether it's on, and the options as the link's query)
+        let gameState = null, sentQuery = null;
+        const gameQuery = () => build(false).split("?")[1];
+        const syncGame = () => {
+          if (!gameState) return;
+          const query = gameQuery(), on = $("f-ingame").checked;
+          if (on === gameState.enabled && query === sentQuery) return;
+          sentQuery = query;
+          wv.postMessage({ type: "setGameOverlay", enabled: on, query });
+        };
+        onRefresh = syncGame;
+        $("gamecard").hidden = false;
+        $("btn-preview").onclick = () => { sentQuery = gameQuery(); wv.postMessage({ type: "previewGameOverlay", query: sentQuery }); };
+        wv.addEventListener("message", (e) => {
+          if (e.data && e.data.type === "maximized") document.body.classList.toggle("maximized", !!e.data.value);
+          if (e.data && e.data.type === "gameOverlay") {
+            const first = !gameState;
+            gameState = e.data;
+            $("f-ingame").checked = !!e.data.enabled;
+            $("ingameinfo").textContent = e.data.showing ? "● Visible ahora" : e.data.enabled ? "Activado: sale al abrir un capítulo" : "";
+            if (first) syncGame();   // the launcher gets the page's current options
+          }
+        });
+        wv.postMessage({ type: "getGameOverlay" });
+        setInterval(() => wv.postMessage({ type: "getGameOverlay" }), 2000);
+        // The window has no caption of its own: draw ours
+        document.body.classList.add("framed");
+        document.querySelectorAll("#titlebar [data-win]").forEach((b) => b.onclick = () => wv.postMessage({ type: "window", action: b.dataset.win }));
+        $("resizetop").onmousedown = (e) => { if (e.button === 0) wv.postMessage({ type: "window", action: "resizeTop" }); };
+        wv.postMessage({ type: "window", action: "state" });
+      }
+    }
+    return;
+  }
+
+  // ---------------- overlay ----------------
+  document.body.classList.add("live");
+  const lang = q.get("lang") === "en" ? "en" : "es";
+  const tr = T[lang];
+  const show = (q.get("show") ?? "cats").split(",");
+  const onlyToasts = q.get("view") === "toasts";
+  const toastsOn = onlyToasts || q.get("toasts") !== "0";
+  const animOn = q.get("anim") !== "0";
+  const inGame = q.get("ingame") === "1";
+  if (inGame) document.body.classList.add("ingame");
+  // Particles, the dot flying to the chapter art and the idle winks: not over the game
+  const fxOn = animOn && !onlyToasts && !inGame;
+  const wantCh = /^[1-5]$/.test(q.get("ch") || "") ? q.get("ch") : "auto";
+  if (onlyToasts) {
+    // Old notifications-only link: its own corner
+    document.body.classList.add("toastview");
+    if (/^(tl|tr|bl)$/.test(q.get("corner") || "")) $("toasts").classList.add("c-" + q.get("corner"));
+  } else {
+    // In the overlay itself, under the panels and against the same edge (left or right)
+    $("toasts").classList.add("stack");
+    $("overlay").appendChild($("toasts"));
+  }
+  // How often it asks the launcher (s): twice a second by default; an unchanged answer is a bare 304
+  const pollMs = Math.max(0.25, +(q.get("poll") || 0.5)) * 1000;
+  const root = document.documentElement.style;
+  if (q.get("scale")) root.setProperty("--scale", q.get("scale"));
+  if (q.get("ccols")) root.setProperty("--ccols", q.get("ccols"));
+  if (q.get("lcols")) root.setProperty("--lcols", q.get("lcols"));
+  if (q.get("lmax")) root.setProperty("--lmax", q.get("lmax"));
+  if (q.get("dim")) root.setProperty("--dim", q.get("dim"));
+  if (q.get("bg") === "0") document.body.classList.add("nobg");
+  if (q.get("align") === "right") document.body.classList.add("right");
+  if (q.get("missing") === "1") document.body.classList.add("missing");
+  if (q.get("move") === "1") {
+    document.body.classList.add("moving");
+    document.body.dataset.move = lang === "en" ? "↕ Drag up or down · Done in the launcher" : "↕ Arrastra arriba o abajo · Listo en el launcher";
+  }
+  if (!animOn) document.body.classList.add("noanim");
+  if (q.get("total") === "0") $("p-total").style.display = "none";
+  if (!show.includes("cats")) $("p-cats").style.display = "none";
+  if (!show.includes("list")) $("p-list").style.display = "none";
+  document.querySelectorAll("[data-t]").forEach((el) => el.textContent = tr[el.dataset.t]);
+  $("msg").textContent = FROM_APP || q.has("demo") ? tr.waiting : tr.noapp;
+  $("listTitle").textContent = q.get("missing") === "1" ? tr.missing : tr.list;
+
+  let chapter = 0, catEls = {}, groupEls = {}, itemEls = {}, tapeEls = {}, playedEl = null, prev = null;
+
+  // DOM for one chapter; rebuilt when the chapter changes (no pickups announced then)
+  function buildChapter(n) {
+    chapter = n; prev = null; catEls = {}; itemEls = {}; tapeEls = {}; playedEl = null;
+    const ch = CHAPTERS[n];
+    $("chart").style.setProperty("--art", `url(${ART[n]})`);
+    $("chart").title = `${tr.chapter} ${n}`;
+    $("cats").innerHTML = ""; $("list").innerHTML = "";
+    groupEls = {};
+    const row = (def, cls) => {
+      const el = document.createElement("div");
+      el.className = "cat" + (cls ? " " + cls : ""); el.style.setProperty("--cc", def.c);
+      el.innerHTML = `<span class="ic">${ICONS[def.icon]}</span><span class="nm">${def[lang]}</span><span class="ct">0</span><div class="bar"><i></i></div>`;
+      $("cats").appendChild(el);
+      return el;
+    };
+    const groupOf = (c) => (ch.groups || []).find((g) => g.cats.includes(c.id));
+    ch.cats.forEach((c, ci) => {
+      const grp = groupOf(c);
+      // A group: its total first, a line between it and the next category
+      if (grp && grp.cats[0] === c.id) groupEls[grp.id] = row(grp, "group");
+      catEls[c.id] = row(c, grp ? "child" : "");
+      if (ch.strip) {
+        const strip = document.createElement("div");
+        strip.className = "tapes";
+        c.items.forEach((item, i) => {
+          const t = document.createElement("div");
+          t.className = "tape"; t.style.setProperty("--tc", item.tc);
+          t.title = item.n;
+          t.innerHTML = `<span class="cs"></span><span class="pl">▶</span>`;
+          strip.appendChild(t);
+          tapeEls[c.id + ":" + i] = t;
+        });
+        $("cats").appendChild(strip);
+      }
+      if (ch.played && ch.played.cat === c) playedEl = row(ch.played, "child played");
+      const next = ch.cats[ci + 1];
+      if (next && groupOf(next) !== grp) {
+        const sep = document.createElement("div");
+        sep.className = "sep";
+        $("cats").appendChild(sep);
+      }
+      const g = document.createElement("div");
+      g.className = "grp"; g.style.setProperty("--cc", c.c);
+      g.innerHTML = `${ICONS[c.icon]}<span>${c[lang]}</span><b></b>`;
+      $("list").appendChild(g);
+      c.grp = g;
+      c.items.forEach((item, i) => {
+        const e = document.createElement("div");
+        e.className = "it no"; e.style.setProperty("--cc", c.c);
+        e.innerHTML = `<span class="ck"></span><span>${esc(item.n)}<span class="pl">▶</span></span>`;
+        $("list").appendChild(e);
+        itemEls[c.id + ":" + i] = e;
+      });
+    });
+    const done = document.createElement("div");
+    done.className = "alldone"; done.textContent = tr.allDone;
+    $("list").appendChild(done);
+  }
+
+  // ---------------- life ----------------
+  const CONFETTI = ["#ffd23f", "#e8364f", "#4ade80", "#4fc3ff", "#c08bff", "#fff6c8"];
+  const center = (el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width }; };
+  const restart = (el, cls, ms) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); };
+  function burst(at, count, color, party) {
+    const scale = at.w / 30 || 1;
+    for (let n = 0; n < count; n++) {
+      const p = document.createElement("div");
+      const size = (party ? 4 + Math.random() * 5 : 3 + Math.random() * 3) * scale;
+      p.className = "spark";
+      p.style.width = p.style.height = size + "px";
+      p.style.background = party ? CONFETTI[n % CONFETTI.length] : n % 2 ? color : "#fff6c8";
+      if (party && n % 3 === 0) p.style.borderRadius = "2px";
+      document.body.appendChild(p);
+      const a = (n / count) * Math.PI * 2 + Math.random() * .6, d = (party ? 35 + Math.random() * 55 : 18 + Math.random() * 22) * scale;
+      const x0 = at.x - size / 2, y0 = at.y - size / 2;
+      p.animate([
+        { transform: `translate(${x0}px, ${y0}px) scale(1)`, opacity: 1 },
+        { transform: `translate(${x0 + Math.cos(a) * d}px, ${y0 + Math.sin(a) * d + (party ? 25 : 6) * scale}px) scale(.3) rotate(${party ? 540 : 0}deg)`, opacity: 0 },
+      ], { duration: party ? 1100 + Math.random() * 500 : 550 + Math.random() * 250, easing: "cubic-bezier(.15,.7,.4,1)" }).onfinish = () => p.remove();
+    }
+  }
+  // A dot of the category's color flying from its row to the chapter badge
+  function fly(from, color) {
+    const to = center(document.querySelector(".chbadge"));
+    const size = 12, el = document.createElement("div");
+    el.className = "flyer"; el.style.width = el.style.height = size + "px";
+    el.style.background = color; el.style.boxShadow = `0 0 10px ${color}`;
+    document.body.appendChild(el);
+    const x0 = from.x - size / 2, y0 = from.y - size / 2, x1 = to.x - size / 2, y1 = to.y - size / 2;
+    const mx = (x0 + x1) / 2 + 40, my = Math.max(2, Math.min(y0, y1) - 20);
+    el.animate([
+      { transform: `translate(${x0}px, ${y0}px) scale(.4)`, opacity: 0 },
+      { transform: `translate(${x0}px, ${y0 - 8}px) scale(1.3)`, opacity: 1, offset: .15 },
+      { transform: `translate(${mx}px, ${my}px) scale(1.1)`, opacity: 1, offset: .55 },
+      { transform: `translate(${x1}px, ${y1}px) scale(.6)`, opacity: .9 },
+    ], { duration: 850, easing: "cubic-bezier(.45,.05,.4,1)" }).onfinish = () => {
+      el.remove();
+      document.querySelector(".chbadge").animate([{ transform: "scale(1)" }, { transform: "scale(1.2) rotate(-8deg)" }, { transform: "scale(1)" }], { duration: 420, easing: "ease-out" });
+      burst(to, 6, color);
+    };
+  }
+  if (fxOn) setInterval(() => {
+    const els = Object.values(catEls).filter((el) => !el.classList.contains("got"));
+    if (els.length) restart(els[Math.floor(Math.random() * els.length)], "wink", 800);
+  }, 7000);
+
+  // Notifications as a pile of cards: the front one shows for a while, then slides out towards the edge
+  // and the next one comes forward; new ones join the back. Up to STACK_SHOWN are visible.
+  const STACK_SHOWN = 4, LIFE_MS = 4500, LIFE_BUSY_MS = 2600;
+  const toastsEl = $("toasts");
+  const edge = () => toastsEl.classList.contains("stack") ? (document.body.classList.contains("right") ? 1 : -1)
+    : toastsEl.classList.contains("c-bl") || toastsEl.classList.contains("c-tl") ? -1 : 1;   // -1: the left edge
+  const pile = [];
+  let pileTimer = 0;
+  function layoutPile() {
+    pile.forEach((el, i) => {
+      const shown = i < STACK_SHOWN;
+      el.style.zIndex = String(100 - i);
+      el.style.transform = `translateX(${-edge() * i * 16}px) scaleY(${1 - Math.min(i, STACK_SHOWN) * 0.08})`;
+      el.style.opacity = shown ? String(1 - i * 0.22) : "0";
+      el.style.filter = i ? `brightness(${1 - i * 0.18})` : "";
+    });
+  }
+  function nextToast() {
+    clearTimeout(pileTimer);
+    if (!pile.length) return;
+    pileTimer = setTimeout(() => {
+      const el = pile.shift();
+      el.style.transform = `translateX(${edge() * 80}px)`;
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 500);
+      layoutPile();
+      nextToast();
+    }, pile.length > 1 ? LIFE_BUSY_MS : LIFE_MS);
+  }
+  function toast(html, color, big) {
+    if (!toastsOn) return;
+    const el = document.createElement("div");
+    el.className = "toast" + (big ? " big" : "");
+    if (color) el.style.setProperty("--cc", color);
+    el.innerHTML = html;
+    // Comes in from the edge, then settles into its place in the pile
+    el.style.transform = `translateX(${edge() * 80}px)`;
+    el.style.opacity = "0";
+    toastsEl.appendChild(el);
+    pile.push(el);
+    void el.offsetWidth;
+    layoutPile();
+    if (pile.length === 1) nextToast();
+  }
+
+  let shownTotal = 0;
+  function countTo(target) {
+    const from = shownTotal, t0 = performance.now(), ms = Math.min(900, 250 + Math.abs(target - from) * 120);
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / ms);
+      shownTotal = Math.round(from + (target - from) * k);
+      setTotal(shownTotal);
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+    $("total").animate([{ transform: "scale(1)" }, { transform: "scale(1.25)", color: "#ffd23f" }, { transform: "scale(1)" }], { duration: 600, easing: "ease-out" });
+  }
+  const setTotal = (n) => $("total").innerHTML = `${n}<span class="of">/${CHAPTERS[chapter].total}</span>`;
+
+  // s: { chapter, file, set }
+  function render(s) {
+    if (s.chapter !== chapter) buildChapter(s.chapter);
+    const ch = CHAPTERS[chapter], set = s.set;
+    const total = set.size;
+    $("msg").textContent = s.file || !FROM_APP ? "" : s.waiting ? tr.waitingSave : ch.strip ? tr.liveonly : `${tr.nosave} ${chapter}`;
+    const played = s.played || new Set();
+    if (animOn && prev && total > prev.set.size) countTo(total);
+    else { shownTotal = total; setTotal(total); }
+    $("pct").textContent = Math.floor(total * 100 / ch.total) + "%";
+    $("tbar").style.width = (total * 100 / ch.total) + "%";
+    $("p-total").classList.toggle("done", total === ch.total);
+
+    let missing = 0;
+    for (const c of ch.cats) {
+      const n = countIn(set, c), el = catEls[c.id];
+      const was = prev ? countIn(prev.set, c) : n;
+      el.querySelector(".ct").innerHTML = `${n}<span class="of">/${c.items.length}</span>`;
+      el.querySelector(".bar i").style.width = (n * 100 / c.items.length) + "%";
+      el.classList.toggle("full", n === c.items.length);
+      c.grp.querySelector("b").textContent = `${n}/${c.items.length}`;
+      c.grp.classList.toggle("full", n === c.items.length);
+      missing += c.items.length - n;
+      c.items.forEach((item, i) => {
+        const id = c.id + ":" + i, has = set.has(id), e = itemEls[id];
+        e.classList.toggle("yes", has);
+        e.classList.toggle("no", !has);
+        const t = tapeEls[id], on = played.has(id);
+        e.classList.toggle("played", on);
+        if (t) {
+          t.classList.toggle("yes", has);
+          t.classList.toggle("played", on);
+          if (has && prev && !prev.set.has(id)) restart(t, "new", 1200);
+        }
+        if (on && prev && !(prev.played || new Set()).has(id)) {
+          if (t) restart(t, "justplayed", 1300);
+          toast(`▶ <span>${esc(tr.played)}<small>${esc(item.n)}</small></span>`, item.tc || c.c);
+        }
+        if (has && prev && !prev.set.has(id)) {
+          restart(e, "new", 1300);
+          toast(`${ICONS[c.icon]}<span>${esc(c.one[lang])}<small>${esc(item.n)}</small></span>`, c.c);
+        }
+      });
+      if (prev && n > was) {
+        restart(el, "got", 1200);
+        const at = center(el.querySelector(".ic"));
+        if (fxOn) { burst(at, n === c.items.length ? 26 : 9, c.c, n === c.items.length); fly(at, c.c); }
+        if (n === c.items.length) toast(`${ICONS[c.icon]}<span><em>${esc(c[lang])}</em>: ${tr.complete}</span>`, c.c);
+      }
+    }
+    // Tapes played
+    if (playedEl) {
+      const c = ch.played.cat, max = c.items.length;
+      const n = countIn(played, c), was = prev ? countIn(prev.played || new Set(), c) : n;
+      playedEl.querySelector(".ct").innerHTML = `${n}<span class="of">/${max}</span>`;
+      playedEl.querySelector(".bar i").style.width = (n * 100 / max) + "%";
+      playedEl.classList.toggle("full", n === max);
+      if (prev && n > was) {
+        restart(playedEl, "got", 1200);
+        if (n === max) {
+          toast(`${ICONS.vhs}<span><em>${esc(ch.played[lang])}</em>: ${tr.complete}</span>`, c.c);
+          if (fxOn) burst(center(playedEl.querySelector(".ic")), 26, c.c, true);
+        }
+      }
+    }
+    // Group totals (Chapter 4: notes + journals)
+    for (const g of ch.groups || []) {
+      const cats = ch.cats.filter((c) => g.cats.includes(c.id)), el = groupEls[g.id];
+      const max = cats.reduce((a, c) => a + c.items.length, 0);
+      const n = cats.reduce((a, c) => a + countIn(set, c), 0), was = prev ? cats.reduce((a, c) => a + countIn(prev.set, c), 0) : n;
+      el.querySelector(".ct").innerHTML = `${n}<span class="of">/${max}</span>`;
+      el.querySelector(".bar i").style.width = (n * 100 / max) + "%";
+      el.classList.toggle("full", n === max);
+      if (prev && n > was) {
+        restart(el, "got", 1200);
+        if (n === max) {
+          toast(`${ICONS[g.icon]}<span><em>${esc(g[lang])}</em>: ${tr.complete}</span>`, g.c);
+          if (fxOn) burst(center(el.querySelector(".ic")), 26, g.c, true);
+        }
+      }
+    }
+    $("listSummary").textContent = q.get("missing") === "1" ? String(missing) : `${total}/${ch.total}`;
+    $("list").classList.toggle("complete", missing === 0);
+    if (prev && total === ch.total && prev.set.size < ch.total) {
+      toast(`🎉 <span>${tr.chapter} ${chapter}: <em>${tr.full}</em></span>`, null, true);
+      if (fxOn) { const at = center(document.querySelector(".chbadge")); burst(at, 40, "#ffd23f", true); setTimeout(() => burst(at, 30, "#ffd23f", true), 350); }
+    }
+    prev = s;
+  }
+
+  // The setup's "test in OBS" button: a fake pickup of something still missing, nothing is counted
+  if (FROM_APP) {
+    let seen = null;
+    setInterval(async () => {
+      try {
+        const n = (await (await fetch("/api/test", { cache: "no-store" })).json()).n;
+        if (seen !== null && n !== seen && chapter) {
+          const ch = CHAPTERS[chapter];
+          const pool = ch.cats.flatMap((c) => c.items.map((item, i) => ({ c, item, id: c.id + ":" + i }))).filter((x) => !prev || !prev.set.has(x.id));
+          const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : { c: ch.cats[0], item: ch.cats[0].items[0] };
+          const el = catEls[pick.c.id];
+          if (fxOn && el) { restart(el, "got", 1200); const at = center(el.querySelector(".ic")); burst(at, 9, pick.c.c); fly(at, pick.c.c); }
+          toast(`${ICONS[pick.c.icon]}<span>${esc(pick.c.one[lang])} · ${tr.test}<small>${esc(pick.item.n)}</small></span>`, pick.c.c);
+        }
+        seen = n;
+      } catch (e) {}
+    }, 1000);
+  }
+
+  // ---------------- data sources ----------------
+  if (q.has("demo")) {
+    const n = wantCh === "auto" ? 5 : +wantCh, ch = CHAPTERS[n];
+    const all = ch.cats.flatMap((c) => c.items.map((_, i) => c.id + ":" + i));
+    const set = new Set(all.filter(() => Math.random() < 0.3)), played = new Set();
+    render({ chapter: n, file: "demo", set: new Set(set), played: new Set(played) });
+    setInterval(() => {
+      const left = all.filter((id) => !set.has(id));
+      const unplayed = ch.played ? [...set].filter((id) => id.startsWith("vhs:") && !played.has(id)) : [];
+      if (!left.length && !unplayed.length) { set.clear(); played.clear(); }
+      else if (unplayed.length && (!left.length || Math.random() < 0.5)) played.add(unplayed[0]);
+      else set.add(left[Math.floor(Math.random() * left.length)]);
+      render({ chapter: n, file: "demo", set: new Set(set), played: new Set(played) });
+    }, 3000);
+    return;
+  }
+  if (!FROM_APP) { $("dot").classList.add("off"); return; }
+
+  async function poll() {
+    try {
+      const s = await fetchSave(wantCh);
+      $("dot").classList.remove("off");
+      if (s !== undefined) {
+        // A new run (or another save loaded): start over without announcing anything
+        const set = collected(s.chapter, s.text);
+        if (prev && s.chapter === chapter && [...prev.set].some((id) => !set.has(id))) prev = null;
+        render({ chapter: s.chapter, file: s.file, waiting: s.waiting, set, played: playedIn(s.chapter, s.text) });
+      }
+    } catch (e) {
+      $("dot").classList.add("off");
+      $("msg").textContent = tr.neterr;
+      delete tags[wantCh];   // redraw everything once the app answers again
+    }
+    setTimeout(poll, pollMs);
+  }
+  poll();
+})();
+</script>
+</body>
+</html>

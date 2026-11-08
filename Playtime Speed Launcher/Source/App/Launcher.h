@@ -48,6 +48,11 @@ public:
     Section section = Section::Chapters;
     std::vector<Models::MultiplayerGame> multiplayers;
     int selectedMultiplayer = 0;
+    // Nothing is picked when the launcher opens: until a card is clicked in a tab, no card of that
+    // tab is marked and the hero asks to pick one (selected / selectedMultiplayer stay valid indices)
+    bool chapterPicked = false;
+    bool multiplayerPicked = false;
+    bool HasSelection() const { return section == Section::Multiplayers ? multiplayerPicked : chapterPicked; }
     std::vector<bool> multiplayerRunning;   // per multiplayer index (game watcher)
     std::vector<uint32_t> multiplayerPid;
     bool InMultiplayers() const { return section == Section::Multiplayers; }

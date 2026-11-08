@@ -17,8 +17,10 @@
 #include "Seasonal/SeasonalBackdrop.h"
 #include "Seasonal/SeasonalOverlay.h"
 #include "Seasonal/SeasonalTheme.h"
+#include "Services/Collectibles/InGameOverlay.h"
 #include "Services/Audio/SoundEffects.h"
 #include "Services/Community/OnlineUsersService.h"
+#include "Services/Discord/DiscordPresenceService.h"
 #include "Services/Platforms/SteamCmdRunner.h"
 #include "Services/Platforms/SteamDetector.h"
 #include "Settings/DiscordPresenceSettings.h"
@@ -40,6 +42,7 @@
 #include "Windows/Main/Overlays/Mods/ModPopups.h"
 #include "Windows/Main/Overlays/SaveCard/CheckpointOverlay.h"
 #include "Windows/Main/Overlays/SaveCard/SaveCardOverlay.h"
+#include "Windows/Main/Overlays/Theme/ThemePopup.h"
 #include "Windows/Main/Overlays/Tutorials/TutorialPopups.h"
 #include "Windows/Main/Overlays/Updates/UpdatesOverlay.h"
 #include "Windows/Main/Overlays/Versions/VersionsOverlay.h"
@@ -79,9 +82,11 @@ MainWindow::MainWindow() {
     handMods = std::make_unique<HandModsOverlay>(*this);
     tutorials = std::make_unique<TutorialPopups>(*this);
     keyClickWizard = std::make_unique<KeyClickWizard>(*this);
+    themePopup = std::make_unique<ThemePopup>(*this);
+    themeTransition = std::make_unique<ThemeTransition>();
     // Same stacking order as the overlays in the old MainWindow.xaml (later = on top)
     overlays = { versions.get(), settings.get(), keyClickWizard.get(), updates.get(), liveSplit.get(), saveCard.get(), checkpoint.get(),
-                 bugReport.get(), eggVideo.get(), mods.get(), addToSteam.get(), handMods.get(), tutorials.get() };
+                 bugReport.get(), eggVideo.get(), mods.get(), addToSteam.get(), handMods.get(), tutorials.get(), themePopup.get() };
 }
 
 MainWindow::~MainWindow() {
@@ -129,6 +134,7 @@ bool MainWindow::Open() {
     remaps->Initialize();
     ApplyKeyClickHotkey();
     gameOverlays->ApplyController();
+    Services::Collectibles::InGameOverlay::Start();   // 100% over the game, if turned on
 
     StartBackgroundWork();
     RefreshInfo();
@@ -179,16 +185,18 @@ void MainWindow::StartBackgroundWork() {
 
 void MainWindow::SelectChapter(int index) {
     auto& l = App::L();
-    if (index != l.selected) Services::Sfx::Play(Services::Sfx::Chapter);
+    if (index != l.selected || !l.chapterPicked) Services::Sfx::Play(Services::Sfx::Chapter);
     l.selected = index;
+    l.chapterPicked = true;
     if (!l.AnyGameRunning() && !l.AnyMultiplayerRunning()) l.discord->SetChapterSelected(l.Selected(), l.VersionLabel(l.Selected()));
     RefreshInfo();
 }
 
 void MainWindow::SelectMultiplayer(int index) {
     auto& l = App::L();
-    if (index != l.selectedMultiplayer) Services::Sfx::Play(Services::Sfx::Chapter);
+    if (index != l.selectedMultiplayer || !l.multiplayerPicked) Services::Sfx::Play(Services::Sfx::Chapter);
     l.selectedMultiplayer = index;
+    l.multiplayerPicked = true;
     RefreshInfo();
 }
 
@@ -222,6 +230,17 @@ void MainWindow::ApplyIconTheme() {
     SetIcon(big, smallIcon);
 }
 
+void MainWindow::ApplyTheme(const std::wstring& theme) {
+    auto& saved = Settings::IconTheme::Current();
+    saved.theme = theme;
+    saved.Save();
+    ApplyIconTheme();
+    App::L().discord->RefreshIconTheme();
+    ApplySeasonalPalette();
+}
+
+void MainWindow::ChangeTheme(const std::wstring& theme) { themeTransition->Request(theme); }
+
 void MainWindow::ApplySeasonalPalette() {
     Seasonal::Refresh();
     Invalidate();
@@ -231,6 +250,7 @@ void MainWindow::ApplyWindowMode() { Invalidate(); }
 
 void MainWindow::PlaySelected() {
     auto& l = App::L();
+    if (!l.HasSelection()) return;
     if (l.InMultiplayers()) {
         const auto& game = l.SelectedMultiplayer();
         const auto& exe = game.gameExePath;
@@ -417,11 +437,27 @@ void MainWindow::ShowTutorialToast() {
 Color MainWindow::ClearColor() const { return Seasonal::Current().background; }
 
 void MainWindow::OnFrame() {
+    const Rect screen{ 0.f, 0.f, g.Width(), g.Height() };
+    // A theme picked on the side rail: the screen is drawn once more in the old look into a
+    // snapshot, then the theme changes and the sweep uncovers the new look (no scenery fade-in)
+    if (themeTransition->Pending()) {
+        auto old = g.CreateWindowBitmap();
+        if (old) {
+            g.BeginOffscreen(old.Get());
+            g.Clear(ClearColor());
+            DrawMainScreen(screen);
+            g.EndOffscreen();
+        }
+        ApplyTheme(themeTransition->PendingTheme());
+        themeTransition->Begin(old, ui.Time());
+        seenSeason = Seasonal::Revision();
+        seasonChangedAt = -10.0;
+        snapshotDirty = true;
+    }
     if (seenSeason != Seasonal::Revision()) {
         seenSeason = Seasonal::Revision();
         seasonChangedAt = ui.Time();
     }
-    const Rect screen{ 0.f, 0.f, g.Width(), g.Height() };
 
     // ↑↑↑↑↑↓↓↓↓↓ shows / hides the key-to-click spam option
     for (const auto& k : input.keys)
@@ -465,6 +501,8 @@ void MainWindow::OnFrame() {
         if (o->Visible()) o->Draw(ui, screen);
         if (o == bugReport.get() && intro.Visible() && intro.Draw(ui, screen)) HideIntro();
     }
+    themeTransition->Draw(g, screen, ui.Time(), Seasonal::Current().accent);
+    if (themeTransition->Animating()) ui.KeepAnimating();
 }
 
 void MainWindow::DrawMainScreen(const Rect& screen) {
@@ -503,14 +541,13 @@ void MainWindow::DrawMainScreen(const Rect& screen) {
         Seasonal::Backdrop::Draw(g, screen, MainLayout::TopBarHeight, seasonTime, parallaxX, parallaxY);
         if (sceneOpacity < 1.f) g.PopLayer();
     }
-    const float infoH = info.Height(ui, screen.w);
-    const MainLayout layout = MainLayout::Compute(screen, infoH);
-    TopBar::Draw(ui, *this, layout.topBar);
-    cards.Draw(ui, layout.cards);
-    info.Draw(ui, layout.info);
-    ActionBar::Draw(ui, *this, layout.actions);
-    BottomBar::Draw(ui, *this, layout.bottomBar);
-    steamUser.Draw(ui, layout.actions.R(), layout.actions.B());
+    const MainLayout layout = MainLayout::Compute(screen);
+    info.DrawBackdrop(ui, layout.content);
+    info.Draw(ui, layout.hero);
+    cards.Draw(ui, layout.shelf);
+    NavRail::Draw(ui, *this, layout.rail);
+    const float topRight = TopBar::Draw(ui, *this, layout.topBar);
+    steamUser.Draw(ui, topRight, layout.topBar);
     {
         NoColorFilter keep(g);
         if (sceneOpacity < 1.f) g.PushOpacity(sceneOpacity);
