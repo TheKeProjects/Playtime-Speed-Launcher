@@ -1,12 +1,14 @@
 #include "Services/Account/DuelsService.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include "Core/Async.h"
 #include "Core/Json.h"
 #include "Core/Text.h"
 #include "Localization/Localization.h"
 #include "Services/Account/AccountApi.h"
 #include "Services/Account/AccountService.h"
+#include "Services/Account/FriendsService.h"
 #include "Services/Audio/SoundEffects.h"
 #include "Settings/DuelSettings.h"
 #include "UI/Window.h"
@@ -89,6 +91,15 @@ Duel DuelFrom(const Json::Value& row) {
     for (const auto& p : row["players"].Elements()) d.players.push_back(PlayerFrom(p));
     for (const auto& p : row["invited"].Elements()) d.invited.push_back(Profile::FromJson(p));
     if (row["from"].IsObject()) d.from = Profile::FromJson(row["from"]);
+    for (const auto& m : row["chat"].Elements()) {
+        DuelChatMessage msg;
+        msg.id = m["id"].Int();
+        msg.userId = m["user_id"].WStr();
+        msg.name = m["name"].WStr();
+        msg.text = m["text"].WStr();
+        msg.ago = m["ago"].Number();
+        d.chat.push_back(std::move(msg));
+    }
     return d;
 }
 
@@ -258,6 +269,9 @@ void DuelsService::AccountChanged() {
     challengedFor.clear();
     leaderboard.clear();
     leaderboardLoading = leaderboardFailed = false;
+    champions.clear();
+    championsLoading = championsLoaded = false;
+    forfeitBlockedUntil = 0.0;
     if (AccountService::Get().SignedIn()) Refresh();
     Redraw();
 }
@@ -291,6 +305,10 @@ bool EventOn(DuelsService::Event event) {
     case DuelsService::Event::Invite: return s.invites;
     case DuelsService::Event::Join: return s.joins;
     case DuelsService::Event::Start: return s.starts;
+    case DuelsService::Event::BanTurn: return s.banTurn;
+    case DuelsService::Event::RivalFinished: return s.rivalFinished;
+    case DuelsService::Event::Leave: return s.leaves;
+    case DuelsService::Event::Chat: return s.roomChat;
     default: return s.results;
     }
 }
@@ -312,6 +330,7 @@ void DuelsService::Compare(const std::optional<Duel>& oldActive, const std::opti
     for (const auto& invite : invites) {
         if (!seenInvites.insert(invite.id).second) continue;
         if (!loaded) continue;   // the first load doesn't toast what was already waiting
+        if (Settings::Duels::Current().friendInvitesOnly && !FriendsService::Get().IsFriend(invite.from.userId)) continue;
         Notify(Event::Invite, Loc::Get("duel_toast_challenge"), Loc::Fmt("duel_toast_challenge_text", NameOf(invite.from), DuelModeLabel(invite.slots)), 0xFFB020,
                Sfx::DuelInvite);
     }
@@ -326,6 +345,40 @@ void DuelsService::Compare(const std::optional<Duel>& oldActive, const std::opti
             for (const auto& p : active->players)
                 if (!oldActive->Player(p.profile.userId) && p.profile.userId != me)
                     Notify(Event::Join, Loc::Get("duel_toast_joined"), Loc::Fmt("duel_toast_joined_text", NameOf(p.profile)), 0x3DDC84, Sfx::DuelJoin);
+        // Someone wrote in the room chat while the duels menu is closed: the newest message
+        if (!watching) {
+            long long seen = 0;
+            for (const auto& m : oldActive->chat) seen = std::max(seen, m.id);
+            const DuelChatMessage* newest = nullptr;
+            for (const auto& m : active->chat)
+                if (m.id > seen && m.userId != me) newest = &m;
+            if (newest)
+                Notify(Event::Chat, Loc::Fmt("duel_toast_chat", newest->name.empty() ? Loc::Get("acc_default_name") : newest->name), newest->text, 0x3A9BFF,
+                       Sfx::Click);
+        }
+        // Someone left the room (or was kicked)
+        if (oldActive->status == Duel::Status::Open && active->status == Duel::Status::Open)
+            for (const auto& p : oldActive->players)
+                if (!active->Player(p.profile.userId) && p.profile.userId != me)
+                    Notify(Event::Leave, Loc::Get("duel_toast_left"), Loc::Fmt("duel_toast_left_text", NameOf(p.profile)), 0x78A0BE, nullptr);
+        // The ban turn passed to you
+        if (oldActive->status == Duel::Status::Banning && active->status == Duel::Status::Banning) {
+            const DuelPlayer* before = oldActive->BanTurn();
+            const DuelPlayer* now = active->BanTurn();
+            if (now && now->profile.userId == me && (!before || before->profile.userId != me))
+                Notify(Event::BanTurn, Loc::Get("duel_toast_ban_turn"), Loc::Get("duel_toast_ban_turn_text"), 0xFFB020, Sfx::Click);
+        }
+        // A rival sent their time or forfeited
+        if (oldActive->status == Duel::Status::Running && active->status == Duel::Status::Running)
+            for (const auto& p : active->players) {
+                const DuelPlayer* before = oldActive->Player(p.profile.userId);
+                if (p.profile.userId == me || !p.done || !before || before->done) continue;
+                if (p.forfeited)
+                    Notify(Event::RivalFinished, Loc::Get("duel_toast_rival_forfeit"), Loc::Fmt("duel_toast_rival_forfeit_text", NameOf(p.profile)), 0x78A0BE, nullptr);
+                else
+                    Notify(Event::RivalFinished, Loc::Get("duel_toast_rival_done"),
+                           Loc::Fmt("duel_toast_rival_done_text", NameOf(p.profile), FormatDuelTime(p.seconds)),0xFF5A3C, Sfx::Click);
+            }
     }
     if (result && (!oldResult || oldResult->id != result->id) && loaded) {
         if (const DuelPlayer* mine = result->Player(me)) {
@@ -363,6 +416,8 @@ void DuelsService::Refresh() {
                        myMmr = static_cast<int>(json["me"]["mmr"].Int());
                        myWins = static_cast<int>(json["me"]["wins"].Int());
                        myLosses = static_cast<int>(json["me"]["losses"].Int());
+                       forfeitBlockedUntil = json["forfeit_block"].IsNumber() ? Async::Now() + json["forfeit_block"].Number() : 0.0;
+                       if (!championsLoaded) LoadChampions();
                        active.reset();
                        result.reset();
                        if (json["active"].IsObject()) active = DuelFrom(json["active"]);
@@ -517,6 +572,25 @@ void DuelsService::Decline(const std::wstring& duelId, Done done) {
     Call(L"duel_decline", DuelBody(duelId), std::move(done), true);
 }
 
+void DuelsService::Say(const std::wstring& duelId, const std::wstring& text, Done done) {
+    const std::wstring trimmed = Text::Trim(text);
+    if (trimmed.empty()) return;
+    // Shown straight away; the refresh after the call brings the server's copy
+    for (auto* duel : { &active, &result })
+        if (*duel && (*duel)->id == duelId) {
+            DuelChatMessage local;
+            local.userId = AccountService::Get().UserId();
+            local.name = NameOf(AccountService::Get().Me());
+            local.text = trimmed.substr(0, 200);
+            (*duel)->chat.push_back(std::move(local));
+        }
+    Redraw();
+    Json::Value body = Json::Value::MakeObject();
+    body.Set("p_duel", duelId);
+    body.Set("p_text", trimmed.substr(0, 200));
+    Call(L"duel_say", body.Serialize(), std::move(done), true);
+}
+
 void DuelsService::Invite(const std::wstring& duelId, const std::wstring& userId, Done done) {
     Json::Value body = Json::Value::MakeObject();
     body.Set("p_duel", duelId);
@@ -552,7 +626,68 @@ void DuelsService::Dismiss(const std::wstring& duelId) {
     Redraw();
 }
 
+double DuelsService::ForfeitBlockedFor() const { return std::max(0.0, forfeitBlockedUntil - Async::Now()); }
+
+std::vector<std::string> DuelsService::TitlesOf(const std::wstring& userId) const {
+    std::vector<std::string> months;
+    for (const auto& c : champions)
+        if (c.profile.userId == userId) months.push_back(c.month);
+    return months;
+}
+
+void DuelsService::LoadChampions() {
+    if (!AccountService::Get().SignedIn() || championsLoading) return;
+    championsLoading = true;
+    const unsigned gen = generation;
+    Async::Run([] { return AccountService::Get().Rpc(L"duel_champions", Json::Value::MakeObject()); }, [this, gen](Http::Response response) {
+        if (gen != generation) return;
+        championsLoading = false;
+        bool ok = false;
+        const Json::Value rows = response.Ok() ? Json::Parse(std::string_view(response.body), &ok) : Json::Value();
+        if (!ok || !rows.IsArray()) return;   // (an older server without champions: nothing to show)
+        championsLoaded = true;
+        champions.clear();
+        for (const auto& row : rows.Elements()) {
+            DuelChampion c;
+            c.month = row["month"].Str();
+            c.profile = Profile::FromJson(row["user"]);
+            c.mmr = static_cast<int>(row["mmr"].Int());
+            c.wins = static_cast<int>(row["wins"].Int());
+            c.losses = static_cast<int>(row["losses"].Int());
+            champions.push_back(std::move(c));
+        }
+        Redraw();
+    });
+}
+
+std::wstring DuelMonthName(const std::string& month) {
+    int year = 0, mon = 0;
+    if (month.size() == 7 && month[4] == '-') {
+        year = std::atoi(month.substr(0, 4).c_str());
+        mon = std::atoi(month.substr(5, 2).c_str());
+    } else {
+        SYSTEMTIME now{};
+        GetSystemTime(&now);
+        year = now.wYear;
+        mon = now.wMonth;
+    }
+    if (mon < 1 || mon > 12) return Text::Widen(month);
+    return Loc::Fmt("duel_month_name", Loc::Get("month_" + std::to_string(mon)), year);
+}
+
+std::wstring DuelChampionTitle(const std::string& month) { return Loc::Fmt("duel_champion_of", DuelMonthName(month)); }
+
+int DuelMonthDaysLeft() {
+    SYSTEMTIME now{};
+    GetSystemTime(&now);
+    static constexpr int kDays[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    int days = kDays[now.wMonth - 1];
+    if (now.wMonth == 2 && ((now.wYear % 4 == 0 && now.wYear % 100 != 0) || now.wYear % 400 == 0)) days = 29;
+    return std::max(1, days - now.wDay + 1);
+}
+
 void DuelsService::LoadLeaderboard() {
+    LoadChampions();
     if (!AccountService::Get().SignedIn() || leaderboardLoading) return;
     leaderboardLoading = true;
     const unsigned gen = generation;

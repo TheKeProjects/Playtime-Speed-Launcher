@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "Services/Account/BadgesService.h"
 #include "Services/Account/Profile.h"
 #include "UI/Ui.h"
 
@@ -23,8 +24,10 @@ void NameWithEffect(UI::Ui& ui, const std::wstring& text, const Rect& r, const P
 
 // Round picture; with no picture, a circle in the name's colour with the first letter.
 // `animate` false keeps a GIF on its first frame (the main screen while a game is running).
+// `decoration` false: the caller draws AvatarDecoration itself, after what goes over the picture
+// (presence dot, the row's texts) so the decoration stays on top
 void Avatar(UI::Ui& ui, const std::wstring& source, const Rect& r, const Profile& profile, const std::wstring& name, float ring = 0.f,
-            Color ringColor = Colors::Transparent, bool animate = true);
+            Color ringColor = Colors::Transparent, bool animate = true, bool decoration = true);
 // The banner filling `r` (picture, or the banner colour as a soft gradient)
 void Banner(UI::Ui& ui, const std::wstring& source, const Rect& r, const Profile& profile, float radius);
 // For rects much wider than a banner (the full profile's header): the whole picture, uncropped
@@ -36,6 +39,7 @@ struct CardInfo {
     std::wstring avatarSource, bannerSource;
     std::wstring line1, line2;     // e.g. the speedrun.com link and the hours
     Color line1Color = Hex(0x8AAABB);
+    const Services::Account::Badge* badge = nullptr;   // the badge next to the name (BadgesService::Shown)
 };
 float CardHeight(float width);
 void Card(UI::Ui& ui, const Rect& r, const Profile& profile, const CardInfo& info);
@@ -49,6 +53,12 @@ void AvatarDecoration(UI::Ui& ui, const Rect& avatar, const Profile& profile, bo
 void ProfileFrame(UI::Ui& ui, const Rect& card, float radius, const Profile& profile);
 // The profile's nameplate behind a list row (call right after drawing the row's background)
 void Nameplate(UI::Ui& ui, const Rect& row, float radius, const Profile& profile);
+bool HasNameplate(const Profile& profile);
+// A row's text (times, places, MMR...): on a nameplate (`onPlate`) it gets a dark halo so it reads
+// on any plate; else plain text
+void RowText(UI::Ui& ui, const std::wstring& text, const Rect& r, Color color, const TextStyle& style, bool onPlate);
+// A soft dark veil behind something drawn over a nameplate (text, chips) so it stands out
+void PlateScrim(UI::Ui& ui, const Rect& bounds);
 
 // Hours per chapter / multiplayer game: a label, a bar against the most played one and the time.
 // Returns the height used (draws nothing but "—" when there are no hours).

@@ -1,10 +1,15 @@
-4.3.0
+4.3.1
 ## Novedades
-Cuentas del launcher: tu tiempo de juego se guarda en la nube, así conservas tus horas en cualquier PC
-Perfiles: nombre, foto, banner y cosméticos, además de tus cuentas de speedrun.com y Discord vinculadas
-Ranking de la comunidad: los jugadores del launcher clasificados por sus mejores marcas de speedrun.com en cada capítulo
-Amigos: añade gente por nombre o código de amigo y mira quién está conectado y a qué está jugando
-Duelos: compite contra otros jugadores del launcher en 1v1 o en salas de hasta 6 jugadores y sube de rango MMR
+Duelos: haz clic en cualquier jugador para abrir su miniperfil y, desde ahí, su perfil completo
+El perfil completo ahora muestra el marco de perfil del jugador
+Amigos: nueva página Todos los usuarios con todas las cuentas del launcher, conectadas y desconectadas
+Chat: habla con los jugadores de tu sala de duelo y envía mensajes privados a tus amigos
+Duelos: el ranking ahora es mensual y el ganador de cada mes consigue un título de campeón que todos pueden ver
+Duelos: rendirse en 2 duelos seguidos impide rendirse durante 1 hora
+Insignias: de campeón, pionero, colaborador y developer, todas visibles en la pestaña Insignias del perfil; elige en el editor la que sale junto a tu nombre
+Editor de perfil: un botón de vista previa para ver tu perfil como lo ven los demás
+Nueva decoración de avatar GrabPack 67
+Notificaciones de duelos: más opciones, como tu turno de banear, que un rival termine o solo invitaciones de amigos
 
 ## Correcciones
-Los capítulos bloqueados ya no muestran tiempo de juego, los juegos multijugador muestran el suyo aunque no estén instalados y los tiempos de menos de un minuto se muestran en segundos
+Los textos y etiquetas sobre las placas de nombre ahora se leen bien en los rankings, amigos y listas de duelos

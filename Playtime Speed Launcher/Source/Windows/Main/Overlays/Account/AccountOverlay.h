@@ -29,6 +29,13 @@ public:
     bool Visible() const override { return popup.Visible(); }
     void Draw(UI::Ui& ui, const Rect& screen) override;
     void Open(bool ranking = false);
+    // Someone's full profile on its own, over whatever menu is open (e.g. the duels): drawn by
+    // ProfileOnTop, above every other overlay. Closing it leaves that menu as it was.
+    void ShowProfile(const Services::Account::Profile& profile);
+    bool ProfileShown() const { return standaloneProfile && viewer.open; }
+    void DrawProfileOnTop(UI::Ui& ui, const Rect& screen);
+    // Friends → MESSAGES with this person's conversation open
+    void OpenChat(const Services::Account::Profile& profile);
 
 private:
     using Profile = Services::Account::Profile;
@@ -59,6 +66,14 @@ private:
     void DrawFriendsList(UI::Ui& ui, const Rect& r, bool onlineOnly);
     void DrawFriendsPending(UI::Ui& ui, const Rect& r);
     void DrawFriendsAdd(UI::Ui& ui, const Rect& r);
+    // EVERYONE: every launcher account, online first (presence from the duels' online list + friends)
+    void DrawFriendsCommunity(UI::Ui& ui, const Rect& r);
+    void LoadCommunity(bool force);
+    // MESSAGES (AccountMessagesTab.cpp): the conversations on the left, the open one on the right
+    void DrawMessages(UI::Ui& ui, const Rect& r);
+    void DrawConversation(UI::Ui& ui, const Rect& r);
+    // A "message" button's action: from the account menu or from a profile over another menu
+    void MessageButton(const Profile& profile);
     void DrawFriendCard(UI::Ui& ui, const Rect& r);
     void SetFriendsPage(int page);
     void FriendMessage(const std::wstring& message, bool ok);
@@ -73,8 +88,12 @@ private:
         bool full = false;
         bool fullFromCard = false;   // "back" returns to the card instead of closing
         double fullAt = 0.0;
-        int section = 0;             // 0 overview, 1 records, 2 hours, 3 info
+        int section = 0;             // 0 overview, 1 records, 2 hours, 3 info, 4 badges
         double sectionAt = 0.0;
+        // Your own profile as the others see it (PROFILE → PREVIEW): the editor's pictures (local
+        // files until saved) instead of the uploaded ones
+        bool preview = false;
+        std::wstring avatarSource, bannerSource;
     } viewer;
     void OpenViewer(const Profile& profile, const std::wstring& runUrl = L"", const std::wstring& runText = L"");
     void DrawViewer(UI::Ui& ui, const Rect& screen);
@@ -84,6 +103,9 @@ private:
     void DrawFullRecords(UI::Ui& ui, const Rect& r);
     void DrawFullHours(UI::Ui& ui, const Rect& r);
     void DrawFullInfo(UI::Ui& ui, const Rect& r);
+    void DrawFullBadges(UI::Ui& ui, const Rect& r);
+    // PROFILE → PREVIEW: the full profile with the editor's (maybe unsaved) changes
+    void PreviewMyProfile();
     // One runner's speedrun.com personal bests and runs (shared with the ranking's `runners`)
     void RequestRunner(const std::wstring& speedrunId);
     std::set<std::wstring> runnersLoading;
@@ -95,6 +117,8 @@ private:
     void DrawRankTabs(UI::Ui& ui, const Rect& r);
     void DrawRankCategories(UI::Ui& ui, const Rect& r, std::vector<RunType>& types);
     void DrawRankTable(UI::Ui& ui, const Rect& r, const RunType& runType);
+
+    bool standaloneProfile = false;   // the viewer was opened by ShowProfile (no account menu behind it)
 
     UI::Popup popup;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);
@@ -118,7 +142,7 @@ private:
     std::wstring customColor1, customColor2, customBanner, customCard;   // the hex fields
 
     // Friends
-    int friendsPage = 0;           // 0 all, 1 online, 2 pending, 3 add
+    int friendsPage = 0;           // 0 all, 1 online, 2 pending, 3 add, 4 everyone, 5 messages
     double friendsPageAt = -10.0;
     bool friendDetailShown = false;   // the selected friend's card fits next to the list
     std::wstring friendFilter;     // filters the lists by name
@@ -131,6 +155,15 @@ private:
     std::wstring selectedFriend;   // user id shown in the card
     std::wstring confirmRemove;    // user id waiting for the second click on "remove"
     bool codeCopied = false;
+    // Everyone (the friends' EVERYONE page)
+    bool communityLoading = false, communityFailed = false;
+    double communityLoadedAt = -1000.0;
+    std::vector<Profile> community;
+    std::wstring communityFilter;
+    // Messages
+    Profile chatProfile;           // the conversation on screen (its person)
+    std::wstring dmText;           // what's being written
+    double chatOpenedAt = -10.0;
     double codeCopiedAt = -10.0;
 
     // Ranking
@@ -144,6 +177,18 @@ private:
     std::set<int> loadingTypes;
     std::map<int, int> rankCategory;
     double rankChangedAt = -10.0;
+};
+
+// Draws AccountOverlay::ShowProfile's profile at the top of the overlay stack (the account menu
+// itself sits below the duels menu)
+class ProfileOnTop : public Overlay {
+public:
+    ProfileOnTop(MainWindow& window, AccountOverlay& accountOverlay) : Overlay(window), account(accountOverlay) {}
+    bool Visible() const override { return account.ProfileShown(); }
+    void Draw(UI::Ui& ui, const Rect& screen) override { account.DrawProfileOnTop(ui, screen); }
+
+private:
+    AccountOverlay& account;
 };
 
 } // namespace SpeedrunLauncher::Main

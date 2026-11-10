@@ -1,10 +1,15 @@
-4.3.0
+4.3.1
 ## Additions
-Launcher accounts: your playtime is saved in the cloud, so you keep your hours on any PC
-Profiles: name, picture, banner and cosmetics, plus your linked speedrun.com and Discord accounts
-Community ranking: launcher players ranked by their speedrun.com personal bests on each chapter
-Friends: add people by name or friend code and see who's online and what they're playing
-Duels: race other launcher players in 1v1 up to 6-player rooms and climb the MMR ranks
+Duels: click any player to open their mini profile, and from there their full profile
+The full profile now shows the player's profile frame
+Friends: new All Users page with every launcher account, online and offline
+Chat: talk with the players in your duel lobby, and send private messages to your friends
+Duels: the ranking is now monthly, and each month's winner gets a champion title everyone can see
+Duels: forfeiting 2 duels in a row blocks forfeiting for 1 hour
+Badges: champion, pioneer, contributor and developer badges, all shown in the profile's Badges tab; pick the one next to your name in the editor
+Profile editor: a Preview button to see your profile as others see it
+New GrabPack 67 avatar decoration
+Duel notifications: more options, like your turn to ban, a rival finishing or friend invites only
 
 ## Bug Fixes
-Locked chapters no longer show playtime, multiplayer games show theirs even when not installed, and times under a minute show in seconds
+Texts and labels over nameplates are now readable in the rankings, friends and duel lists

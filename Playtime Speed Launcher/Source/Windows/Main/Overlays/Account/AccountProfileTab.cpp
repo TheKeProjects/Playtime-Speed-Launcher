@@ -8,6 +8,7 @@
 #include "Core/Text.h"
 #include "Localization/Localization.h"
 #include "Services/Account/AccountService.h"
+#include "Services/Account/BadgesService.h"
 #include "Services/Chapters/ChapterPlaytimeStore.h"
 #include "UI/Layout.h"
 #include "UI/Widgets/Button.h"
@@ -17,6 +18,7 @@
 #include "UI/Widgets/Stagger.h"
 #include "UI/Widgets/TextBox.h"
 #include "Seasonal/SeasonalTheme.h"
+#include "Windows/Main/Common/BadgeDraw.h"
 #include "Windows/Main/Common/ProfileDraw.h"
 #include "Windows/Main/MainWindow.h"
 #include "Windows/Main/Overlays/Account/AccountKit.h"
@@ -180,6 +182,7 @@ void AccountOverlay::DrawProfile(Ui& ui, const Rect& body) {
             info.line1Color = kSub;
         }
         info.line2 = Loc::Fmt("acc_card_hours", Services::ChapterPlaytimeStore::Format(TotalSeconds()));
+        info.badge = Services::Account::BadgesService::Get().Shown(account.UserId(), &draft.featuredBadge);
         ProfileDraw::Card(ui, left.Top(cardH), draft, info);
         if (Dirty()) ui.g.Text(Loc::Get("acc_preview_unsaved"), { left.x, left.y + cardH + 4.f, left.w, 14.f }, MenuKit::kAmber, Mono(9.f, true).Center());
     }
@@ -407,7 +410,13 @@ float AccountOverlay::DrawEditor(Ui& ui, const Rect& r) {
         // Profile picture
         Caption(ui, col.x, top, half, Loc::Get("acc_avatar"));
         const Rect avatar{ col.x, top + 24.f, 64.f, 64.f };
-        ProfileDraw::Avatar(ui, AvatarSource(), avatar, draft, draft.ShownName(Loc::Get("acc_default_name")));
+        {
+            // Just the picture here: the decoration would spill over the buttons (the cosmetics
+            // picker and the card preview show it)
+            Profile plain = draft;
+            plain.avatarDeco = "none";
+            ProfileDraw::Avatar(ui, AvatarSource(), avatar, plain, draft.ShownName(Loc::Get("acc_default_name")));
+        }
         float w = 0.f;
         if (SmallButton(ui, ui.MakeId("acc-avatar-pick"), avatar.R() + 12.f, avatar.y, Loc::Get("acc_change"), Glyphs::Image, w)) PickPicture(false);
         if (!AvatarSource().empty() && SmallButton(ui, ui.MakeId("acc-avatar-remove"), avatar.R() + 12.f, avatar.y + 36.f, Loc::Get("acc_remove"), Glyphs::Delete, w,
@@ -523,6 +532,62 @@ float AccountOverlay::DrawEditor(Ui& ui, const Rect& r) {
         if (it.hovered) ui.SetCursor(IDC_HAND);
         return it.clicked;
     };
+
+    // Badges: the one shown next to your name (all of them show in your profile's BADGES tab)
+    {
+        StaggerItem in(ui, tabChangedAt, reveal++, 24.f);
+        section("badges_title");
+        auto& badges = Services::Account::BadgesService::Get();
+        const auto* mine = badges.Of(AccountService::Get().UserId());
+        if (!mine) {
+            Form::Spinner(ui, col.x + 14.f, col.y + 14.f, 7.f, kAccent);
+            ui.KeepAnimatingThrottled();
+            col.Gap(42.f);
+        } else if (mine->empty()) {
+            g.Text(Loc::Get("badges_none_yet"), { col.x, col.y, col.w, 34.f }, kSub, Mono(9.5f).Wrap());
+            col.Gap(48.f);
+        } else {
+            const Services::Account::Badge* shown = badges.Shown(AccountService::Get().UserId(), &draft.featuredBadge);
+            constexpr int kColumns = 3;
+            constexpr float kTileH = 112.f, kGap = 8.f;
+            const float tileW = (col.w - kGap * (kColumns - 1)) / kColumns;
+            // First tile: "the newest" (no pick); then each badge
+            const size_t count = mine->size() + 1;
+            for (size_t i = 0; i < count; ++i) {
+                const Rect t{ col.x + (i % kColumns) * (tileW + kGap), col.y + (i / kColumns) * (kTileH + kGap), tileW, kTileH };
+                const Id id = ui.MakeId("badge-pick", static_cast<int64_t>(i));
+                const Interaction it = ui.Interact(id, t);
+                const bool automatic = i == 0;
+                const Services::Account::Badge* b = automatic ? &mine->front() : &(*mine)[i - 1];
+                const bool sel = automatic ? draft.featuredBadge.empty() || shown == nullptr || draft.featuredBadge != shown->Id()
+                                           : !draft.featuredBadge.empty() && draft.featuredBadge == b->Id() && shown == b;
+                const float hover = ui.Animate(HashId(id, 1), it.hovered ? 1.f : 0.f, 16.f);
+                const float on = ui.Animate(HashId(id, 2), sel ? 1.f : 0.f, 14.f);
+                const auto look = BadgeDraw::LookOf(*b);
+                if (on > 0.01f) g.GlowRound(t, 8.f, look.color, 12.f, 0.3f * on);
+                g.Border(t, 8.f, Lerp(kRow, kRowHover, hover), Lerp(Lerp(kCardBorder, kHoverBorder, hover), look.color, on), on > 0.5f ? 1.5f : 1.f);
+                BadgeDraw::Medal(ui, t.CX(), t.y + 36.f, 24.f, *b, static_cast<int>(i));
+                if (automatic) {
+                    // "Automatic": a small refresh mark on the medal
+                    NoColorFilter keep(g);
+                    g.FillEllipse(t.CX() + 18.f, t.y + 54.f, 9.f, 9.f, Hex(0x0A1420));
+                    UI::Glyph(ui, Glyphs::Refresh, { t.CX() + 9.f, t.y + 45.f, 18.f, 18.f }, 9.f, kSub);
+                }
+                TextStyle name = Mono(9.f, true).Center();
+                name.ellipsis = true;
+                g.Text(automatic ? Loc::Get("badges_auto") : look.title, { t.x + 6.f, t.y + 68.f, t.w - 12.f, 16.f }, Lerp(kSub, kText, std::max(on, hover)), name);
+                TextStyle sub = Mono(8.f).Center();
+                sub.ellipsis = true;
+                g.Text(automatic ? Loc::Get("badges_auto_hint") : look.description, { t.x + 6.f, t.y + 86.f, t.w - 12.f, 16.f }, kSub, sub);
+                if (it.hovered) {
+                    ui.SetCursor(IDC_HAND);
+                    ui.Tooltip(id, automatic ? Loc::Get("badges_auto_hint") : look.title + L"\n" + look.description);
+                }
+                if (it.clicked) draft.featuredBadge = automatic ? "" : b->Id();
+            }
+            col.Gap(((count + kColumns - 1) / kColumns) * (kTileH + kGap) + 14.f);
+        }
+    }
 
     // Avatar decorations
     {

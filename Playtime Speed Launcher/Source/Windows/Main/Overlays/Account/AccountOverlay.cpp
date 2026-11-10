@@ -3,6 +3,7 @@
 #include "Core/Text.h"
 #include "Localization/Localization.h"
 #include "Services/Account/AccountService.h"
+#include "Services/Account/MessagesService.h"
 #include "Services/Account/FriendsService.h"
 #include "UI/Layout.h"
 #include "UI/Widgets/Button.h"
@@ -99,6 +100,8 @@ void AccountOverlay::Open(bool ranking) {
 
 void AccountOverlay::Close() {
     viewer.open = false;
+    Services::Account::MessagesService::Get().Open(L"");
+    Services::Account::MessagesService::Get().SetWatching(false);
     if (Dirty() && AccountService::Get().SignedIn() && !AccountService::Get().SaveBusy()) Discard();
     popup.Close();
 }
@@ -119,6 +122,14 @@ void AccountOverlay::Draw(Ui& ui, const Rect& screen) {
         }
     }
     const bool signedIn = account.SignedIn();
+    {
+        // The open conversation is only "being read" while MESSAGES is on screen
+        auto& messages = Services::Account::MessagesService::Get();
+        const bool reading = signedIn && popup.IsOpen() && tab == 2 && friendsPage == 5;
+        messages.SetWatching(reading);
+        if (!reading && !messages.OpenWith().empty()) messages.Open(L"");
+        if (reading && messages.OpenWith().empty() && !chatProfile.userId.empty()) messages.Open(chatProfile.userId);
+    }
     const float width = signedIn ? std::min(1120.f, screen.w - 60.f) : 560.f;
     const float height = signedIn ? std::min(760.f, screen.h - 60.f) : 0.f;
     if (!signedIn) viewer.open = false;
@@ -132,7 +143,7 @@ void AccountOverlay::Draw(Ui& ui, const Rect& screen) {
         wchar_t glyphs[] = { wchar_t(0xE77B), wchar_t(0xE9F9), wchar_t(0xE716) };   // contact · chart · people
         {
             StaggerItem in(ui, openedAt, 0, 0.f, -8.f);
-            const int pending = Services::Account::FriendsService::Get().PendingCount();
+            const int pending = Services::Account::FriendsService::Get().PendingCount() + Services::Account::MessagesService::Get().Unread();
             const std::wstring friendsLabel = Loc::Get("fr_tab") + (pending > 0 ? L" (" + std::to_wstring(pending) + L")" : L"");
             const int clicked = PillTabs(ui, inner.Top(36.f).CenterH(600.f), { Loc::Get("acc_tab_profile"), Loc::Get("acc_tab_ranking"), friendsLabel },
                                          tab, "acc-tab", glyphs);
@@ -159,6 +170,15 @@ void AccountOverlay::Draw(Ui& ui, const Rect& screen) {
         escape)
         Close();
     if (signedIn && tab == 0) {
+        // Your profile as the others see it (with the changes not saved yet)
+        {
+            const std::wstring label = Loc::Get("pf_preview");
+            const float pw = MenuKit::FooterButtonWidth(ui, label, wchar_t(0xE7B3), 130.f);
+            right -= pw + 10.f;
+            if (MenuKit::FooterButton(ui, ui.MakeId("acc-preview"), { right, row.CY() - 18.f, pw, 36.f }, label, MenuKit::Kind::Secondary, true, wchar_t(0xE7B3),
+                                      kAccent))
+                PreviewMyProfile();
+        }
         const bool busy = account.SaveBusy();
         const std::wstring save = Loc::Get(busy ? "acc_saving" : "acc_save");
         const float sw = MenuKit::FooterButtonWidth(ui, save, Glyphs::Save, 140.f);
@@ -178,7 +198,42 @@ void AccountOverlay::Draw(Ui& ui, const Rect& screen) {
     ReportKit::StatusPill(ui, ui.MakeId("acc-status"), { row.x, row.CY() - 18.f, std::max(0.f, right - row.x - 14.f), 36.f }, status,
                           statusOk ? Form::Status::Success : Form::Status::Error);
     }
-    if (viewer.open && popup.IsOpen()) DrawViewer(ui, screen);
+    if (viewer.open && popup.IsOpen() && !standaloneProfile) DrawViewer(ui, screen);
+}
+
+void AccountOverlay::OpenChat(const Profile& profile) {
+    if (!popup.IsOpen()) Open();
+    viewer.open = false;
+    standaloneProfile = false;
+    tab = 2;
+    tabChangedAt = Async::Now();
+    status.clear();
+    chatProfile = profile;
+    dmText.clear();
+    chatOpenedAt = Async::Now();
+    SetFriendsPage(5);
+    Services::Account::MessagesService::Get().Open(profile.userId);
+}
+
+void AccountOverlay::MessageButton(const Profile& profile) {
+    const Profile who = profile;   // (the viewer's profile goes with it)
+    viewer.open = false;
+    viewer.full = false;
+    standaloneProfile = false;
+    main.OpenChat(who);
+}
+
+void AccountOverlay::ShowProfile(const Profile& profile) {
+    // The mini profile first; its "full profile" button opens the big one (and "back" returns to it)
+    OpenViewer(profile);
+    RequestRunner(profile.speedrunId);
+    standaloneProfile = true;
+}
+
+void AccountOverlay::DrawProfileOnTop(Ui& ui, const Rect& screen) {
+    if (!AccountService::Get().SignedIn()) viewer.open = false;
+    if (viewer.open) DrawViewer(ui, screen);
+    if (!viewer.open) standaloneProfile = false;
 }
 
 // ── Signed out ──────────────────────────────────────────────────────────────

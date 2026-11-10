@@ -1,4 +1,5 @@
 #include "Settings/DuelSettings.h"
+#include <algorithm>
 #include "Settings/ConfigFile.h"
 
 namespace SpeedrunLauncher::Settings {
@@ -19,6 +20,14 @@ Duels& Duels::Current() {
             d.joins = json["Joins"].Bool(true);
             d.starts = json["Starts"].Bool(true);
             d.results = json["Results"].Bool(true);
+            d.banTurn = json["BanTurn"].Bool(true);
+            d.rivalFinished = json["RivalFinished"].Bool(true);
+            d.leaves = json["Leaves"].Bool(true);
+            d.roomChat = json["RoomChat"].Bool(true);
+            d.directMessages = json["DirectMessages"].Bool(true);
+            d.friendInvitesOnly = json["FriendInvitesOnly"].Bool(false);
+            d.flashTaskbar = json["FlashTaskbar"].Bool(true);
+            d.toastLength = static_cast<int>(std::clamp(json["ToastLength"].Int(1), 0LL, 2LL));
         }
         return d;
     }();
@@ -33,6 +42,14 @@ void Duels::Save() const {
     json.Set("Joins", joins);
     json.Set("Starts", starts);
     json.Set("Results", results);
+    json.Set("BanTurn", banTurn);
+    json.Set("RivalFinished", rivalFinished);
+    json.Set("Leaves", leaves);
+    json.Set("RoomChat", roomChat);
+    json.Set("DirectMessages", directMessages);
+    json.Set("FriendInvitesOnly", friendInvitesOnly);
+    json.Set("FlashTaskbar", flashTaskbar);
+    json.Set("ToastLength", toastLength);
     Config::WriteJson(kFile, json);
 }
 

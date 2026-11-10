@@ -62,6 +62,13 @@ struct DuelPlayer {
     bool Online() const { return secondsAgo >= 0.0 && secondsAgo < 150.0; }
 };
 
+// A message in a duel's room chat
+struct DuelChatMessage {
+    long long id = 0;            // 0 = sent by us, not confirmed by the server yet
+    std::wstring userId, name, text;
+    double ago = 0.0;            // seconds, when fetched
+};
+
 struct Duel {
     enum class Type { Random, Chapter, Bans };
     enum class Status { Open, Banning, Running, Finished, Expired, Cancelled };
@@ -79,6 +86,7 @@ struct Duel {
     std::vector<DuelPlayer> players;
     std::vector<Profile> invited;  // open rooms: invited, not in yet
     Profile from;                 // invites: who challenged us
+    std::vector<DuelChatMessage> chat;   // the room's chat (only for our own duel / result)
 
     const DuelPlayer* Player(const std::wstring& userId) const;
     const DuelPlayer* Host() const { return Player(hostId); }
@@ -108,6 +116,20 @@ struct DuelStanding {
     Profile profile;
     int mmr = 0, wins = 0, losses = 0;
 };
+
+// A month's champion: the top of that month's ranking
+struct DuelChampion {
+    std::string month;           // "2026-11"
+    Profile profile;
+    int mmr = 0, wins = 0, losses = 0;
+};
+
+// "noviembre 2026" for "2026-11" (empty = the current month, UTC like the server)
+std::wstring DuelMonthName(const std::string& month = "");
+// "Campeón de noviembre 2026"
+std::wstring DuelChampionTitle(const std::string& month);
+// Days left in the current ranking month (UTC)
+int DuelMonthDaysLeft();
 
 // What "create" sends
 struct DuelSetup {
@@ -153,6 +175,13 @@ public:
     bool LeaderboardLoading() const { return leaderboardLoading; }
     bool LeaderboardFailed() const { return leaderboardFailed; }
     void LoadLeaderboard();
+    // Every finished month's champion, newest first (loaded with the ranking and at sign in)
+    const std::vector<DuelChampion>& Champions() const { return champions; }
+    void LoadChampions();
+    // The months someone was champion ("2026-10"...), newest first
+    std::vector<std::string> TitlesOf(const std::wstring& userId) const;
+    // Forfeit cooldown (2 forfeits in a row): seconds until we can forfeit again (0 = we can)
+    double ForfeitBlockedFor() const;
 
     void Refresh();
     // Callbacks get a translated message (empty when there's nothing to say) and whether it worked
@@ -173,10 +202,14 @@ public:
     void Ban(const std::wstring& duelId, const std::string& categoryId, Done done);
     void Submit(const std::wstring& duelId, double seconds, Done done);
     void Dismiss(const std::wstring& duelId);
+    // Says something in the duel's room chat (shows at once, confirmed by the next refresh)
+    void Say(const std::wstring& duelId, const std::wstring& text, Done done);
 
     // What a toast / sound is about (Duels → Settings can turn each one off)
-    enum class Event { Invite, Join, Start, Result };
+    enum class Event { Invite, Join, Start, Result, BanTurn, RivalFinished, Leave, Chat };
 
+    // The duels menu is open (room chat messages then don't toast)
+    bool Watching() const { return watching; }
     // Something worth a toast (challenge received, duel started, result): title + text
     std::function<void(const std::wstring& title, const std::wstring& text, unsigned color)> onNotify;
 
@@ -201,6 +234,9 @@ private:
     std::set<std::wstring> challenged;
     std::wstring challengedFor;           // the lobby `challenged` belongs to
     std::vector<DuelStanding> leaderboard;
+    std::vector<DuelChampion> champions;
+    bool championsLoading = false, championsLoaded = false;
+    double forfeitBlockedUntil = 0.0;   // Async::Now() time
     bool leaderboardLoading = false, leaderboardFailed = false;
     bool initialized = false;
 };

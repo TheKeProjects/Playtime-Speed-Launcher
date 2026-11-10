@@ -6,6 +6,21 @@ namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
+        { L"4.3.1", L"10/11/2026", {
+            L"## Additions",
+            L"Duels: click any player to open their mini profile, and from there their full profile",
+            L"The full profile now shows the player's profile frame",
+            L"Friends: new All Users page with every launcher account, online and offline",
+            L"Chat: talk with the players in your duel lobby, and send private messages to your friends",
+            L"Duels: the ranking is now monthly, and each month's winner gets a champion title everyone can see",
+            L"Duels: forfeiting 2 duels in a row blocks forfeiting for 1 hour",
+            L"Badges: champion, pioneer, contributor and developer badges, all shown in the profile's Badges tab; pick the one next to your name in the editor",
+            L"Profile editor: a Preview button to see your profile as others see it",
+            L"New GrabPack 67 avatar decoration",
+            L"Duel notifications: more options, like your turn to ban, a rival finishing or friend invites only",
+            L"## Bug Fixes",
+            L"Texts and labels over nameplates are now readable in the rankings, friends and duel lists",
+        } },
         { L"4.3.0", L"10/11/2026", {
             L"## Additions",
             L"Launcher accounts: your playtime is saved in the cloud, so you keep your hours on any PC",

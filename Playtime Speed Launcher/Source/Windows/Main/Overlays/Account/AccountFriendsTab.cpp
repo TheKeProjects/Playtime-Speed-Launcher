@@ -8,6 +8,10 @@
 #include "Seasonal/SeasonalTheme.h"
 #include "Localization/Localization.h"
 #include "Services/Account/AccountService.h"
+#include "Services/Account/BadgesService.h"
+#include "Services/Account/CommunityRanking.h"
+#include "Services/Account/DuelsService.h"
+#include "Services/Account/MessagesService.h"
 #include "Services/Account/FriendsService.h"
 #include "Services/Chapters/ChapterPlaytimeStore.h"
 #include "UI/Layout.h"
@@ -35,22 +39,24 @@ namespace {
 constexpr float kNavW = 214.f, kDetailW = 300.f, kRowH = 62.f;
 constexpr Color kOnline = Hex(0x3DDC84), kPlaying = Hex(0xFFB020), kOffline = Hex(0x55606A), kDanger = Hex(0xCC4422);
 
-enum Page { PageAll, PageOnline, PagePending, PageAdd };
+enum Page { PageAll, PageOnline, PagePending, PageAdd, PageEveryone, PageMessages };
 
 Color PresenceColor(const Friend& f) { return f.Online() ? (f.playing ? kPlaying : kOnline) : kOffline; }
 std::wstring NameOf(const Profile& p) { return p.ShownName(p.speedrunName.empty() ? Loc::Get("acc_default_name") : p.speedrunName); }
 std::wstring Hours(const Profile& p) { return Services::ChapterPlaytimeStore::Format(ProfileDraw::TotalSeconds(p)); }
 
-// Picture with a presence ring and dot
-void AvatarWithPresence(Ui& ui, const Friend& f, const Rect& r, bool ring = true) {
+// Picture with a presence ring and dot; the avatar decoration goes over the dot (or, `deferDecoration`,
+// the caller draws it last so it's over the row's texts too)
+void AvatarWithPresence(Ui& ui, const Friend& f, const Rect& r, bool ring = true, bool deferDecoration = false) {
     auto& g = ui.g;
-    ProfileDraw::Avatar(ui, f.profile.AvatarUrl(), r, f.profile, NameOf(f.profile));
+    ProfileDraw::Avatar(ui, f.profile.AvatarUrl(), r, f.profile, NameOf(f.profile), 0.f, Colors::Transparent, true, false);
     NoColorFilter keep(g);
     const Color c = PresenceColor(f);
     if (ring && f.Online()) g.StrokeEllipse(r.CX(), r.CY(), r.w * 0.5f + 2.5f, r.h * 0.5f + 2.5f, c.WithAlpha(0.8f), 2.f);
     const float d = std::max(10.f, r.w * 0.3f);
     g.FillEllipse(r.R() - d * 0.4f, r.B() - d * 0.4f, d * 0.5f + 2.5f, d * 0.5f + 2.5f, Hex(0x0A1420));
     g.FillEllipse(r.R() - d * 0.4f, r.B() - d * 0.4f, d * 0.5f, d * 0.5f, c);
+    if (!deferDecoration) ProfileDraw::AvatarDecoration(ui, r, f.profile);
 }
 
 bool IconButton(Ui& ui, Id id, const Rect& r, wchar_t glyph, MenuKit::Kind kind, bool enabled, const std::wstring& tooltip, Color accent = kAccent) {
@@ -59,14 +65,22 @@ bool IconButton(Ui& ui, Id id, const Rect& r, wchar_t glyph, MenuKit::Kind kind,
     return clicked;
 }
 
-// Small rounded label; returns its width
-float Chip(Ui& ui, float x, float cy, const std::wstring& text, Color color, wchar_t glyph = 0) {
+// Small rounded label; returns its width. On a nameplate (`onPlate`) it gets a solid dark body (the
+// see-through one disappears on bright plates) with a soft shadow
+float Chip(Ui& ui, float x, float cy, const std::wstring& text, Color color, wchar_t glyph = 0, bool onPlate = false) {
     auto& g = ui.g;
     const TextStyle st = Mono(9.f, true);
     const float tw = g.Measure(text, st).w;
     const float w = tw + 14.f + (glyph ? 15.f : 0.f);
     const Rect r{ x, cy - 9.f, w, 18.f };
-    g.Border(r, 9.f, color.WithAlpha(0.12f), color.WithAlpha(0.32f), 1.f);
+    if (onPlate) {
+        NoColorFilter keep(g);
+        g.GlowRound(r, 9.f, Colors::Black, 6.f, 0.4f);
+        g.Border(r, 9.f, Lerp(Hex(0x060C14), color, 0.12f).WithAlpha(0.92f), color.WithAlpha(0.75f), 1.f);
+        color = Lerp(color, Colors::White, 0.15f);
+    } else {
+        g.Border(r, 9.f, color.WithAlpha(0.12f), color.WithAlpha(0.32f), 1.f);
+    }
     float tx = r.x + 7.f;
     if (glyph) {
         UI::Glyph(ui, glyph, { tx - 2.f, r.y, 14.f, r.h }, 8.5f, color);
@@ -121,6 +135,10 @@ void AccountOverlay::DrawFriends(Ui& ui, const Rect& body) {
         DrawFriendsPending(ui, rest);
     } else if (friendsPage == PageAdd) {
         DrawFriendsAdd(ui, rest);
+    } else if (friendsPage == PageEveryone) {
+        DrawFriendsCommunity(ui, rest);
+    } else if (friendsPage == PageMessages) {
+        DrawMessages(ui, rest);
     } else {
         const bool detail = !friends.Friends().empty() && rest.w > kDetailW + 340.f;
         friendDetailShown = detail;
@@ -135,6 +153,10 @@ void AccountOverlay::SetFriendsPage(int page) {
     friendsPage = page;
     friendsPageAt = Async::Now();
     confirmRemove.clear();
+    if (page == PageEveryone) {
+        LoadCommunity(false);
+        Services::Account::DuelsService::Get().Refresh();   // who's online right now
+    }
 }
 
 void AccountOverlay::DrawFriendsNav(Ui& ui, const Rect& r) {
@@ -155,7 +177,9 @@ void AccountOverlay::DrawFriendsNav(Ui& ui, const Rect& r) {
     const Item items[] = {
         { PageAll, wchar_t(0xE716), "fr_page_all", static_cast<int>(friends.Friends().size()), false },
         { PageOnline, wchar_t(0xE91F), "fr_page_online", online, false },
+        { PageMessages, wchar_t(0xE8BD), "msg_page", Services::Account::MessagesService::Get().Unread(), Services::Account::MessagesService::Get().Unread() > 0 },
         { PagePending, wchar_t(0xE823), "fr_page_pending", pending, !friends.Incoming().empty() },
+        { PageEveryone, wchar_t(0xE774), "fr_page_everyone", Services::Account::DuelsService::Get().OnlineCount(), false },
         { PageAdd, wchar_t(0xE8FA), "fr_page_add", 0, false },
     };
     float y = r.y;
@@ -171,6 +195,7 @@ void AccountOverlay::DrawFriendsNav(Ui& ui, const Rect& r) {
         if (sel) selY = row.y;
         const Color color = Lerp(Lerp(kSub, kText, hover), kAccent, on);
         UI::Glyph(ui, item.glyph, { row.x + 12.f, row.y, 20.f, row.h }, 13.f, item.page == PageOnline ? Lerp(color, kOnline, 0.6f) : color);
+        if (item.page == PageEveryone && item.count > 0 && ui.MouseOver(row)) ui.Tooltip(id, Loc::Fmt("fr_everyone_online_tip", item.count));
         g.Text(Loc::Get(item.key), { row.x + 42.f, row.y, row.w - 90.f, row.h }, color, Mono(10.5f, true).Ellipsis());
         if (item.count > 0) {
             const std::wstring n = item.count > 99 ? L"99+" : std::to_wstring(item.count);
@@ -285,25 +310,30 @@ void AccountOverlay::DrawFriendsList(Ui& ui, const Rect& r, bool onlineOnly) {
             g.Border(row, 10.f, Lerp(sel ? Rgba(0, 204, 170, 20) : kRow.WithAlpha(0.f), kRowHover, hover), sel ? kAccent.WithAlpha(0.7f) : kCardBorder.WithAlpha(0.35f + 0.4f * hover), 1.f);
             ProfileDraw::Nameplate(ui, row, 10.f, f->profile);
             const Rect pic{ row.x + 12.f, row.CY() - 20.f, 40.f, 40.f };
-            AvatarWithPresence(ui, *f, pic);
+            AvatarWithPresence(ui, *f, pic, true, true);
             const float right = row.R() - 12.f;
             // Chips on the right: hours, speedrun.com
             float cx = right;
             const std::wstring hours = Hours(f->profile);
             const float hw = g.Measure(hours, Mono(9.f, true)).w + 29.f;
             cx -= hw;
-            Chip(ui, cx, row.CY(), hours, kAccent, wchar_t(0xE916));
+            const bool onPlate = ProfileDraw::HasNameplate(f->profile);
+            Chip(ui, cx, row.CY(), hours, kAccent, wchar_t(0xE916), onPlate);
             if (f->profile.SpeedrunLinked() && cx - 70.f > pic.R() + 160.f) {
                 const float sw = g.Measure(L"SRC", Mono(9.f, true)).w + 29.f;
                 cx -= sw + 6.f;
-                Chip(ui, cx, row.CY(), L"SRC", kSpeedrun, wchar_t(0xE734));
+                Chip(ui, cx, row.CY(), L"SRC", kSpeedrun, wchar_t(0xE734), onPlate);
             }
             const float textW = cx - pic.R() - 24.f;
             ui.PushClip({ pic.R() + 12.f, row.y, textW, row.h });
             ProfileDraw::Name(ui, NameOf(f->profile), { pic.R() + 12.f, row.y + 8.f, textW, 26.f }, f->profile, 15.f);
             ui.PopClip();
-            g.Text(FriendsService::StatusText(*f), { pic.R() + 12.f, row.y + 34.f, textW, 18.f }, f->Online() ? PresenceColor(*f) : kSub,
-                   Mono(9.5f, f->Online()).Ellipsis());
+            {
+                const bool plate = ProfileDraw::HasNameplate(f->profile);
+                ProfileDraw::RowText(ui, FriendsService::StatusText(*f), { pic.R() + 12.f, row.y + 34.f, textW, 18.f },
+                                     f->Online() ? PresenceColor(*f) : plate ? kText : kSub, Mono(9.5f, f->Online() || plate).Ellipsis(), plate);
+            }
+            ProfileDraw::AvatarDecoration(ui, pic, f->profile);   // over the dot and the texts
             if (it.hovered) ui.SetCursor(IDC_HAND);
             if (it.clicked) {
                 selectedFriend = f->profile.userId;
@@ -311,6 +341,184 @@ void AccountOverlay::DrawFriendsList(Ui& ui, const Rect& r, bool onlineOnly) {
                 // Narrow menus have no side card: open the profile instead
                 if (!friendDetailShown) OpenViewer(f->profile);
             }
+        }
+        y += 8.f;
+    }
+    scroll.SetContentSize(y - inner.y);
+}
+
+// ── Everyone: every launcher account, online and offline ───────────────────
+
+void AccountOverlay::LoadCommunity(bool force) {
+    if (communityLoading) return;
+    if (!force && !community.empty() && Async::Now() - communityLoadedAt < 120.0) return;
+    if (!force && communityFailed && Async::Now() - communityLoadedAt < 30.0) return;   // don't hammer a failing server
+    communityLoading = true;
+    communityFailed = false;
+    auto token = alive;
+    Async::Run([] { return Services::Account::Community::FetchMembers(); }, [this, token](std::optional<std::vector<Profile>> result) {
+        if (!*token) return;
+        communityLoading = false;
+        communityLoadedAt = Async::Now();
+        if (!result) {
+            communityFailed = true;
+            return;
+        }
+        community = std::move(*result);
+    });
+}
+
+void AccountOverlay::DrawFriendsCommunity(Ui& ui, const Rect& r) {
+    auto& g = ui.g;
+    auto& friends = FriendsService::Get();
+    const std::wstring& myId = Services::Account::AccountService::Get().UserId();
+    LoadCommunity(false);   // (re)loads every 2 minutes while the page is open
+
+    // Presence: friends know when they were last seen; everyone else is online when the duels'
+    // online list has them
+    std::map<std::wstring, Friend> presence;
+    for (const auto& u : Services::Account::DuelsService::Get().Online()) {
+        Friend f;
+        f.relation = Friend::Relation::None;
+        f.profile = u.profile;
+        f.secondsAgo = 0.0;
+        f.playing = u.playing;
+        presence[u.profile.userId] = f;
+    }
+    for (const auto& f : friends.Friends()) presence[f.profile.userId] = f;
+    const auto statusOf = [&](const Profile& p) {
+        Friend f;
+        if (auto it = presence.find(p.userId); it != presence.end()) f = it->second;
+        f.relation = Friend::Relation::None;
+        f.profile = p;
+        if (p.userId == myId) {   // you're here
+            f.secondsAgo = 0.0;
+            f.playing = 0;
+        }
+        return f;
+    };
+
+    // Groups: playing · online · offline (filtered by name)
+    const std::wstring filter = Text::Lower(Text::Trim(communityFilter));
+    std::vector<Friend> groups[3];
+    for (const auto& p : community) {
+        if (!filter.empty() && !Text::Contains(Text::Lower(NameOf(p)), filter) && !Text::Contains(Text::Lower(p.speedrunName), filter)) continue;
+        Friend f = statusOf(p);
+        groups[f.Online() ? (f.playing ? 0 : 1) : 2].push_back(std::move(f));
+    }
+    size_t online = 0;
+    for (const auto& p : community)
+        if (statusOf(p).Online()) ++online;
+
+    // Header: title + counts; refresh and filter on the right
+    g.Text(Loc::Get("fr_page_everyone"), { r.x, r.y, r.w, 22.f }, kText, Mono(14.f, true));
+    g.Text(community.empty() ? Loc::Get("fr_everyone_sub") : Loc::Fmt("fr_everyone_count", community.size(), online), { r.x, r.y + 22.f, r.w * 0.5f, 18.f },
+           kSub, Mono(9.5f).Ellipsis());
+    {
+        const float fw = std::min(240.f, r.w * 0.45f);
+        const Rect field{ r.R() - fw, r.y + 4.f, fw, 32.f };
+        TextBoxStyle style = Field(false, 32);
+        style.placeholder = Loc::Get("fr_everyone_filter");
+        style.padding = { 30.f, 6.f, 10.f, 6.f };
+        style.text = Mono(10.5f);
+        TextBox(ui, ui.MakeId("fr-everyone-filter"), field, communityFilter, style);
+        UI::Glyph(ui, wchar_t(0xE721), { field.x + 6.f, field.y, 20.f, field.h }, 11.f, kSub);
+        if (IconButton(ui, ui.MakeId("fr-everyone-refresh"), { field.x - 42.f, field.y, 34.f, 32.f }, Glyphs::Refresh, MenuKit::Kind::Secondary, !communityLoading,
+                       Loc::Get("fr_everyone_refresh"))) {
+            LoadCommunity(true);
+            Services::Account::DuelsService::Get().Refresh();
+        }
+    }
+    const Rect area{ r.x, r.y + 52.f, r.w, r.h - 52.f };
+    Card(ui, area);
+
+    if (community.empty()) {
+        if (!communityFailed) {
+            Form::Spinner(ui, area.CX(), area.CY(), 9.f, kAccent);
+            ui.KeepAnimatingThrottled();
+        } else {
+            EmptyState(ui, area, wchar_t(0xE774), Loc::Get("fr_everyone_failed"));
+        }
+        return;
+    }
+    if (groups[0].empty() && groups[1].empty() && groups[2].empty()) {
+        EmptyState(ui, area, wchar_t(0xE721), Loc::Get("fr_everyone_none"));
+        return;
+    }
+
+    const Rect inner = area.Inset(12.f, 10.f);
+    ScrollArea scroll(ui, ui.MakeId("fr-everyone-list"), inner);
+    float y = inner.y;
+    int index = 0;
+    const char* groupKeys[] = { "fr_group_playing", "fr_group_online", "fr_group_offline" };
+    const Color groupColors[] = { kPlaying, kOnline, kSub };
+    for (int gi = 0; gi < 3; ++gi) {
+        if (groups[gi].empty()) continue;
+        g.Text(Loc::Fmt(groupKeys[gi], groups[gi].size()), { inner.x + 4.f, y, inner.w, 22.f }, groupColors[gi], Mono(9.f, true));
+        y += 26.f;
+        for (const Friend& f : groups[gi]) {
+            const Rect row{ inner.x, y, inner.w - 10.f, kRowH };
+            y += kRowH + 4.f;
+            StaggerItem in(ui, friendsPageAt + 0.04, std::min(index++, 12), 0.f, 8.f, 0.03, 0.28);
+            const Profile& p = f.profile;
+            const bool mine = p.userId == myId;
+            const int64_t key = static_cast<int64_t>(std::hash<std::wstring>{}(p.userId));
+            const Id id = ui.MakeId("fr-every-row", key);
+            const Interaction it = ui.Interact(id, row);
+            const float hover = ui.Animate(HashId(id, 1), it.hovered ? 1.f : 0.f, 16.f);
+            g.Border(row, 10.f, Lerp(mine ? Rgba(0, 204, 170, 16) : kRow.WithAlpha(0.f), kRowHover, hover),
+                     mine ? kAccent.WithAlpha(0.6f) : kCardBorder.WithAlpha(0.35f + 0.4f * hover), 1.f);
+
+            // Right: their hours, then who they are to you (or "add")
+            float cx = row.R() - 12.f;
+            const std::wstring hours = Hours(p);
+            cx -= g.Measure(hours, Mono(9.f, true)).w + 29.f;
+            const float hoursX = cx;
+            const auto chipW = [&](const std::wstring& text, bool glyph) { return g.Measure(text, Mono(9.f, true)).w + 14.f + (glyph ? 15.f : 0.f); };
+            std::wstring relation;
+            Color relationColor = kAccent;
+            wchar_t relationGlyph = 0;
+            bool canAdd = false;
+            if (mine) relation = Loc::Get("rk_you_chip");
+            else if (friends.IsFriend(p.userId)) relation = Loc::Get("fr_is_friend"), relationGlyph = wchar_t(0xE716);
+            else if (friends.HasRequest(p.userId)) relation = Loc::Get("pf_rel_pending"), relationColor = kSub, relationGlyph = wchar_t(0xE823);
+            else canAdd = true;
+            float relationX = 0.f;
+            if (!relation.empty()) {
+                cx -= chipW(relation, relationGlyph != 0) + 8.f;
+                relationX = cx;
+            } else if (canAdd) {
+                cx -= 34.f + 8.f;
+                relationX = cx;
+            }
+
+            // The nameplate stays behind the player, the chips keep the plain row
+            ProfileDraw::Nameplate(ui, row, 10.f, p);
+            const Rect pic{ row.x + 12.f, row.CY() - 20.f, 40.f, 40.f };
+            AvatarWithPresence(ui, f, pic, true, true);
+            const bool onPlate = ProfileDraw::HasNameplate(p);
+            Chip(ui, hoursX, row.CY(), hours, kAccent, wchar_t(0xE916), onPlate);
+            if (!relation.empty()) Chip(ui, relationX, row.CY(), relation, relationColor, relationGlyph, onPlate);
+            if (canAdd && IconButton(ui, ui.MakeId("fr-every-add", key), { relationX, row.CY() - 16.f, 34.f, 32.f }, wchar_t(0xE8FA), MenuKit::Kind::Primary,
+                                     !friends.Busy(), Loc::Get("fr_add_tooltip"))) {
+                auto token = alive;
+                friends.SendToUser(p.userId, [this, token](const std::wstring& message, bool ok) {
+                    if (*token) FriendMessage(message, ok);
+                });
+            }
+
+            const float textW = cx - pic.R() - 24.f;
+            ui.PushClip({ pic.R() + 12.f, row.y, textW, row.h });
+            ProfileDraw::Name(ui, NameOf(p), { pic.R() + 12.f, row.y + 8.f, textW, 26.f }, p, 15.f);
+            ui.PopClip();
+            std::wstring line = FriendsService::StatusText(f);
+            if (p.SpeedrunLinked()) line += L"  \x00B7  speedrun.com/" + p.speedrunName;
+            const bool plate = ProfileDraw::HasNameplate(p);
+            ProfileDraw::RowText(ui, line, { pic.R() + 12.f, row.y + 34.f, textW, 18.f }, f.Online() ? PresenceColor(f) : plate ? kText : kSub,
+                                 Mono(9.5f, f.Online() || plate).Ellipsis(), plate);
+            ProfileDraw::AvatarDecoration(ui, pic, p);   // over the dot and the texts
+            if (it.hovered) ui.Tooltip(id, Loc::Get("acc_rank_open_profile"));
+            if (it.clicked) OpenViewer(p);
         }
         y += 8.f;
     }
@@ -333,17 +541,27 @@ void AccountOverlay::DrawFriendCard(Ui& ui, const Rect& r) {
     info.line1Color = f->Online() ? PresenceColor(*f) : kSub;
     info.line2 = Loc::Fmt("fr_card_hours", Hours(f->profile)) + (f->profile.SpeedrunLinked() ? L"  \x00B7  speedrun.com/" + f->profile.speedrunName : L"");
     const float cardH = ProfileDraw::CardHeight(r.w);
+    info.badge = Services::Account::BadgesService::Get().Shown(f->profile.userId);
     ProfileDraw::Card(ui, r.Top(cardH), f->profile, info);
 
     const float top = r.y + cardH + 16.f;
     Caption(ui, r.x, top, r.w, Loc::Fmt("fr_hours_total", Hours(f->profile)));
     HoursListClip(ui, { r.x, top + 22.f, r.w, r.B() - 46.f - 42.f - top - 22.f }, f->profile);
 
-    // Full profile + challenge to a duel
+    // Full profile + message + challenge to a duel
     const float duelW = 44.f;
-    if (MenuKit::FooterButton(ui, ui.MakeId("fr-card-full"), { r.x, r.B() - 34.f - 42.f, r.w - duelW - 8.f, 34.f }, Loc::Get("pf_open_full"), MenuKit::Kind::Primary,
-                              true, wchar_t(0xE77B), kAccent))
+    if (MenuKit::FooterButton(ui, ui.MakeId("fr-card-full"), { r.x, r.B() - 34.f - 42.f, r.w - (duelW + 8.f) * 2.f, 34.f }, Loc::Get("pf_open_full"),
+                              MenuKit::Kind::Primary, true, wchar_t(0xE77B), kAccent))
         OpenFullProfile(f->profile, false);
+    {
+        const Id msgId = ui.MakeId("fr-card-msg");
+        if (MenuKit::FooterButton(ui, msgId, { r.R() - duelW * 2.f - 8.f, r.B() - 34.f - 42.f, duelW, 34.f }, L"", MenuKit::Kind::Secondary, true, wchar_t(0xE8BD),
+                                  Hex(0x3A9BFF))) {
+            OpenChat(f->profile);
+            return;
+        }
+        ui.Tooltip(msgId, Loc::Get("msg_button"));
+    }
     {
         const Id duelId = ui.MakeId("fr-card-duel");
         if (MenuKit::FooterButton(ui, duelId, { r.R() - duelW, r.B() - 34.f - 42.f, duelW, 34.f }, L"", MenuKit::Kind::Secondary, true, wchar_t(0xE916),
@@ -418,7 +636,7 @@ void AccountOverlay::DrawFriendsPending(Ui& ui, const Rect& r) {
             g.Border(row, 10.f, Lerp(kRow, kRowHover, hover), received ? MenuKit::kAmber.WithAlpha(0.35f + 0.3f * hover) : kCardBorder.WithAlpha(0.5f + 0.4f * hover), 1.f);
             ProfileDraw::Nameplate(ui, row, 10.f, f.profile);
             const Rect pic{ row.x + 12.f, row.CY() - 21.f, 42.f, 42.f };
-            AvatarWithPresence(ui, f, pic, false);
+            AvatarWithPresence(ui, f, pic, false, true);
             const std::wstring name = NameOf(f.profile);
             const float buttonsW = received ? 236.f : 130.f;
             const float textW = row.w - (pic.R() - row.x) - 24.f - buttonsW;
@@ -426,8 +644,11 @@ void AccountOverlay::DrawFriendsPending(Ui& ui, const Rect& r) {
             ProfileDraw::Name(ui, name, { pic.R() + 12.f, row.y + 9.f, textW, 26.f }, f.profile, 15.f);
             ui.PopClip();
             float cx = pic.R() + 12.f;
-            cx += Chip(ui, cx, row.y + 48.f, Loc::Get(received ? "fr_wants" : "fr_pending"), received ? MenuKit::kAmber : kSub) + 6.f;
-            if (ProfileDraw::TotalSeconds(f.profile) > 0.0 && cx + 80.f < row.R() - buttonsW) Chip(ui, cx, row.y + 48.f, Hours(f.profile), kAccent, wchar_t(0xE916));
+            const bool onPlate = ProfileDraw::HasNameplate(f.profile);
+            cx += Chip(ui, cx, row.y + 48.f, Loc::Get(received ? "fr_wants" : "fr_pending"), received ? MenuKit::kAmber : onPlate ? kText : kSub, 0, onPlate) + 6.f;
+            if (ProfileDraw::TotalSeconds(f.profile) > 0.0 && cx + 80.f < row.R() - buttonsW)
+                Chip(ui, cx, row.y + 48.f, Hours(f.profile), kAccent, wchar_t(0xE916), onPlate);
+            ProfileDraw::AvatarDecoration(ui, pic, f.profile);   // over the dot and the texts
 
             const float by = row.CY() - 17.f;
             float bx = row.R() - 12.f;
@@ -641,6 +862,10 @@ void AccountOverlay::DrawFriendsAdd(Ui& ui, const Rect& r) {
 // ── Someone's profile ───────────────────────────────────────────────────────
 
 void AccountOverlay::OpenViewer(const Profile& profile, const std::wstring& runUrl, const std::wstring& runText) {
+    standaloneProfile = false;   // opened from the account menu (ShowProfile sets it again)
+    viewer.preview = false;
+    viewer.avatarSource.clear();
+    viewer.bannerSource.clear();
     viewer.open = true;
     viewer.profile = profile;
     viewer.runUrl = runUrl;
@@ -685,6 +910,7 @@ void AccountOverlay::DrawViewer(Ui& ui, const Rect& screen) {
     info.line1 = p.SpeedrunLinked() ? L"speedrun.com/" + p.speedrunName : Loc::Get("acc_not_linked_short");
     info.line1Color = p.SpeedrunLinked() ? kSpeedrun : kSub;
     info.line2 = Loc::Fmt("fr_card_hours", Hours(p));
+    info.badge = Services::Account::BadgesService::Get().Shown(p.userId);
     ProfileDraw::Card(ui, inner.Top(cardH), p, info);
 
     float y = inner.y + cardH + 14.f;
@@ -709,7 +935,11 @@ void AccountOverlay::DrawViewer(Ui& ui, const Rect& screen) {
     };
     if (!mine) {
         if (friends.IsFriend(p.userId)) {
-            x += Chip(ui, x, by + 17.f, Loc::Get("fr_rel_friend"), kAccent, wchar_t(0xE716)) + 10.f;
+            if (button("viewer-msg", Loc::Get("msg_button"), wchar_t(0xE8BD), MenuKit::Kind::Primary, true, Hex(0x3A9BFF))) {
+                g.PopLayer();   // (the panel's fade)
+                MessageButton(p);
+                return;
+            }
         } else if (friends.HasRequest(p.userId)) {
             x += Chip(ui, x, by + 17.f, Loc::Get("fr_pending"), kSub, wchar_t(0xE823)) + 10.f;
         } else if (button("viewer-add", Loc::Get("fr_add_short"), wchar_t(0xE8FA), MenuKit::Kind::Primary, !friends.Busy(), kAccent)) {

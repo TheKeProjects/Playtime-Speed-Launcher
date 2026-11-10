@@ -7,6 +7,7 @@
 #include "Services/Account/AccountService.h"
 #include "Services/Account/DuelsService.h"
 #include "Services/Account/FriendsService.h"
+#include "Services/Account/MessagesService.h"
 #include "Services/Audio/SoundEffects.h"
 #include "UI/Style.h"
 #include "UI/Widgets/Button.h"
@@ -155,8 +156,9 @@ bool DrawAccountTile(UI::Ui& ui, MainWindow& main, const Rect& r) {
         label.ellipsis = true;
         g.Text(Loc::Get("nav_account"), labelRect, Lerp(idle, Rgba(225, 235, 245), hover * 0.7f), label);
     }
-    // Friend requests waiting: a red count on the corner
-    if (const int pending = signedIn ? Services::Account::FriendsService::Get().PendingCount() : 0; pending > 0) {
+    // Friend requests waiting and unread messages: a red count on the corner
+    if (const int pending = signedIn ? Services::Account::FriendsService::Get().PendingCount() + Services::Account::MessagesService::Get().Unread() : 0;
+        pending > 0) {
         const Rect badge{ r.R() - 24.f, r.y + 3.f, 18.f, 18.f };
         g.FillEllipse(badge.CX(), badge.CY(), 9.f, 9.f, Hex(0xCC2200));
         g.Text(pending > 9 ? L"9+" : std::to_wstring(pending), badge, Colors::White, UI::Mono(8.5f, true).Center());

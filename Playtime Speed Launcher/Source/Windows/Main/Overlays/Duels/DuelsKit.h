@@ -29,9 +29,10 @@ Color RankColor(int mmr);
 void RankIcon(UI::Ui& ui, const Rect& r, int mmr, float opacity = 1.f);
 void RankIconOf(UI::Ui& ui, const Rect& r, const Services::Account::DuelRank& rank, float opacity = 1.f);
 // "DogDay · 163 MMR" pill with the rank's colour; returns its width
-float RankChip(UI::Ui& ui, float x, float cy, int mmr, bool withMmr = true);
+float RankChip(UI::Ui& ui, float x, float cy, int mmr, bool withMmr = true, bool onPlate = false);
 // Small rounded label; returns its width
-float Chip(UI::Ui& ui, float x, float cy, const std::wstring& text, Color color, wchar_t glyph = 0);
+// On a nameplate (`onPlate`) chips get a solid dark body so they read on any plate
+float Chip(UI::Ui& ui, float x, float cy, const std::wstring& text, Color color, wchar_t glyph = 0, bool onPlate = false);
 // A row of pill buttons; returns the clicked index or -1
 int Pills(UI::Ui& ui, const Rect& r, const std::vector<std::wstring>& labels, int selected, std::string_view idBase, Color accent = kDuel,
           float minWidth = 0.f);

@@ -1,4 +1,5 @@
 #include "Windows/Main/Common/ProfileDraw.h"
+#include "Windows/Main/Common/BadgeDraw.h"
 #include <algorithm>
 #include <cmath>
 #include <cwctype>
@@ -116,7 +117,7 @@ void NameWithEffect(UI::Ui& ui, const std::wstring& text, const Rect& r, const P
 }
 
 void Avatar(UI::Ui& ui, const std::wstring& source, const Rect& r, const Profile& profile, const std::wstring& name, float ring, Color ringColor,
-            bool animate) {
+            bool animate, bool decoration) {
     auto& g = ui.g;
     NoColorFilter keep(g);
     const float radius = r.w * 0.5f;
@@ -139,7 +140,7 @@ void Avatar(UI::Ui& ui, const std::wstring& source, const Rect& r, const Profile
         st.align = HAlign::Center;
         g.Text(Initial(name), r, c, st);
     }
-    if (r.w >= 20.f) AvatarDecoration(ui, r, profile, animate);
+    if (decoration && r.w >= 20.f) AvatarDecoration(ui, r, profile, animate);
 }
 
 void Banner(UI::Ui& ui, const std::wstring& source, const Rect& r, const Profile& profile, float radius) {
@@ -214,6 +215,12 @@ void Card(UI::Ui& ui, const Rect& r, const Profile& profile, const CardInfo& inf
     Avatar(ui, info.avatarSource, avatar, profile, info.name, 5.f, body);
     const float textX = r.x + 18.f;
     const float nameY = avatar.B() + 6.f;
+    // Their badge: right-aligned in the strip between the banner and the name
+    if (info.badge) {
+        const float maxW = r.R() - 14.f - (avatar.R() + 10.f);
+        const float w = std::min(maxW, BadgeDraw::PillWidth(ui, *info.badge, 22.f));
+        BadgeDraw::Pill(ui, r.R() - 14.f - w, r.y + bannerH + 18.f, *info.badge, w, 22.f);
+    }
     Name(ui, info.name, { textX, nameY, r.w - 36.f, 34.f }, profile, 22.f);
     {
         NoColorFilter keep(g);

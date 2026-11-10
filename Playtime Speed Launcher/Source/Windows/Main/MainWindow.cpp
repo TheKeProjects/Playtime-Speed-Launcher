@@ -20,6 +20,8 @@
 #include "Services/Collectibles/InGameOverlay.h"
 #include "Services/Account/AccountService.h"
 #include "Services/Account/DuelsService.h"
+#include "Services/Account/MessagesService.h"
+#include "Services/Account/BadgesService.h"
 #include "Services/Account/FriendsService.h"
 #include "Services/Audio/SoundEffects.h"
 #include "Services/Community/OnlineUsersService.h"
@@ -27,6 +29,7 @@
 #include "Services/Platforms/SteamCmdRunner.h"
 #include "Services/Platforms/SteamDetector.h"
 #include "Settings/DiscordPresenceSettings.h"
+#include "Settings/DuelSettings.h"
 #include "Settings/HotkeySettings.h"
 #include "Settings/IconThemeSettings.h"
 #include "Settings/OverlaySettings.h"
@@ -91,9 +94,10 @@ MainWindow::MainWindow() {
     themeTransition = std::make_unique<ThemeTransition>();
     account = std::make_unique<AccountOverlay>(*this);
     duels = std::make_unique<DuelsOverlay>(*this);
+    profileTop = std::make_unique<ProfileOnTop>(*this, *account);
     // Same stacking order as the overlays in the old MainWindow.xaml (later = on top)
     overlays = { versions.get(), settings.get(), keyClickWizard.get(), updates.get(), liveSplit.get(), saveCard.get(), checkpoint.get(),
-                 bugReport.get(), account.get(), duels.get(), eggVideo.get(), mods.get(), addToSteam.get(), handMods.get(), tutorials.get(), themePopup.get() };
+                 bugReport.get(), account.get(), duels.get(), profileTop.get(), eggVideo.get(), mods.get(), addToSteam.get(), handMods.get(), tutorials.get(), themePopup.get() };
 }
 
 MainWindow::~MainWindow() {
@@ -188,21 +192,34 @@ void MainWindow::StartBackgroundWork() {
         App::L().playtime.AccountChanged();
         Services::Account::FriendsService::Get().AccountChanged();
         Services::Account::DuelsService::Get().AccountChanged();
+        Services::Account::MessagesService::Get().AccountChanged();
+        Services::Account::BadgesService::Get().AccountChanged();
     };
     Services::Account::FriendsService::Get().Initialize();
     // Duels: challenges, the duel starting and its result show up as toasts
     Services::Account::DuelsService::Get().onNotify = [this](const std::wstring& title, const std::wstring& text, unsigned color) {
         Toasts::Spec spec;
         spec.width = 330.f;
-        spec.duration = 8.0;
+        const auto& duelSettings = Settings::Duels::Current();
+        spec.duration = duelSettings.ToastSeconds();
         spec.fadeOut = 0.8;
         spec.accent = Hex(color);
         spec.anchor = Toasts::Spec::Anchor::RightMiddle;
         spec.offsetY = -85.f;   // above the game toasts
         spec.lines = { { title, 13.f, true, Hex(color), 0.f }, { text, 10.f, false, Rgba(160, 190, 210, 200), 4.f } };
         duelToast.Show(spec);   // (the duels service plays the sound)
+        // The launcher behind other windows / minimised: its taskbar button flashes until it's opened
+        if (duelSettings.flashTaskbar && GetForegroundWindow() != hwnd) {
+            FLASHWINFO flash{ sizeof(FLASHWINFO), hwnd, FLASHW_TRAY | FLASHW_TIMERNOFG, 3, 0 };
+            FlashWindowEx(&flash);
+        }
     };
     Services::Account::DuelsService::Get().Initialize();
+    // Private messages: the same toast as the duels (in blue)
+    Services::Account::MessagesService::Get().onNotify = [](const std::wstring& title, const std::wstring& text) {
+        if (auto& notify = Services::Account::DuelsService::Get().onNotify) notify(title, text, 0x3A9BFF);
+    };
+    Services::Account::MessagesService::Get().Initialize();
     accountService.Initialize();
     steamUser.Load();
     const auto& d = Settings::DiscordPresence::Current();
@@ -407,6 +424,12 @@ void MainWindow::OpenBugReport() { bugReport->Open(); }
 void MainWindow::OpenAccount(bool ranking) { account->Open(ranking); }
 void MainWindow::OpenDuels() { duels->Open(); }
 void MainWindow::ChallengeToDuel(const Services::Account::Profile& who) { duels->Challenge(who); }
+void MainWindow::ShowProfile(const Services::Account::Profile& who) { account->ShowProfile(who); }
+void MainWindow::OpenChat(const Services::Account::Profile& who) {
+    if (duels->Visible()) duels->Hide();
+    account->OpenChat(who);
+}
+bool MainWindow::ProfileShown() const { return account && account->ProfileShown(); }
 void MainWindow::OpenChangelog() {
     settings->Close();
     updates->Open(UpdatesOverlay::Page::Changelog);

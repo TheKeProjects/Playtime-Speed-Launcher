@@ -77,6 +77,11 @@ public:
     void OpenAccount(bool ranking = false);   // the top bar's account badge
     void OpenDuels();                          // the side rail's duels tile
     void ChallengeToDuel(const Services::Account::Profile& who);   // opens the duels menu ready to challenge them
+    // Someone's full profile over whatever menu is open (the duels' players, lobbies, ranking...)
+    void ShowProfile(const Services::Account::Profile& who);
+    bool ProfileShown() const;
+    // Friends → MESSAGES with them (closes the duels menu if it's on top)
+    void OpenChat(const Services::Account::Profile& who);
     void OpenChangelog();
     void OpenBeginnerTutorials();
     void OpenUpdates();
@@ -165,6 +170,7 @@ private:
     std::unique_ptr<ThemeTransition> themeTransition;
     std::unique_ptr<AccountOverlay> account;
     std::unique_ptr<DuelsOverlay> duels;
+    std::unique_ptr<Overlay> profileTop;   // ShowProfile's profile, above the duels
     bool keyClickHotkeyOk = true;
     std::vector<unsigned> recentKeys;   // last key presses in the launcher (secret ↑↑↑↑↑↓↓↓↓↓)
     void CheckSpamCombo(unsigned vk);

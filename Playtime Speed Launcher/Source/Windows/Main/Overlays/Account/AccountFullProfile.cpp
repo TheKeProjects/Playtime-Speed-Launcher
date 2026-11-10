@@ -5,9 +5,12 @@
 #include "App/Launcher.h"
 #include "Core/Async.h"
 #include "Core/Process.h"
+#include "Core/System.h"
 #include "Graphics/Animation.h"
 #include "Localization/Localization.h"
 #include "Services/Account/AccountService.h"
+#include "Services/Account/BadgesService.h"
+#include "Services/Account/DuelsService.h"
 #include "Services/Account/FriendsService.h"
 #include "Services/Chapters/ChapterPlaytimeStore.h"
 #include "UI/Layout.h"
@@ -16,6 +19,7 @@
 #include "UI/Widgets/MenuKit.h"
 #include "UI/Widgets/ScrollArea.h"
 #include "UI/Widgets/Stagger.h"
+#include "Windows/Main/Common/BadgeDraw.h"
 #include "Windows/Main/Common/ProfileDraw.h"
 #include "Windows/Main/Overlays/Account/AccountKit.h"
 #include "Windows/Main/Overlays/Account/AccountOverlay.h"
@@ -39,7 +43,7 @@ namespace {
 constexpr float kTabsH = 38.f;
 constexpr Color kGold = Hex(0xFFC83D), kOnline = Hex(0x3DDC84), kPlaying = Hex(0xFFB020);
 
-enum Section { SecOverview, SecRecords, SecHours, SecInfo };
+enum Section { SecOverview, SecRecords, SecHours, SecInfo, SecBadges };
 
 std::wstring NameOf(const Profile& p) { return p.ShownName(p.speedrunName.empty() ? Loc::Get("acc_default_name") : p.speedrunName); }
 std::wstring Hours(double seconds) { return Services::ChapterPlaytimeStore::Format(seconds); }
@@ -153,13 +157,27 @@ void AccountOverlay::OpenFullProfile(const Profile& profile, bool fromCard) {
     RequestRunner(profile.speedrunId);
 }
 
+void AccountOverlay::PreviewMyProfile() {
+    Profile me = draft;
+    me.userId = Services::Account::AccountService::Get().UserId();
+    if (me.playtime.empty()) me.playtime = Services::Account::AccountService::Get().Me().playtime;
+    OpenFullProfile(me, false);
+    viewer.preview = true;
+    viewer.avatarSource = AvatarSource();
+    viewer.bannerSource = BannerSource();
+}
+
 // ── Frame ───────────────────────────────────────────────────────────────────
 
 void AccountOverlay::DrawFullProfile(Ui& ui, const Rect& screen) {
     auto& g = ui.g;
     auto& friends = FriendsService::Get();
     const Profile p = viewer.profile;   // a copy: the buttons below may replace the viewer's profile
+    const bool preview = viewer.preview;
     const bool mine = p.userId == Services::Account::AccountService::Get().UserId();
+    // The pictures: the uploaded ones, or the editor's in a preview
+    const std::wstring avatarSource = preview ? viewer.avatarSource : p.AvatarUrl();
+    const std::wstring bannerSource = preview ? viewer.bannerSource : p.BannerUrl();
     const float t = Anim::EaseOutCubic(static_cast<float>((ui.Time() - viewer.fullAt) / 0.25));
     if (t < 1.f) ui.KeepAnimating();
     RequestRunner(p.speedrunId);
@@ -184,7 +202,7 @@ void AccountOverlay::DrawFullProfile(Ui& ui, const Rect& screen) {
         g.PushRoundClip(panel, 14.f);
         const Rect header{ panel.x, panel.y, panel.w, bannerH };
         ProfileDraw::Banner(ui, L"", header, p, 0.f);   // the banner colour (behind / while loading)
-        if (const std::wstring url = p.BannerUrl(); !url.empty())
+        if (const std::wstring url = bannerSource; !url.empty())
             if (auto animation = AnimatedImages::Get(url, ProfileDraw::kBannerSide)) {
                 if (auto frame = animation->At(ui.Time()); frame && frame->bitmap && frame->w > 0.f && frame->h > 0.f) {
                     // The card's crop: the centred part of the picture at 1 : 0.36
@@ -209,7 +227,18 @@ void AccountOverlay::DrawFullProfile(Ui& ui, const Rect& screen) {
         g.PopLayer();
     }
     const Rect avatar{ panel.x + 28.f, panel.y + bannerH - 64.f, 108.f, 108.f };
-    ProfileDraw::Avatar(ui, p.AvatarUrl(), avatar, p, name, 5.f, Palette::PanelBg);
+    ProfileDraw::Avatar(ui, avatarSource, avatar, p, name, 5.f, Palette::PanelBg);
+    if (preview) {
+        // "Preview: this is how the others see your profile" on the banner's corner
+        const std::wstring text = Loc::Get(Dirty() ? "pf_preview_unsaved" : "pf_preview_banner");
+        const float tw = g.Measure(text, Mono(10.f, true)).w;
+        const Rect pill{ panel.x + 16.f, panel.y + 14.f, tw + 44.f, 28.f };
+        NoColorFilter keep(g);
+        g.GlowRound(pill, 14.f, Colors::Black, 8.f, 0.4f);
+        g.Border(pill, 14.f, Rgba(6, 12, 20, 225), kAccent.WithAlpha(0.8f), 1.f);
+        UI::Glyph(ui, wchar_t(0xE7B3), { pill.x + 10.f, pill.y, 18.f, pill.h }, 12.f, kAccent);
+        g.Text(text, { pill.x + 32.f, pill.y, tw + 4.f, pill.h }, kText, Mono(10.f, true));
+    }
     const float textX = avatar.R() + 20.f;
 
     // Actions on the right of the name
@@ -226,6 +255,11 @@ void AccountOverlay::DrawFullProfile(Ui& ui, const Rect& screen) {
     if (viewer.fullFromCard && button("pf-back", Loc::Get("back"), Glyphs::Back, MenuKit::Kind::Secondary, true, kAccent)) back = true;
     if (p.SpeedrunLinked() && !p.speedrunUrl.empty() && button("pf-src", Loc::Get("acc_src_open"), wchar_t(0xE8A7), MenuKit::Kind::Secondary, true, kSpeedrun))
         Process::OpenUrl(p.speedrunUrl);
+    if (!mine && friends.IsFriend(p.userId) && button("pf-msg", Loc::Get("msg_button"), wchar_t(0xE8BD), MenuKit::Kind::Primary, true, Hex(0x3A9BFF))) {
+        g.PopLayer();
+        MessageButton(p);
+        return;
+    }
     if (p.DiscordLinked() && button("pf-dc", L"Discord", wchar_t(0xE8BD), MenuKit::Kind::Secondary, true, kBlurple))
         Process::OpenUrl(std::wstring(Config::Discord::UserProfileUrl) + p.discordId);
     if (!mine && !friends.IsFriend(p.userId) && !friends.HasRequest(p.userId) &&
@@ -243,16 +277,35 @@ void AccountOverlay::DrawFullProfile(Ui& ui, const Rect& screen) {
     {
         float cx = textX;
         const float cy = by + 50.f;
-        if (mine) cx += Chip(ui, cx, cy, Loc::Get("rk_you_chip"), kAccent) + 6.f;
+        if (preview) cx += Chip(ui, cx, cy, Loc::Get("pf_preview_chip"), kAccent, wchar_t(0xE7B3)) + 6.f;
+        else if (mine) cx += Chip(ui, cx, cy, Loc::Get("rk_you_chip"), kAccent) + 6.f;
         else if (friends.IsFriend(p.userId)) cx += Chip(ui, cx, cy, Loc::Get("fr_is_friend"), kAccent, wchar_t(0xE716)) + 6.f;
         else if (friends.HasRequest(p.userId)) cx += Chip(ui, cx, cy, Loc::Get("pf_rel_pending"), kSub, wchar_t(0xE823)) + 6.f;
         if (const Friend* f = FindFriend(p.userId); f && f->Online())
             cx += Chip(ui, cx, cy, FriendsService::StatusText(*f), f->playing ? kPlaying : kOnline, wchar_t(0xE91F)) + 6.f;
+        // Their badge: the one they picked, or the newest (all of them in BADGES)
+        if (const auto* badge = Services::Account::BadgesService::Get().Shown(p.userId, preview ? &p.featuredBadge : nullptr))
+            cx += BadgeDraw::Pill(ui, cx, cy, *badge) + 6.f;
         g.Text(p.SpeedrunLinked() ? L"speedrun.com/" + p.speedrunName : Loc::Get("acc_not_linked_short"),
                { cx + 4.f, cy - 9.f, std::max(0.f, panel.R() - 24.f - cx), 18.f }, p.SpeedrunLinked() ? kSpeedrun : kSub, Mono(10.f, true).Ellipsis());
     }
     const Rect close{ panel.R() - 44.f, panel.y + 12.f, 32.f, 32.f };
     const bool closeClicked = MenuKit::FooterButton(ui, ui.MakeId("pf-close"), close, L"", MenuKit::Kind::Secondary, true, Glyphs::Cancel, kAccent);
+    // Copy their user id (to give badges by hand in Supabase, reports...)
+    {
+        const Id id = ui.MakeId("pf-copy-id");
+        double& copiedAt = ui.Data<double>(HashId(id, 7));
+        const bool copied = ui.Time() - copiedAt < 2.0 && copiedAt > 0.0;
+        const std::wstring label = Loc::Get(copied ? "pf_id_copied" : "pf_copy_id");
+        const float w = MenuKit::FooterButtonWidth(ui, label, copied ? Glyphs::CheckMark : Glyphs::Copy, 60.f);
+        if (MenuKit::FooterButton(ui, id, { close.x - 8.f - w, close.y, w, close.h }, label, MenuKit::Kind::Secondary, !p.userId.empty(),
+                                  copied ? Glyphs::CheckMark : Glyphs::Copy, kAccent)) {
+            System::SetClipboardText(p.userId);
+            copiedAt = ui.Time();
+        }
+        if (copied) ui.KeepAnimatingThrottled();
+        ui.Tooltip(id, Loc::Fmt("pf_copy_id_tip", p.userId));
+    }
 
     // ── Section tabs ──
     const Community::RunnerData* data = nullptr;
@@ -265,15 +318,18 @@ void AccountOverlay::DrawFullProfile(Ui& ui, const Rect& screen) {
             const char* key;
             std::wstring count;
         };
+        const auto* badgeList = Services::Account::BadgesService::Get().Of(p.userId);
+        const size_t badges = badgeList ? badgeList->size() : 0;
         const Tab items[] = {
             { wchar_t(0xE80F), "pf_tab_overview", L"" },
             { wchar_t(0xE734), "pf_tab_records", records ? std::to_wstring(records) : L"" },
             { wchar_t(0xE823), "pf_tab_hours", L"" },
             { Glyphs::Info, "pf_tab_info", L"" },
+            { wchar_t(0xE735), "pf_tab_badges", badges ? std::to_wstring(badges) : L"" },
         };
         float x = tabs.x;
         float selX = tabs.x, selW = 0.f;
-        for (int i = 0; i < 4; ++i) {
+        for (int i = 0; i < 5; ++i) {
             const std::wstring label = Loc::Get(items[i].key);
             const float lw = g.Measure(label, Mono(11.f, true)).w;
             const float cw = items[i].count.empty() ? 0.f : g.Measure(items[i].count, Mono(9.f, true)).w + 14.f;
@@ -318,9 +374,12 @@ void AccountOverlay::DrawFullProfile(Ui& ui, const Rect& screen) {
             case SecRecords: DrawFullRecords(ui, content); break;
             case SecHours: DrawFullHours(ui, content); break;
             case SecInfo: DrawFullInfo(ui, content); break;
+            case SecBadges: DrawFullBadges(ui, content); break;
             default: DrawFullOverview(ui, content); break;
         }
     }
+    // Their profile frame around the whole panel, like on their card
+    ProfileDraw::ProfileFrame(ui, panel, 14.f, p);
     g.PopLayer();
 
     const bool escape = ui.KeyPressed(VK_ESCAPE);
@@ -330,7 +389,65 @@ void AccountOverlay::DrawFullProfile(Ui& ui, const Rect& screen) {
     } else if (closeClicked || outside || escape) {
         viewer.full = false;
         viewer.open = false;
+        viewer.preview = false;
     }
+}
+
+// ── Badges: everything they've won ──────────────────────────────────────────
+
+void AccountOverlay::DrawFullBadges(Ui& ui, const Rect& r) {
+    auto& g = ui.g;
+    const Profile& p = viewer.profile;
+    auto& service = Services::Account::BadgesService::Get();
+    const auto* list = service.Of(p.userId);
+    if (!list) {
+        Message(ui, r, wchar_t(0xE735), L"", true);
+        return;
+    }
+    const bool mine = viewer.preview || p.userId == Services::Account::AccountService::Get().UserId();
+    if (list->empty()) {
+        Message(ui, r, wchar_t(0xE735), Loc::Get(mine ? "pf_badges_none_you" : "pf_badges_none"));
+        return;
+    }
+    const Services::Account::Badge* shown = service.Shown(p.userId, viewer.preview ? &p.featuredBadge : nullptr);
+    Caption(ui, r.x, r.y, r.w, Loc::Fmt("pf_badges_count", list->size()), kGold);
+    if (mine) g.Text(Loc::Get("pf_badges_pick_hint"), { r.x, r.y, r.w, 16.f }, kSub, Mono(9.f).Right().Ellipsis());
+    const Rect area{ r.x, r.y + 24.f, r.w, r.h - 24.f };
+    ScrollArea scroll(ui, ui.MakeId("pf-badges"), area);
+    constexpr float kCardH = 104.f, kGap = 12.f;
+    const int cols = std::max(1, static_cast<int>((area.w - 10.f + kGap) / (300.f + kGap)));
+    const float cw = (area.w - 10.f - kGap * (cols - 1)) / cols;
+    for (size_t i = 0; i < list->size(); ++i) {
+        const auto& b = (*list)[i];
+        const auto look = BadgeDraw::LookOf(b);
+        StaggerItem in(ui, viewer.sectionAt, static_cast<int>(std::min<size_t>(i, 12)), 0.f, 8.f, 0.04, 0.3);
+        const int col = static_cast<int>(i) % cols, row = static_cast<int>(i) / cols;
+        const Rect card{ area.x + col * (cw + kGap), area.y + row * (kCardH + kGap), cw, kCardH };
+        {
+            NoColorFilter keep(g);
+            g.GlowRound(card, 12.f, look.color, 12.f, 0.12f);
+            g.FillLinear(card, 12.f, { { 0.f, Lerp(Hex(0x0A1018), look.color, 0.14f) }, { 1.f, Hex(0x0A1018) } }, { 0.f, 0.f }, { 1.f, 1.f });
+            g.StrokeRound(card, 12.f, look.color.WithAlpha(0.55f), 1.f);
+        }
+        const float mr = 28.f;
+        BadgeDraw::Medal(ui, card.x + 18.f + mr, card.CY(), mr, b, static_cast<int>(i));
+        const float textX = card.x + 18.f + mr * 2.f + 16.f, textW = card.R() - 14.f - textX;
+        g.Text(look.title, { textX, card.y + 16.f, textW, 22.f }, look.color, Mono(13.f, true).Ellipsis());
+        TextStyle desc = Mono(9.5f);
+        desc.wrap = true;
+        desc.valign = VAlign::Top;
+        g.Text(look.description, { textX, card.y + 40.f, textW, 30.f }, kText, desc);
+        if (b.kind == "champion")
+            g.Text(Loc::Fmt("pf_badge_stats", b.mmr, b.wins, b.losses), { textX, card.B() - 24.f, textW, 16.f }, kSub, Mono(9.f).Ellipsis());
+        if (&b == shown) {
+            const std::wstring label = Loc::Get("pf_badge_shown");
+            const float lw = g.Measure(label, Mono(8.5f, true)).w + 14.f;
+            const Rect tag{ card.R() - 12.f - lw, card.B() - 12.f - 20.f, lw, 20.f };
+            g.FillRound(tag, 10.f, look.color);
+            g.Text(label, tag, Hex(0x10141A), Mono(8.5f, true).Center());
+        }
+    }
+    scroll.SetContentSize(((list->size() + cols - 1) / cols) * (kCardH + kGap));
 }
 
 // ── Overview: 4 stat tiles, the best records and the hours ──────────────────

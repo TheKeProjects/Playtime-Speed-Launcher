@@ -254,18 +254,29 @@ void AvatarDecoration(UI::Ui& ui, const Rect& r, const Profile& p, bool animate)
         const float a = t * 2.2f;
         Arc(g, cx, cy, R + 3.f * u, a, a + 0.9f, Colors::White.WithAlpha(0.9f), 2.2f * u);
         Arc(g, cx, cy, R + 6.5f * u, -a * 0.8f, -a * 0.8f + 0.6f, Lerp(c2, Colors::White, 0.5f), 1.6f * u);
-    } else if (id == "grabpack") {
-        // The two GrabPack hands holding the picture: blue on the left, red on the right, with their cables
-        const float bob = std::sin(t * 2.f) * 1.2f * u;
+    } else if (id == "grabpack" || id == "grabpack67") {
+        // The two GrabPack hands holding the picture: blue on the left, red on the right, with their cables.
+        // GrabPack 67: the hands do the "6-7" (palms up, going up and down in turns like a seesaw,
+        // weighing the 6 in the blue hand against the 7 in the red one)
+        const bool sixSeven = id == "grabpack67";
+        const float swing = 3.6f * u;
+        const float bob = sixSeven ? std::sin(t * 5.5f + 1.2f) * swing : std::sin(t * 2.f) * 1.2f * u;
         const float s = R * 0.62f;
-        const float lx = cx - R * 0.95f, rx = cx + R * 0.95f, hy = cy + R * 0.55f;
+        // 6-7: the hands lie almost flat, palms up (fingers pointing out, thumbs up), a bit lower
+        // and closer, so the numbers can rest on them; the GrabPack grips the picture
+        const float lean = sixSeven ? -78.f : 25.f;
+        const float lx = cx - R * (sixSeven ? 0.92f : 0.95f), rx = cx + R * (sixSeven ? 0.92f : 0.95f), hy = cy + R * (sixSeven ? 0.74f : 0.55f);
+        // The wrist (where the cuff and the cable are), turned with the hand
+        const float leanRad = lean * kTau / 360.f;
+        const float wristDx = sixSeven ? -s * 0.55f * std::sin(leanRad) : -s * 0.1f, wristDy = sixSeven ? s * 0.55f * std::cos(leanRad) : s * 0.55f;
         // The cables: a dark sheath with an electric line flickering along it
         const float zap = 0.5f + 0.5f * std::sin(t * 14.f);
         for (const float side : { -1.f, 1.f }) {
-            const float hx = side < 0 ? lx - s * 0.1f : rx + s * 0.1f, hb = side < 0 ? bob : -bob;
+            const float hb = side < 0 ? bob : -bob;
+            const float hx = (side < 0 ? lx : rx) - side * wristDx;   // the wrist mirrors on the right
             const float ex = cx + side * R * 0.25f, ey = cy + R * 1.3f;
-            g.Line(hx, hy + s * 0.55f + hb, ex, ey, Hex(0x2A2A30), 2.6f * u, true);
-            g.Line(hx, hy + s * 0.55f + hb, ex, ey, Hex(0x6FE8FF).WithAlpha(0.35f + 0.45f * zap), 0.9f * u, true);
+            g.Line(hx, hy + wristDy + hb, ex, ey, Hex(0x2A2A30), 2.6f * u, true);
+            g.Line(hx, hy + wristDy + hb, ex, ey, Hex(0x6FE8FF).WithAlpha(0.35f + 0.45f * zap), 0.9f * u, true);
         }
         // Each hand on its orange cuff
         const auto hand = [&](float x, float y, Color fill, Color edge) {
@@ -273,12 +284,31 @@ void AvatarDecoration(UI::Ui& ui, const Rect& r, const Profile& p, bool animate)
             g.Line(x - s * 0.3f, y + s * 0.52f, x + s * 0.3f, y + s * 0.52f, Hex(0x9A4A0A), 0.8f * u);
             FillShape(g, HandShape(), x, y, s, 0.f, fill, edge, 1.4f * u);
         };
-        g.PushTransform(D2D1::Matrix3x2F::Rotation(25.f, D2D1::Point2F(lx, hy + bob)));
+        g.PushTransform(D2D1::Matrix3x2F::Rotation(lean, D2D1::Point2F(lx, hy + bob)));
         hand(lx, hy + bob, Hex(0x2F6FE8), Hex(0x10285A));
         g.PopTransform();
-        g.PushTransform(D2D1::Matrix3x2F::Scale(-1.f, 1.f, D2D1::Point2F(rx, hy - bob)) * D2D1::Matrix3x2F::Rotation(-25.f, D2D1::Point2F(rx, hy - bob)));
+        g.PushTransform(D2D1::Matrix3x2F::Scale(-1.f, 1.f, D2D1::Point2F(rx, hy - bob)) * D2D1::Matrix3x2F::Rotation(-lean, D2D1::Point2F(rx, hy - bob)));
         hand(rx, hy - bob, Hex(0xE23A3A), Hex(0x5A1010));
         g.PopTransform();
+        if (sixSeven) {
+            // The 6 on the blue palm, the 7 on the red one: big yellow digits with a dark outline,
+            // sitting on the flat hands (and tilting as they go up and down)
+            const TextStyle digit = UI::Mono(s * 0.9f, true).Center();
+            const auto number = [&](const wchar_t* text, float x, float y, float tilt, Color glow) {
+                const Rect box{ x - s * 0.5f, y - s * 0.55f, s, s * 1.1f };
+                g.PushTransform(D2D1::Matrix3x2F::Rotation(tilt, D2D1::Point2F(x, y + s * 0.45f)));
+                g.FillEllipse(x, y, s * 0.4f, s * 0.4f, glow.WithAlpha(0.28f));
+                const float o = std::max(1.f, 1.1f * u);
+                for (const auto& d : { D2D1::Point2F(-o, 0.f), D2D1::Point2F(o, 0.f), D2D1::Point2F(0.f, -o), D2D1::Point2F(0.f, o) })
+                    g.Text(text, box.Offset(d.x, d.y), kPtInk, digit);
+                g.Text(text, box, kPtYellow, digit);
+                g.PopTransform();
+            };
+            // Resting on the palm: just above the hand's top edge (the thumb side), over the fingers
+            const float tilt = bob / swing * 8.f;
+            number(L"6", lx - s * 0.2f, hy + bob - s * 1.05f, -tilt, Hex(0x2F6FE8));
+            number(L"7", rx + s * 0.2f, hy - bob - s * 1.05f, -tilt, Hex(0xE23A3A));
+        }
     } else if (id == "scanner") {
         // Playtime Co. hand scanner: a hazard-striped bezel round the picture, the red hand print
         // button on the corner and the door number plate on top
@@ -534,6 +564,45 @@ void ProfileFrame(UI::Ui& ui, const Rect& card, float radius, const Profile& p) 
 
 // ── Nameplates behind a list row ────────────────────────────────────────────
 // Strongest on the right, fading out to the left so the picture and the name stay readable.
+
+bool HasNameplate(const Profile& p) { return !p.nameplate.empty() && p.nameplate != "none"; }
+
+void PlateScrim(UI::Ui& ui, const Rect& bounds) {
+    auto& g = ui.g;
+    NoColorFilter keep(g);
+    const Rect veil = bounds.Outset({ 7.f, 2.f, 7.f, 2.f });
+    g.GlowRound(veil, veil.h * 0.5f, Colors::Black, 7.f, 0.45f);
+    g.FillRound(veil, veil.h * 0.5f, Rgba(4, 8, 14, 115));
+}
+
+void RowText(UI::Ui& ui, const std::wstring& text, const Rect& r, Color color, const TextStyle& style, bool onPlate) {
+    auto& g = ui.g;
+    if (!onPlate || text.empty()) {
+        g.Text(text, r, color, style);
+        return;
+    }
+    // A soft dark veil behind the words, a dark halo hugging the letters (so they read on a bright,
+    // busy or animated plate) and the colour lifted a little
+    NoColorFilter keep(g);
+    {
+        const TextSize size = g.Measure(text, style);
+        const float tw = std::min(size.w, r.w), th = std::min(size.h, r.h);
+        float x = r.x;
+        if (style.align == HAlign::Center) x = r.CX() - tw * 0.5f;
+        else if (style.align == HAlign::Right) x = r.R() - tw;
+        float y = r.CY() - th * 0.5f;
+        if (style.valign == VAlign::Top) y = r.y;
+        else if (style.valign == VAlign::Bottom) y = r.B() - th;
+        PlateScrim(ui, { x, y, tw, th });
+    }
+    const float o = std::max(1.2f, style.size * 0.11f);
+    const Color halo = Rgba(0, 0, 0, 200);
+    for (const auto& d : { D2D1::Point2F(-o, 0.f), D2D1::Point2F(o, 0.f), D2D1::Point2F(0.f, -o), D2D1::Point2F(0.f, o), D2D1::Point2F(-o, -o),
+                           D2D1::Point2F(o, -o), D2D1::Point2F(-o, o), D2D1::Point2F(o, o) })
+        g.Text(text, r.Offset(d.x, d.y), halo, style);
+    g.Text(text, r.Offset(0.f, o * 1.4f), Rgba(0, 0, 0, 120), style);   // a soft drop shadow
+    g.Text(text, r, Lerp(color, Colors::White, 0.15f).WithAlpha(1.f), style);
+}
 
 void Nameplate(UI::Ui& ui, const Rect& row, float radius, const Profile& p) {
     const std::string& id = p.nameplate;

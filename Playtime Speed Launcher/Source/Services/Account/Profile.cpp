@@ -26,7 +26,7 @@ const std::vector<NameEffect>& NameEffects() {
 const std::vector<Cosmetic>& AvatarDecorations() {
     static const std::vector<Cosmetic> list = {
         { "none", "cos_none", false },        { "sparkles", "cos_deco_sparkles", true }, { "flames", "cos_deco_flames", true },
-        { "neon", "cos_deco_neon", true },    { "grabpack", "cos_deco_grabpack", true }, { "scanner", "cos_deco_scanner", true }, { "stopwatch", "cos_deco_stopwatch", true },
+        { "neon", "cos_deco_neon", true },    { "grabpack", "cos_deco_grabpack", true }, { "grabpack67", "cos_deco_grabpack67", true }, { "scanner", "cos_deco_scanner", true }, { "stopwatch", "cos_deco_stopwatch", true },
         { "toxic", "cos_deco_toxic", true },  { "hearts", "cos_deco_hearts", true },     { "frost", "cos_deco_frost", true },
         { "crown", "cos_deco_crown", true },  { "halo", "cos_deco_halo", true },
     };
@@ -158,6 +158,7 @@ Profile Profile::FromJson(const Json::Value& row) {
     p.avatarDeco = Known(AvatarDecorations(), row["avatar_deco"].Str());
     p.frame = Known(ProfileFrames(), row["profile_frame"].Str());
     p.nameplate = Known(Nameplates(), row["nameplate"].Str());
+    p.featuredBadge = row["featured_badge"].Str();
     p.speedrunId = row["speedrun_id"].WStr();
     p.speedrunName = row["speedrun_name"].WStr();
     p.speedrunUrl = row["speedrun_url"].WStr();
@@ -186,6 +187,7 @@ Json::Value Profile::EditableJson() const {
     o.Set("avatar_deco", avatarDeco);
     o.Set("profile_frame", frame);
     o.Set("nameplate", nameplate);
+    o.Set("featured_badge", featuredBadge);
     return o;
 }
 
@@ -204,7 +206,8 @@ Json::Value Profile::CacheJson() const {
 bool Profile::SameStyle(const Profile& o) const {
     return Text::Trim(displayName) == Text::Trim(o.displayName) && avatar == o.avatar && banner == o.banner && bannerColor == o.bannerColor &&
            font == o.font && effect == o.effect && color1 == o.color1 && color2 == o.color2 && cardColor == o.cardColor &&
-           avatarDeco == o.avatarDeco && frame == o.frame && nameplate == o.nameplate;
+           avatarDeco == o.avatarDeco && frame == o.frame && nameplate == o.nameplate &&
+           featuredBadge == o.featuredBadge;
 }
 
 } // namespace SpeedrunLauncher::Services::Account

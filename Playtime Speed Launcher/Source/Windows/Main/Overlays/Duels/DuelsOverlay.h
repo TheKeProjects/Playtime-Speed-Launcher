@@ -25,6 +25,7 @@ public:
     void Open();
     // Opens a room with them invited (or invites them to the room you're in)
     void Challenge(const Services::Account::Profile& who);
+    void Hide() { Close(); }
 
 private:
     using Duel = Services::Account::Duel;
@@ -41,6 +42,9 @@ private:
     void DrawSignedOut(UI::Ui& ui, const Rect& body);
     void DrawNav(UI::Ui& ui, const Rect& r);
     void DrawOnline(UI::Ui& ui, const Rect& r);
+    // The right column: in a duel, CHAT (the room's) and ONLINE tabs; else who's online
+    void DrawSide(UI::Ui& ui, const Rect& r, const Duel* current);
+    void DrawRoomChat(UI::Ui& ui, const Rect& r, const Duel& duel);
 
     // ── DuelsPages.cpp ──
     void DrawLobbies(UI::Ui& ui, const Rect& r);
@@ -80,6 +84,11 @@ private:
     std::wstring timeText;         // the race's time field
     bool confirmForfeit = false;
     bool confirmLeave = false;
+
+    // The right column / room chat
+    int sideTab = 0;               // 0 online, 1 chat
+    std::wstring chatText;
+    long long chatSeen = 0;        // the newest message seen in the chat tab
     std::wstring confirmKick;      // the player waiting for the second click on "kick"
 };
 

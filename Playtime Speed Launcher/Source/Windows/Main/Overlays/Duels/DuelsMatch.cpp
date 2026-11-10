@@ -41,6 +41,13 @@ std::wstring Ordinal(int placement) { return Loc::Fmt("duel_place_n", placement)
 // The chapter's name from the launcher's translations ("A TIGHT SQUEEZE")
 std::wstring ChapterName(int chapter) { return chapter > 0 ? Loc::Get("ch" + std::to_string(chapter) + "_title") : L"\x2014"; }
 
+// The forfeit button's label: "forfeit" / "sure?", or how long until we can (2 forfeits in a row =
+// no forfeiting for an hour)
+std::wstring ForfeitLabel(bool confirm, double blockedFor) {
+    if (blockedFor > 0.0) return Loc::Fmt("duel_forfeit_wait", std::max(1, static_cast<int>(std::ceil(blockedFor / 60.0))));
+    return Loc::Get(confirm ? "duel_sure" : "duel_forfeit");
+}
+
 // One player in a list: picture, name, rank; `right` is drawn by the caller
 void PlayerLine(Ui& ui, const Rect& row, const DuelPlayer& p, bool host, Color ring) {
     const Rect pic{ row.x + 12.f, row.CY() - 18.f, 36.f, 36.f };
@@ -51,8 +58,9 @@ void PlayerLine(Ui& ui, const Rect& row, const DuelPlayer& p, bool host, Color r
     ProfileDraw::Name(ui, name, { pic.R() + 10.f, row.y + 6.f, textW, 22.f }, p.profile, 13.f);
     ui.PopClip();
     float cx = pic.R() + 10.f;
-    cx += RankChip(ui, cx, row.y + row.h - 15.f, p.mmr) + 6.f;
-    if (host) Chip(ui, cx, row.y + row.h - 15.f, Loc::Get("duel_host"), kGold, wchar_t(0xE734));
+    const bool plate = ProfileDraw::HasNameplate(p.profile);   // (race / results rows have it)
+    cx += RankChip(ui, cx, row.y + row.h - 15.f, p.mmr, true, plate) + 6.f;
+    if (host) Chip(ui, cx, row.y + row.h - 15.f, Loc::Get("duel_host"), kGold, wchar_t(0xE734), plate);
 }
 
 } // namespace
@@ -121,6 +129,9 @@ void DuelsOverlay::DrawWaiting(Ui& ui, const Rect& r, const Duel& duel) {
             const DuelPlayer& p = *seated[i];
             const int64_t key = static_cast<int64_t>(std::hash<std::wstring>{}(p.profile.userId));
             const Color rc = RankColor(p.mmr);
+            const Id seatId = ui.MakeId("duel-seat-profile", key);
+            if (const Interaction seat = ui.Interact(seatId, cell); seat.clicked) main.ShowProfile(p.profile);
+            else if (seat.hovered) ui.Tooltip(seatId, Loc::Get("acc_rank_open_profile"));
             {
                 NoColorFilter keep(g);
                 g.FillRound(cell, 12.f, ProfileDraw::CardColor(p.profile));
@@ -325,12 +336,15 @@ void DuelsOverlay::DrawBans(Ui& ui, const Rect& r, const Duel& duel) {
 
     // Bottom: what's left + forfeit
     const Rect bottom{ r.x, r.B() - 44.f, r.w, 44.f };
-    const std::wstring label = Loc::Get(confirmForfeit ? "duel_sure" : "duel_forfeit");
+    const double blocked = duels.ForfeitBlockedFor();
+    if (blocked > 0.0) ui.KeepAnimatingThrottled();
+    const std::wstring label = ForfeitLabel(confirmForfeit, blocked);
     const float bw = MenuKit::FooterButtonWidth(ui, label, wchar_t(0xE7C1), 140.f);
     const Rect forfeit{ bottom.R() - bw, bottom.y, bw, bottom.h };
     g.Text(Loc::Fmt("duel_bans_left", Services::Account::DuelCategories().size() - duel.banned.size(), duel.banOrder.size() - duel.banned.size()),
            { bottom.x, bottom.y, forfeit.x - bottom.x - 14.f, bottom.h }, kSub, Mono(9.5f).Ellipsis());
-    if (MenuKit::FooterButton(ui, ui.MakeId("duel-ban-forfeit"), forfeit, label, MenuKit::Kind::Danger, !duels.Busy(), wchar_t(0xE7C1))) {
+    if (blocked > 0.0 && ui.MouseOver(forfeit)) ui.Tooltip(ui.MakeId("duel-ban-forfeit"), Loc::Get("duel_forfeit_blocked"));
+    if (MenuKit::FooterButton(ui, ui.MakeId("duel-ban-forfeit"), forfeit, label, MenuKit::Kind::Danger, !duels.Busy() && blocked <= 0.0, wchar_t(0xE7C1))) {
         if (!confirmForfeit) {
             confirmForfeit = true;
         } else {
@@ -398,6 +412,7 @@ void DuelsOverlay::DrawRace(Ui& ui, const Rect& r, const Duel& duel) {
         y += 56.f;
         const bool mine = p->profile.userId == meId;
         g.Border(row, 10.f, mine ? kDuel.WithAlpha(0.08f) : kRow, mine ? kDuel.WithAlpha(0.5f) : kCardBorder.WithAlpha(0.4f), 1.f);
+        if (const Interaction it = ui.Interact(ui.MakeId("duel-race-row", static_cast<int64_t>(index)), row); it.clicked) main.ShowProfile(p->profile);
         ProfileDraw::Nameplate(ui, row, 10.f, p->profile);
         PlayerLine(ui, row, *p, p->profile.userId == duel.hostId, RankColor(p->mmr));
         std::wstring right;
@@ -414,7 +429,9 @@ void DuelsOverlay::DrawRace(Ui& ui, const Rect& r, const Duel& duel) {
         } else {
             right = Loc::Get("duel_status_waiting");
         }
-        g.Text(right, { row.R() - 220.f, row.y, 206.f, row.h }, color, Mono(p->done && !p->forfeited ? 14.f : 10.f, true).Right());
+        const bool plate = ProfileDraw::HasNameplate(p->profile);
+        ProfileDraw::RowText(ui, right, { row.R() - 220.f, row.y, 206.f, row.h }, plate && right == Loc::Get("duel_status_waiting") ? kText : color,
+                             Mono(p->done && !p->forfeited ? 14.f : 10.f, true).Right(), plate);
     }
     scroll.SetContentSize(y - inner.y);
     }
@@ -431,7 +448,9 @@ void DuelsOverlay::DrawRace(Ui& ui, const Rect& r, const Duel& duel) {
         return;
     }
     Caption(ui, s.x, s.y, s.w, Loc::Get("duel_time_caption"), kDuel);
-    const std::wstring forfeitLabel = Loc::Get(confirmForfeit ? "duel_sure" : "duel_forfeit");
+    const double blocked = duels.ForfeitBlockedFor();
+    if (blocked > 0.0) ui.KeepAnimatingThrottled();
+    const std::wstring forfeitLabel = ForfeitLabel(confirmForfeit, blocked);
     const float fw = MenuKit::FooterButtonWidth(ui, forfeitLabel, wchar_t(0xE7C1), 130.f);
     const std::wstring sendLabel = Loc::Get("duel_send_time");
     const float sw = MenuKit::FooterButtonWidth(ui, sendLabel, Glyphs::CheckMark, 150.f);
@@ -456,7 +475,8 @@ void DuelsOverlay::DrawRace(Ui& ui, const Rect& r, const Duel& duel) {
         const std::wstring shown = FormatDuelTime(*parsed);
         duels.Submit(duel.id, *parsed, Reply(Loc::Fmt("duel_time_sent", shown)));
     }
-    if (MenuKit::FooterButton(ui, ui.MakeId("duel-forfeit"), forfeit, forfeitLabel, MenuKit::Kind::Danger, !duels.Busy(), wchar_t(0xE7C1))) {
+    if (blocked > 0.0 && ui.MouseOver(forfeit)) ui.Tooltip(ui.MakeId("duel-forfeit"), Loc::Get("duel_forfeit_blocked"));
+    if (MenuKit::FooterButton(ui, ui.MakeId("duel-forfeit"), forfeit, forfeitLabel, MenuKit::Kind::Danger, !duels.Busy() && blocked <= 0.0, wchar_t(0xE7C1))) {
         if (!confirmForfeit) {
             confirmForfeit = true;
         } else {
@@ -519,16 +539,20 @@ void DuelsOverlay::DrawResult(Ui& ui, const Rect& r, const Duel& duel) {
         const bool mine = p->profile.userId == meId;
         const Color pc = PlaceColor(p->placement);
         g.Border(row, 10.f, mine ? kDuel.WithAlpha(0.08f) : kRow, p->placement <= 3 ? pc.WithAlpha(0.5f) : kCardBorder.WithAlpha(0.4f), 1.f);
+        if (const Interaction it = ui.Interact(ui.MakeId("duel-result-row", static_cast<int64_t>(index)), row); it.clicked) main.ShowProfile(p->profile);
         ProfileDraw::Nameplate(ui, row, 10.f, p->profile);
         const Rect medal{ row.x + 10.f, row.CY() - 15.f, 30.f, 30.f };
         g.FillEllipse(medal.CX(), medal.CY(), 15.f, 15.f, pc.WithAlpha(0.18f));
         g.Text(std::to_wstring(p->placement), medal, pc, Mono(12.f, true).Center());
         PlayerLine(ui, row.CutLeft(38.f), *p, false, RankColor(p->mmrBefore + p->mmrChange));
         const std::wstring time = p->forfeited ? Loc::Get("duel_status_forfeit") : p->seconds == 0.0 ? Loc::Get("duel_last_standing") : FormatDuelTime(p->seconds);
-        g.Text(time, { row.R() - 300.f, row.y, 170.f, row.h }, p->forfeited ? kDanger : kText, Mono(p->forfeited || p->seconds == 0.0 ? 10.f : 13.f, true).Right());
+        const bool plate = ProfileDraw::HasNameplate(p->profile);
+        ProfileDraw::RowText(ui, time, { row.R() - 300.f, row.y, 170.f, row.h }, p->forfeited ? kDanger : kText,
+                             Mono(p->forfeited || p->seconds == 0.0 ? 10.f : 13.f, true).Right(), plate);
         const std::wstring change = (p->mmrChange >= 0 ? L"+" : L"") + std::to_wstring(p->mmrChange);
-        g.Text(change, { row.R() - 120.f, row.y + 6.f, 106.f, 24.f }, p->mmrChange >= 0 ? kOnline : kDanger, Mono(13.f, true).Right());
-        g.Text(std::to_wstring(p->mmrBefore + p->mmrChange) + L" MMR", { row.R() - 120.f, row.y + 28.f, 106.f, 18.f }, kSub, Mono(9.f, true).Right());
+        ProfileDraw::RowText(ui, change, { row.R() - 120.f, row.y + 6.f, 106.f, 24.f }, p->mmrChange >= 0 ? kOnline : kDanger, Mono(13.f, true).Right(), plate);
+        ProfileDraw::RowText(ui, std::to_wstring(p->mmrBefore + p->mmrChange) + L" MMR", { row.R() - 120.f, row.y + 28.f, 106.f, 18.f }, plate ? kText : kSub,
+                             Mono(9.f, true).Right(), plate);
     }
     scroll.SetContentSize(y - inner.y);
     }

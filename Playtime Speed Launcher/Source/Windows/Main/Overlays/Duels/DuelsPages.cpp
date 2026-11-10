@@ -4,6 +4,7 @@
 #include "Core/Text.h"
 #include "Localization/Localization.h"
 #include "Services/Account/AccountService.h"
+#include "Services/Account/BadgesService.h"
 #include "Services/Account/FriendsService.h"
 #include "Services/Audio/SoundEffects.h"
 #include "Settings/DuelSettings.h"
@@ -13,7 +14,9 @@
 #include "UI/Widgets/ScrollArea.h"
 #include "UI/Widgets/Stagger.h"
 #include "UI/Widgets/TextBox.h"
+#include "Windows/Main/Common/BadgeDraw.h"
 #include "Windows/Main/Common/ProfileDraw.h"
+#include "Windows/Main/MainWindow.h"
 #include "Windows/Main/Overlays/Duels/DuelsKit.h"
 #include "Windows/Main/Overlays/Duels/DuelsOverlay.h"
 
@@ -89,19 +92,24 @@ void DuelsOverlay::DrawLobbyRow(Ui& ui, const Rect& row, const Duel& duel, bool 
             duels.Join(duel.id, Reply());
         if (inDuel && it.hovered) ui.Tooltip(id, Loc::Get("duel_err_busy"));
     }
+    if (it.hovered && !(inDuel && !invite)) ui.Tooltip(id, Loc::Get("acc_rank_open_profile"));
+    if (it.clicked && !who.userId.empty()) main.ShowProfile(who);
 
     // Who + what
     const float textX = pic.R() + 12.f, textW = bx - textX - 14.f;
     ui.PushClip({ textX, row.y, textW, row.h });
     const float nameW = std::min(textW * 0.6f, ProfileDraw::NameWidth(ui, name, who, 14.f) + 4.f);
     ProfileDraw::Name(ui, name, { textX, row.y + 8.f, nameW, 24.f }, who, 14.f);
-    if (invite) g.Text(Loc::Get("duel_challenges_you"), { textX + nameW + 8.f, row.y + 8.f, textW - nameW - 8.f, 24.f }, kGold, Mono(10.f, true).Ellipsis());
-    else if (host) RankChip(ui, textX + nameW + 10.f, row.y + 20.f, host->mmr);
+    const bool plate = ProfileDraw::HasNameplate(who);
+    if (invite)
+        ProfileDraw::RowText(ui, Loc::Get("duel_challenges_you"), { textX + nameW + 8.f, row.y + 8.f, textW - nameW - 8.f, 24.f }, kGold, Mono(10.f, true).Ellipsis(),
+                             plate);
+    else if (host) RankChip(ui, textX + nameW + 10.f, row.y + 20.f, host->mmr, true, plate);
     float cx = textX;
     const float cy = row.y + 46.f;
-    cx += Chip(ui, cx, cy, DuelModeLabel(duel.slots), kDuel, kDuelGlyph) + 6.f;
-    cx += Chip(ui, cx, cy, DuelTypeText(duel), kSub) + 6.f;
-    if (duel.friendsOnly) cx += Chip(ui, cx, cy, Loc::Get("duel_vis_friends_short"), kOnline, wchar_t(0xE716)) + 6.f;
+    cx += Chip(ui, cx, cy, DuelModeLabel(duel.slots), kDuel, kDuelGlyph, plate) + 6.f;
+    cx += Chip(ui, cx, cy, DuelTypeText(duel), plate ? kText : kSub, 0, plate) + 6.f;
+    if (duel.friendsOnly) cx += Chip(ui, cx, cy, Loc::Get("duel_vis_friends_short"), kOnline, wchar_t(0xE716), plate) + 6.f;
     ui.PopClip();
 
     // Seats + time left (under the button)
@@ -111,7 +119,7 @@ void DuelsOverlay::DrawLobbyRow(Ui& ui, const Rect& row, const Duel& duel, bool 
         const bool filled = i < static_cast<int>(duel.players.size());
         g.FillEllipse(dx + 5.f + i * 12.f, row.B() - 12.f, 4.f, 4.f, filled ? kDuel : kCardBorder);
     }
-    g.Text(Clock(duel.LobbySecondsLeft()), { dx + dotsW + 6.f, row.B() - 20.f, 54.f, 16.f }, kSub, Mono(9.f, true));
+    ProfileDraw::RowText(ui, Clock(duel.LobbySecondsLeft()), { dx + dotsW + 6.f, row.B() - 20.f, 54.f, 16.f }, plate ? kText : kSub, Mono(9.f, true), plate);
     ui.KeepAnimatingThrottled();
 }
 
@@ -369,8 +377,13 @@ void DuelsOverlay::DrawRoomInvite(Ui& ui, const Rect& r, const Duel& duel) {
         const Rect row{ area.x, y, area.w - 10.f, 50.f };
         y += 54.f;
         const int64_t key = static_cast<int64_t>(std::hash<std::wstring>{}(p.profile->userId));
-        g.Border(row, 10.f, kRow, kCardBorder.WithAlpha(0.4f), 1.f);
+        const Id rowId = ui.MakeId("duel-invite-row", key);
+        const Interaction rowIt = ui.Interact(rowId, row);   // the button on the right sits above it
+        const float rowHover = ui.Animate(HashId(rowId, 1), rowIt.hovered ? 1.f : 0.f, 16.f);
+        g.Border(row, 10.f, Lerp(kRow, kRowHover, rowHover), kCardBorder.WithAlpha(0.4f + 0.3f * rowHover), 1.f);
         ProfileDraw::Nameplate(ui, row, 10.f, *p.profile);
+        if (rowIt.hovered) ui.Tooltip(rowId, Loc::Get("acc_rank_open_profile"));
+        if (rowIt.clicked) main.ShowProfile(*p.profile);
         const Rect pic{ row.x + 10.f, row.CY() - 16.f, 32.f, 32.f };
         const std::wstring name = NameOf(*p.profile);
         ProfileDraw::Avatar(ui, p.profile->AvatarUrl(), pic, *p.profile, name, 0.f, Colors::Transparent);
@@ -390,7 +403,9 @@ void DuelsOverlay::DrawRoomInvite(Ui& ui, const Rect& r, const Duel& duel) {
         }
         const std::wstring line = p.busy ? Loc::Get("duel_status_in_duel")
                                   : (p.isFriend ? Loc::Get("duel_invite_friend") + L" \x00B7 " : L"") + Loc::Get(p.online ? "fr_online" : "fr_offline");
-        g.Text(line, { sx, row.y + 28.f, textW - (sx - textX), 16.f }, p.busy ? kDuel : p.online ? kOnline : kSub, Mono(9.f, true).Ellipsis());
+        const bool plate = ProfileDraw::HasNameplate(*p.profile);
+        ProfileDraw::RowText(ui, line, { sx, row.y + 28.f, textW - (sx - textX), 16.f }, p.busy ? kDuel : p.online ? kOnline : plate ? kText : kSub,
+                             Mono(9.f, true).Ellipsis(), plate);
 
         // The action on the right
         const Rect button{ row.R() - 130.f, row.CY() - 15.f, 120.f, 30.f };
@@ -417,10 +432,48 @@ void DuelsOverlay::DrawRoomInvite(Ui& ui, const Rect& r, const Duel& duel) {
 void DuelsOverlay::DrawRanking(Ui& ui, const Rect& r) {
     auto& g = ui.g;
     auto& duels = DuelsService::Get();
-    const float top = Header(ui, r, Loc::Get("duel_page_ranking"), Loc::Get("duel_ranking_sub"));
+    // The ranking is this month's: it starts again on the 1st, and its top player becomes champion
+    const int daysLeft = Services::Account::DuelMonthDaysLeft();
+    float top = Header(ui, r, Loc::Fmt("duel_ranking_month", Text::Upper(Services::Account::DuelMonthName())),
+                       Loc::Fmt(daysLeft == 1 ? "duel_ranking_month_sub_1" : "duel_ranking_month_sub", daysLeft,
+                                Services::Account::DuelChampionTitle("")));
     if (IconButton(ui, ui.MakeId("duel-rank-refresh"), { r.R() - 36.f, r.y + 2.f, 36.f, 34.f }, Glyphs::Refresh, MenuKit::Kind::Secondary,
                    !duels.LeaderboardLoading(), Loc::Get("duel_refresh")))
         duels.LoadLeaderboard();
+
+    // The champions of the months before (newest first), for everyone to see
+    if (const auto& champions = duels.Champions(); !champions.empty()) {
+        Caption(ui, r.x, top - 6.f, r.w, Loc::Get("duel_champions"), kGold);
+        const Rect strip{ r.x, top + 14.f, r.w, 58.f };
+        const float cardW = std::min(250.f, std::max(190.f, (strip.w - 8.f * 2.f) / 3.f));
+        const int fit = std::max(1, static_cast<int>((strip.w + 8.f) / (cardW + 8.f)));
+        for (int i = 0; i < std::min(fit, static_cast<int>(champions.size())); ++i) {
+            const auto& c = champions[i];
+            const Rect card{ strip.x + i * (cardW + 8.f), strip.y, cardW, strip.h };
+            const Id id = ui.MakeId("duel-champion", i);
+            const Interaction it = ui.Interact(id, card);
+            const float hover = ui.Animate(HashId(id, 1), it.hovered ? 1.f : 0.f, 16.f);
+            {
+                NoColorFilter keep(g);
+                g.GlowRound(card, 10.f, kGold, 10.f, 0.12f + 0.12f * hover);
+                g.Border(card, 10.f, Lerp(Hex(0x1A1608), Hex(0x2A220A), hover), kGold.WithAlpha(0.55f + 0.3f * hover), 1.f);
+            }
+            ProfileDraw::Nameplate(ui, card, 10.f, c.profile);
+            const bool plate = ProfileDraw::HasNameplate(c.profile);
+            const Rect pic{ card.x + 10.f, card.CY() - 17.f, 34.f, 34.f };
+            const std::wstring name = NameOf(c.profile);
+            ProfileDraw::Avatar(ui, c.profile.AvatarUrl(), pic, c.profile, name, 1.5f, kGold);
+            UI::Glyph(ui, wchar_t(0xE734), { pic.R() - 10.f, pic.y - 6.f, 16.f, 16.f }, 10.f, kGold);   // the trophy
+            const float textX = pic.R() + 10.f, textW = card.R() - 10.f - textX;
+            ui.PushClip({ textX, card.y, textW, card.h });
+            ProfileDraw::Name(ui, name, { textX, card.y + 7.f, textW, 22.f }, c.profile, 12.5f);
+            ui.PopClip();
+            ProfileDraw::RowText(ui, Services::Account::DuelChampionTitle(c.month), { textX, card.y + 30.f, textW, 16.f }, kGold, Mono(9.f, true).Ellipsis(), plate);
+            if (it.hovered) ui.Tooltip(id, Loc::Fmt("duel_champion_tip", c.mmr, c.wins, c.losses));
+            if (it.clicked) main.ShowProfile(c.profile);
+        }
+        top = strip.B() + 14.f;
+    }
     const Rect area{ r.x, top, r.w, r.B() - top };
     Card(ui, area);
     const auto& list = duels.Leaderboard();
@@ -452,10 +505,17 @@ void DuelsOverlay::DrawRanking(Ui& ui, const Rect& r) {
         y += 52.f;
         const bool mine = s.profile.userId == me;
         const int place = static_cast<int>(i) + 1;
-        g.Border(row, 10.f, mine ? kDuel.WithAlpha(0.09f) : kRow, mine ? kDuel.WithAlpha(0.6f) : place <= 3 ? PlaceColor(place).WithAlpha(0.35f) : kCardBorder.WithAlpha(0.35f),
+        const Id rowId = ui.MakeId("duel-rank-row", static_cast<int64_t>(i));
+        const Interaction rowIt = ui.Interact(rowId, row);
+        const float rowHover = ui.Animate(HashId(rowId, 1), rowIt.hovered ? 1.f : 0.f, 16.f);
+        if (rowIt.hovered) ui.Tooltip(rowId, Loc::Get("acc_rank_open_profile"));
+        if (rowIt.clicked) main.ShowProfile(s.profile);
+        g.Border(row, 10.f, Lerp(mine ? kDuel.WithAlpha(0.09f) : kRow, kRowHover, rowHover), mine ? kDuel.WithAlpha(0.6f) : place <= 3 ? PlaceColor(place).WithAlpha(0.35f) : kCardBorder.WithAlpha(0.35f),
                  1.f);
         ProfileDraw::Nameplate(ui, row, 10.f, s.profile);
-        g.Text(std::to_wstring(place), { row.x + 8.f, row.y, 36.f, row.h }, place <= 3 ? PlaceColor(place) : kSub, Mono(place <= 3 ? 14.f : 11.f, true));
+        const bool plate = ProfileDraw::HasNameplate(s.profile);
+        ProfileDraw::RowText(ui, std::to_wstring(place), { row.x + 8.f, row.y, 36.f, row.h }, place <= 3 ? PlaceColor(place) : plate ? kText : kSub,
+                             Mono(place <= 3 ? 14.f : 11.f, true), plate);
         const Rect pic{ colName, row.CY() - 15.f, 30.f, 30.f };
         const std::wstring name = NameOf(s.profile);
         ProfileDraw::Avatar(ui, s.profile.AvatarUrl(), pic, s.profile, name, 1.5f, RankColor(s.mmr));
@@ -463,12 +523,18 @@ void DuelsOverlay::DrawRanking(Ui& ui, const Rect& r) {
         ui.PushClip({ pic.R() + 10.f, row.y, nameW, row.h });
         ProfileDraw::Name(ui, name, { pic.R() + 10.f, row.y + 4.f, nameW, 22.f }, s.profile, 12.5f);
         RankIcon(ui, { pic.R() + 10.f, row.y + 26.f, 15.f, 15.f }, s.mmr);
-        g.Text(Text::Widen(Services::Account::DuelRankFor(s.mmr).name), { pic.R() + 29.f, row.y + 26.f, nameW - 19.f, 16.f }, RankColor(s.mmr), Mono(9.f, true));
+        const std::wstring rankName = Text::Widen(Services::Account::DuelRankFor(s.mmr).name);
+        ProfileDraw::RowText(ui, rankName, { pic.R() + 29.f, row.y + 26.f, nameW - 19.f, 16.f }, RankColor(s.mmr), Mono(9.f, true), plate);
+        // Their badge (the one they picked, or the newest)
+        if (const auto* badge = Services::Account::BadgesService::Get().Shown(s.profile.userId)) {
+            const float bx = pic.R() + 29.f + g.Measure(rankName, Mono(9.f, true)).w + 10.f;
+            BadgeDraw::Pill(ui, bx, row.y + 34.f, *badge, std::max(0.f, pic.R() + 10.f + nameW - bx), 16.f);
+        }
         ui.PopClip();
-        g.Text(std::to_wstring(s.mmr), { colMmr, row.y, 80.f, row.h }, kText, Mono(12.f, true));
+        ProfileDraw::RowText(ui, std::to_wstring(s.mmr), { colMmr, row.y, 80.f, row.h }, kText, Mono(12.f, true), plate);
         const int played = s.wins + s.losses;
-        g.Text(Loc::Fmt("duel_record", s.wins, s.losses) + (played > 0 ? L"  " + std::to_wstring(s.wins * 100 / played) + L"%" : L""),
-               { colRecord, row.y, 128.f, row.h }, kSub, Mono(9.5f, true).Ellipsis());
+        ProfileDraw::RowText(ui, Loc::Fmt("duel_record", s.wins, s.losses) + (played > 0 ? L"  " + std::to_wstring(s.wins * 100 / played) + L"%" : L""),
+                             { colRecord, row.y, 128.f, row.h }, plate ? kText : kSub, Mono(9.5f, true).Ellipsis(), plate);
     }
     scroll.SetContentSize(y - listRect.y);
 }
@@ -609,12 +675,56 @@ void DuelsOverlay::DrawSettings(Ui& ui, const Rect& r) {
     row("duel-set-starts", Glyphs::Play, Loc::Get("duel_settings_starts"), Loc::Get("duel_settings_starts_hint"), s.starts, any, Services::Sfx::Chapter);
     row("duel-set-results", wchar_t(0xE734), Loc::Get("duel_settings_results"), Loc::Get("duel_settings_results_hint"), s.results, any,
         Services::Sfx::DuelWin);
+    row("duel-set-ban", wchar_t(0xE8F8), Loc::Get("duel_settings_ban"), Loc::Get("duel_settings_ban_hint"), s.banTurn, any, Services::Sfx::Click);
+    row("duel-set-rival", kDuelGlyph, Loc::Get("duel_settings_rival"), Loc::Get("duel_settings_rival_hint"), s.rivalFinished, any, Services::Sfx::Click);
+    row("duel-set-leaves", wchar_t(0xE7E8), Loc::Get("duel_settings_leaves"), Loc::Get("duel_settings_leaves_hint"), s.leaves, any, nullptr);
+    row("duel-set-room-chat", wchar_t(0xE8BD), Loc::Get("duel_settings_room_chat"), Loc::Get("duel_settings_room_chat_hint"), s.roomChat, any, Services::Sfx::Click);
+    row("duel-set-dms", wchar_t(0xE715), Loc::Get("duel_settings_dms"), Loc::Get("duel_settings_dms_hint"), s.directMessages, any, Services::Sfx::Click);
     // Hear the defeat sound too (results covers both)
     {
         const std::wstring lose = Loc::Get("duel_settings_preview_lose");
         const float lw = MenuKit::FooterButtonWidth(ui, lose, Glyphs::Play, 120.f);
         if (MenuKit::FooterButton(ui, ui.MakeId("duel-set-lose"), { area.x + w - lw, y, lw, 30.f }, lose, MenuKit::Kind::Secondary, true, Glyphs::Play, kDuel))
             Services::Sfx::Play(Services::Sfx::DuelLose);
+        y += 30.f + 8.f;
+    }
+    y += 10.f;
+
+    // Who can ring, and how the notifications show
+    Caption(ui, area.x, y, w, Loc::Get("duel_settings_display"), kDuel);
+    y += 22.f;
+    row("duel-set-friends-only", wchar_t(0xE716), Loc::Get("duel_settings_friends_only"), Loc::Get("duel_settings_friends_only_hint"), s.friendInvitesOnly,
+        any && s.invites, nullptr);
+    row("duel-set-flash", wchar_t(0xE7C4), Loc::Get("duel_settings_flash"), Loc::Get("duel_settings_flash_hint"), s.flashTaskbar, s.notifications, nullptr);
+    {
+        // How long a notification stays: short · normal · long
+        StaggerItem in(ui, pageAt, reveal++, 0.f, 8.f);
+        const Rect box{ area.x, y, w, 58.f };
+        y += 58.f + 8.f;
+        const float dim = s.notifications ? 1.f : 0.45f;
+        g.Border(box, 10.f, kRow, kCardBorder.WithAlpha(0.45f), 1.f);
+        UI::Glyph(ui, wchar_t(0xE916), { box.x + 14.f, box.y, 22.f, box.h }, 14.f, (s.notifications ? kDuel : kSub).WithAlpha(dim));
+        const float pillsW = std::min(300.f, box.w * 0.5f);
+        const float textW = box.w - pillsW - 48.f - 24.f;
+        g.Text(Loc::Get("duel_settings_length"), { box.x + 48.f, box.y + 10.f, textW, 20.f }, kText.WithAlpha(dim), Mono(11.f, true).Ellipsis());
+        g.Text(Loc::Get("duel_settings_length_hint"), { box.x + 48.f, box.y + 30.f, textW, 18.f }, kSub.WithAlpha(dim), Mono(9.f).Ellipsis());
+        const int clicked = Pills(ui, { box.R() - 14.f - pillsW, box.CY() - 15.f, pillsW, 30.f },
+                                  { Loc::Get("duel_settings_length_short"), Loc::Get("duel_settings_length_normal"), Loc::Get("duel_settings_length_long") },
+                                  s.toastLength, "duel-set-length");
+        if (clicked >= 0 && clicked != s.toastLength) {
+            s.toastLength = clicked;
+            changed = true;
+        }
+    }
+    // Try it: a sample notification with the current settings
+    {
+        const std::wstring test = Loc::Get("duel_settings_test");
+        const float tw = MenuKit::FooterButtonWidth(ui, test, wchar_t(0xEA8F), 160.f);
+        if (MenuKit::FooterButton(ui, ui.MakeId("duel-set-test"), { area.x + w - tw, y, tw, 30.f }, test, MenuKit::Kind::Secondary, s.notifications,
+                                  wchar_t(0xEA8F), kDuel)) {
+            if (auto& notify = DuelsService::Get().onNotify) notify(Loc::Get("duel_settings_test_title"), Loc::Get("duel_settings_test_text"), 0xFF5A3C);
+            if (s.sounds) Services::Sfx::Play(Services::Sfx::DuelInvite);
+        }
         y += 30.f + 8.f;
     }
     if (changed) s.Save();

@@ -55,6 +55,7 @@ struct Profile {
     std::string avatarDeco = "none";   // Cosmetic ids (AvatarDecorations / ProfileFrames / Nameplates)
     std::string frame = "none";
     std::string nameplate = "none";
+    std::string featuredBadge;         // the badge shown next to the name ("champion:2026-11"; "" = the newest)
     // Linked speedrun.com account (only the server writes these)
     std::wstring speedrunId, speedrunName, speedrunUrl, speedrunAvatar;
     // Linked Discord account (only the server writes these; the avatar is a full URL)

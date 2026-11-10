@@ -447,10 +447,11 @@ void AccountOverlay::DrawRankTable(Ui& ui, const Rect& r, const RunType& runType
         g.Border(row, 8.f, Lerp(mine ? Rgba(0, 204, 170, 16) : kRow, kRowHover, hover), mine ? kAccent.WithAlpha(0.6f) : Lerp(kCardBorder.WithAlpha(0.5f), kHoverBorder, hover),
                  1.f);
         ProfileDraw::Nameplate(ui, row, 8.f, *line.profile);
-        if (i < 3) g.FillRound({ row.x, row.y + 8.f, 3.f, row.h - 16.f }, 1.5f, medal);
+        const bool plate = ProfileDraw::HasNameplate(*line.profile);
         const auto c = cells(row.Inset(10.f, 0.f));
+        if (i < 3) g.FillRound({ row.x, row.y + 8.f, 3.f, row.h - 16.f }, 1.5f, medal);
 
-        g.Text(L"#" + std::to_wstring(i + 1), c[0], medal, Mono(i < 3 ? 15.f : 13.f, true).Center());
+        ProfileDraw::RowText(ui, L"#" + std::to_wstring(i + 1), c[0], medal, Mono(i < 3 ? 15.f : 13.f, true).Center(), plate);
         {
             const Rect cell = c[1];
             const Rect pic{ cell.x, cell.CY() - 19.f, 38.f, 38.f };
@@ -468,16 +469,19 @@ void AccountOverlay::DrawRankTable(Ui& ui, const Rect& r, const RunType& runType
                 if (ui.MouseOver(mark)) ui.Tooltip(ui.MakeId("rk-friend-mark", static_cast<int64_t>(i)), Loc::Get("fr_is_friend"));
                 chipX += 20.f;
             }
-            g.Text(L"speedrun.com/" + line.profile->speedrunName, { chipX, cell.y + 31.f, std::max(0.f, cell.R() - chipX), 16.f }, kSpeedrun.WithAlpha(0.8f),
-                   Mono(9.5f).Ellipsis());
+            ProfileDraw::RowText(ui, L"speedrun.com/" + line.profile->speedrunName, { chipX, cell.y + 31.f, std::max(0.f, cell.R() - chipX), 16.f },
+                                 plate ? kSpeedrun : kSpeedrun.WithAlpha(0.8f), Mono(9.5f, plate).Ellipsis(), plate);
         }
-        g.Text(SC::FormatTime(line.pb->time), c[2], i == 0 ? kGold : kText, Mono(13.f, true).Right());
+        // On a nameplate the columns get a dark halo (and the grey ones turn white) so they read on it
+        const Color sub = plate ? kText : kSub;
+        ProfileDraw::RowText(ui, SC::FormatTime(line.pb->time), c[2], i == 0 ? kGold : kText, Mono(13.f, true).Right(), plate);
         // The real place on speedrun.com's leaderboard
-        g.Text(line.pb->place > 0 ? L"#" + std::to_wstring(line.pb->place) : L"\x2014", c[3], kSpeedrun, Mono(12.f, true).Center());
-        if (showDate) g.Text(line.pb->date.empty() ? L"\x2014" : line.pb->date, c[4], kSub, Mono(10.f).Center());
-        g.Text(std::to_wstring(line.runs), c[5], kText, Mono(11.f, true).Center());
+        ProfileDraw::RowText(ui, line.pb->place > 0 ? L"#" + std::to_wstring(line.pb->place) : L"\x2014", c[3], kSpeedrun, Mono(12.f, true).Center(), plate);
+        if (showDate) ProfileDraw::RowText(ui, line.pb->date.empty() ? L"\x2014" : line.pb->date, c[4], sub, Mono(10.f, plate).Center(), plate);
+        ProfileDraw::RowText(ui, std::to_wstring(line.runs), c[5], kText, Mono(11.f, true).Center(), plate);
         auto hours = line.profile->playtime.find(chapter);
-        g.Text(hours == line.profile->playtime.end() ? L"\x2014" : Services::ChapterPlaytimeStore::Format(hours->second), c[6], kSub, Mono(10.5f, true).Right());
+        ProfileDraw::RowText(ui, hours == line.profile->playtime.end() ? L"\x2014" : Services::ChapterPlaytimeStore::Format(hours->second), c[6], sub,
+                             Mono(10.5f, true).Right(), plate);
         if (it.hovered) {
             ui.SetCursor(IDC_HAND);
             ui.Tooltip(id, Loc::Get("acc_rank_open_profile"));

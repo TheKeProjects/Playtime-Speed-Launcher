@@ -14,6 +14,7 @@
 #include "UI/Widgets/MenuKit.h"
 #include "UI/Widgets/ScrollArea.h"
 #include "UI/Widgets/Stagger.h"
+#include "Windows/Main/Common/ChatView.h"
 #include "Windows/Main/Common/ProfileDraw.h"
 #include "Windows/Main/Common/ReportKit.h"
 #include "Windows/Main/MainWindow.h"
@@ -66,13 +67,26 @@ void RankIconOf(Ui& ui, const Rect& r, const Services::Account::DuelRank& rank, 
 
 void RankIcon(Ui& ui, const Rect& r, int mmr, float opacity) { RankIconOf(ui, r, Services::Account::DuelRankFor(mmr), opacity); }
 
-float Chip(Ui& ui, float x, float cy, const std::wstring& text, Color color, wchar_t glyph) {
+// The chips' body: see-through, or solid dark on a nameplate (returns the text colour to use)
+Color ChipBody(Ui& ui, const Rect& r, Color color, bool onPlate) {
+    auto& g = ui.g;
+    if (!onPlate) {
+        g.Border(r, r.h * 0.5f, color.WithAlpha(0.12f), color.WithAlpha(0.32f), 1.f);
+        return color;
+    }
+    NoColorFilter keep(g);
+    g.GlowRound(r, r.h * 0.5f, Colors::Black, 6.f, 0.4f);
+    g.Border(r, r.h * 0.5f, Lerp(Hex(0x060C14), color, 0.12f).WithAlpha(0.92f), color.WithAlpha(0.75f), 1.f);
+    return Lerp(color, Colors::White, 0.15f);
+}
+
+float Chip(Ui& ui, float x, float cy, const std::wstring& text, Color color, wchar_t glyph, bool onPlate) {
     auto& g = ui.g;
     const TextStyle st = Mono(9.f, true);
     const float tw = g.Measure(text, st).w;
     const float w = tw + 14.f + (glyph ? 15.f : 0.f);
     const Rect r{ x, cy - 9.f, w, 18.f };
-    g.Border(r, 9.f, color.WithAlpha(0.12f), color.WithAlpha(0.32f), 1.f);
+    color = ChipBody(ui, r, color, onPlate);
     float tx = r.x + 7.f;
     if (glyph) {
         UI::Glyph(ui, glyph, { tx - 2.f, r.y, 14.f, r.h }, 8.5f, color);
@@ -82,17 +96,17 @@ float Chip(Ui& ui, float x, float cy, const std::wstring& text, Color color, wch
     return w;
 }
 
-float RankChip(Ui& ui, float x, float cy, int mmr, bool withMmr) {
+float RankChip(Ui& ui, float x, float cy, int mmr, bool withMmr, bool onPlate) {
     auto& g = ui.g;
     const auto& rank = Services::Account::DuelRankFor(mmr);
-    const Color color = Hex(rank.color);
+    Color color = Hex(rank.color);
     std::wstring text = Text::Widen(rank.name);
     if (withMmr) text += L" \x00B7 " + std::to_wstring(mmr);
     const TextStyle st = Mono(9.f, true);
     const float tw = g.Measure(text, st).w;
     const float w = tw + 14.f + 20.f;
     const Rect r{ x, cy - 10.f, w, 20.f };
-    g.Border(r, 10.f, color.WithAlpha(0.12f), color.WithAlpha(0.32f), 1.f);
+    color = ChipBody(ui, r, color, onPlate);
     RankIconOf(ui, { r.x + 4.f, r.y + 2.f, 16.f, 16.f }, rank);
     g.Text(text, { r.x + 24.f, r.y, tw + 2.f, r.h }, color, st);
     return w;
@@ -271,7 +285,11 @@ void DuelsOverlay::Draw(Ui& ui, const Rect& screen) {
     const Duel* current = duels.Active() ? &*duels.Active() : duels.Result() ? &*duels.Result() : nullptr;
     const std::wstring key = current ? current->id + L":" + std::to_wstring(static_cast<int>(current->status)) : L"";
     if (key != shownDuel) {
-        if (current && (shownDuel.empty() || shownDuel.substr(0, current->id.size()) != current->id)) SetPage(PageMatch);
+        if (current && (shownDuel.empty() || shownDuel.substr(0, current->id.size()) != current->id)) {
+            SetPage(PageMatch);
+            sideTab = 1;   // a new duel: its chat on the right
+            chatText.clear();
+        }
         shownDuel = key;
         matchAt = Async::Now();
         confirmForfeit = confirmLeave = false;
@@ -296,7 +314,7 @@ void DuelsOverlay::Draw(Ui& ui, const Rect& screen) {
             }
             if (showOnline) {
                 StaggerItem in(ui, openedAt, 1, 20.f);
-                DrawOnline(ui, online);
+                DrawSide(ui, online, current);
             }
             StaggerItem in(ui, page == PageMatch ? matchAt : pageAt, 0, 0.f, 12.f);
             switch (page) {
@@ -315,7 +333,7 @@ void DuelsOverlay::Draw(Ui& ui, const Rect& screen) {
         const std::wstring back = Loc::Get("back");
         const float bw = MenuKit::FooterButtonWidth(ui, back, Glyphs::Back, 120.f);
         const float right = row.R() - bw;
-        const bool escape = popup.IsOpen() && ui.Focus() == 0 && ui.KeyPressed(VK_ESCAPE);
+        const bool escape = popup.IsOpen() && !main.ProfileShown() && ui.Focus() == 0 && ui.KeyPressed(VK_ESCAPE);
         if (MenuKit::FooterButton(ui, ui.MakeId("duel-close"), { right, row.CY() - 18.f, bw, 36.f }, back, MenuKit::Kind::Secondary, true, Glyphs::Back, kDuel) ||
             escape)
             Close();
@@ -376,6 +394,7 @@ void DuelsOverlay::DrawNav(Ui& ui, const Rect& r) {
     const Rect pic{ c.x, c.y, 40.f, 40.f };
     const std::wstring myName = me.ShownName(Loc::Get("acc_default_name"));
     ProfileDraw::Avatar(ui, me.AvatarUrl(), pic, me, myName, 1.5f, rc);
+    if (const Id meId = ui.MakeId("duel-me-profile"); ui.Interact(meId, { pic.x, pic.y, c.w, pic.h }).clicked) main.ShowProfile(me);
     ui.PushClip({ pic.R() + 10.f, c.y, c.w - 50.f, 22.f });
     ProfileDraw::Name(ui, myName, { pic.R() + 10.f, c.y, c.w - 50.f, 22.f }, me, 13.f);
     ui.PopClip();
@@ -477,6 +496,64 @@ void DuelsOverlay::DrawNav(Ui& ui, const Rect& r) {
 
 // ── Right: who's online ─────────────────────────────────────────────────────
 
+void DuelsOverlay::DrawSide(Ui& ui, const Rect& r, const Duel* current) {
+    if (!current) {
+        DrawOnline(ui, r);
+        return;
+    }
+    // Unread: messages from the others since the chat tab was last on screen
+    const std::wstring& me = AccountService::Get().UserId();
+    long long newest = 0;
+    int unread = 0;
+    for (const auto& m : current->chat) {
+        newest = std::max(newest, m.id);
+        if (m.id > chatSeen && m.userId != me) ++unread;
+    }
+    if (sideTab == 1) {
+        chatSeen = std::max(chatSeen, newest);
+        unread = 0;
+    }
+    const std::wstring chatLabel = Loc::Get("duel_chat_tab") + (unread > 0 ? L" (" + std::to_wstring(unread) + L")" : L"");
+    const int clicked = Pills(ui, r.Top(32.f), { chatLabel, Loc::Get("duel_online_tab") }, sideTab == 1 ? 0 : 1, "duel-side-tab");
+    if (clicked >= 0) sideTab = clicked == 0 ? 1 : 0;
+    const Rect rest = r.CutTop(44.f);
+    if (sideTab == 1) DrawRoomChat(ui, rest, *current);
+    else DrawOnline(ui, rest);
+}
+
+void DuelsOverlay::DrawRoomChat(Ui& ui, const Rect& r, const Duel& duel) {
+    auto& duels = DuelsService::Get();
+    const std::wstring& me = AccountService::Get().UserId();
+    // Closed an hour after the duel finished (the server says so too)
+    const bool open = duel.status != Duel::Status::Expired && duel.status != Duel::Status::Cancelled;
+    const Rect input = r.Bottom(38.f);
+    const Rect area{ r.x, r.y, r.w, r.h - 38.f - 10.f };
+    Card(ui, area);
+
+    std::vector<ChatView::Line> lines;
+    lines.reserve(duel.chat.size());
+    for (const auto& m : duel.chat) {
+        ChatView::Line line;
+        line.mine = m.userId == me;
+        line.pending = m.id == 0;
+        const auto* player = duel.Player(m.userId);
+        line.profile = player ? &player->profile : nullptr;
+        line.author = player ? NameOf(player->profile) : (m.name.empty() ? Loc::Get("acc_default_name") : m.name);
+        line.text = m.text;
+        line.sentAt = line.pending ? Async::Now() : duel.fetchedAt - m.ago;
+        lines.push_back(std::move(line));
+    }
+    ChatView::Options options;
+    options.accent = kDuel;
+    options.empty = Loc::Get("duel_chat_empty");
+    ChatView::Messages(ui, ui.MakeId("duel-chat-list"), area.Inset(6.f, 6.f), lines, options);
+
+    if (ChatView::Input(ui, ui.MakeId("duel-chat-input"), input, chatText, Loc::Get("duel_chat_placeholder"), kDuel, 200, open)) {
+        duels.Say(duel.id, chatText, Reply());
+        chatText.clear();
+    }
+}
+
 void DuelsOverlay::DrawOnline(Ui& ui, const Rect& r) {
     auto& g = ui.g;
     auto& duels = DuelsService::Get();
@@ -525,7 +602,7 @@ void DuelsOverlay::DrawOnline(Ui& ui, const Rect& r) {
         ProfileDraw::Nameplate(ui, row, 10.f, u.profile);
         const Rect pic{ row.x + 10.f, row.CY() - 17.f, 34.f, 34.f };
         const std::wstring name = NameOf(u.profile);
-        ProfileDraw::Avatar(ui, u.profile.AvatarUrl(), pic, u.profile, name);
+        ProfileDraw::Avatar(ui, u.profile.AvatarUrl(), pic, u.profile, name, 0.f, Colors::Transparent, true, false);
         {
             NoColorFilter keep(g);
             const Color dot = u.inDuel ? kDuel : u.playing ? kGold : kOnline;
@@ -539,9 +616,14 @@ void DuelsOverlay::DrawOnline(Ui& ui, const Rect& r) {
         const std::wstring line = u.inDuel ? Loc::Get("duel_status_in_duel")
                                   : u.playing ? Services::Account::FriendsService::StatusText({ Services::Account::Friend::Relation::Friend, u.profile, L"", 0.0, u.playing })
                                               : Text::Widen(Services::Account::DuelRankFor(u.mmr).name) + L" \x00B7 " + std::to_wstring(u.mmr);
+        const bool plate = ProfileDraw::HasNameplate(u.profile);
+        if (plate) ProfileDraw::PlateScrim(ui, { textX, row.y + 31.f, 16.f, 16.f });
         RankIcon(ui, { textX, row.y + 31.f, 16.f, 16.f }, u.mmr);
-        g.Text(line, { textX + 20.f, row.y + 30.f, textW - 20.f, 18.f }, u.inDuel ? kDuel : u.playing ? kGold : RankColor(u.mmr), Mono(9.f, true).Ellipsis());
-        if (it.hovered) ui.Tooltip(id, Loc::Fmt("duel_record_tooltip", u.wins, u.losses));
+        ProfileDraw::RowText(ui, line, { textX + 20.f, row.y + 30.f, textW - 20.f, 18.f }, u.inDuel ? kDuel : u.playing ? kGold : RankColor(u.mmr),
+                             Mono(9.f, true).Ellipsis(), plate);
+        ProfileDraw::AvatarDecoration(ui, pic, u.profile);   // over the dot and the texts
+        if (it.hovered) ui.Tooltip(id, Loc::Fmt("duel_record_tooltip", u.wins, u.losses) + L"  \x00B7  " + Loc::Get("acc_rank_open_profile"));
+        if (it.clicked) main.ShowProfile(u.profile);
 
         // Challenge / invite into our lobby
         const Rect button{ row.R() - 42.f, row.CY() - 16.f, 32.f, 32.f };
