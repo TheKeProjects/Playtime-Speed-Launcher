@@ -1,6 +1,10 @@
-4.2.0
+4.3.0
 ## Additions
-New 100% tracker (beta) for Chapters 1 to 5, read live from the game, with an in-game overlay and an OBS browser source
-New main screen: a side bar with every menu, the selected chapter with a screenshot carousel, and the chapters as cards at the bottom
-The theme is now changed from the side bar
-New Halloween, Summer and Christmas backgrounds
+Launcher accounts: your playtime is saved in the cloud, so you keep your hours on any PC
+Profiles: name, picture, banner and cosmetics, plus your linked speedrun.com and Discord accounts
+Community ranking: launcher players ranked by their speedrun.com personal bests on each chapter
+Friends: add people by name or friend code and see who's online and what they're playing
+Duels: race other launcher players in 1v1 up to 6-player rooms and climb the MMR ranks
+
+## Bug Fixes
+Locked chapters no longer show playtime, multiplayer games show theirs even when not installed, and times under a minute show in seconds

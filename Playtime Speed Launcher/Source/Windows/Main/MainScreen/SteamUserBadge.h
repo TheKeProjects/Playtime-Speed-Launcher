@@ -9,7 +9,8 @@ namespace SpeedrunLauncher::Main {
 class SteamUserBadge {
 public:
     void Load();
-    void Draw(UI::Ui& ui, float right, const Rect& bar);   // right: where the bar's own items start
+    // right: where the bar's own items start. Returns where the badge starts (right when hidden).
+    float Draw(UI::Ui& ui, float right, const Rect& bar);
 
 private:
     bool visible = false;

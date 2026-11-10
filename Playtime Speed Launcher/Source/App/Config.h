@@ -66,11 +66,18 @@ inline const std::map<std::wstring, std::wstring>& ContributorIds() {
 namespace Supabase {
 inline constexpr const wchar_t* Url = L"Url";
 inline constexpr const wchar_t* AnonKey = L"AnonKey";
+// Accounts (Tools\SupabaseAccounts.sql): profiles table and the public bucket with the pictures
+inline constexpr const wchar_t* ProfilesTable = L"launcher_profiles";
+inline constexpr const wchar_t* ProfilesBucket = L"launcher-profiles";
+inline constexpr size_t MaxPictureBytes = 8 * 1024 * 1024;         // what the bucket takes
+inline constexpr size_t MaxSourcePictureBytes = 60 * 1024 * 1024;  // what can be picked (shrunk before uploading)
 } // namespace Supabase
 
 // ── speedrun.com (leaderboards) ─────────────────────────────────────────────
 namespace SpeedrunCom {
 inline constexpr const wchar_t* ApiUrl = L"https://www.speedrun.com/api/v1";
+// Where a user finds the API key that proves a speedrun.com account is theirs
+inline constexpr const wchar_t* ApiKeyPage = L"https://www.speedrun.com/settings/api";
 // Chapter number → speedrun.com game id
 inline const std::map<int, std::wstring>& ChapterGameIds() {
     static const std::map<int, std::wstring> ids = {
@@ -83,6 +90,11 @@ inline const std::map<int, std::wstring>& ChapterGameIds() {
 // ── Public links ────────────────────────────────────────────────────────────
 namespace Links {
 inline constexpr const wchar_t* Website = L"https://playtimesl.com/";
+// Hidden page the account emails link to (confirm the email, set a new password)
+inline constexpr const wchar_t* AccountEmailPage = L"https://playtimesl.com/confirmacion/";
+// Hidden page the browser lands on after linking Discord to the account (?status=ok&name=…&avatar=…
+// or ?status=error&reason=denied|taken|unreachable)
+inline constexpr const wchar_t* DiscordLinkedPage = L"https://playtimesl.com/discord/";
 inline constexpr const wchar_t* DiscordInvite = L"https://discord.gg/Z44M2yeRys";
 inline constexpr const wchar_t* LiveSplitDownloads = L"https://livesplit.org/downloads/";
 inline constexpr const wchar_t* SteamCmdZip = L"https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip";

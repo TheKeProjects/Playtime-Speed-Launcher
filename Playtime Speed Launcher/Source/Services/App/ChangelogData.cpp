@@ -6,7 +6,17 @@ namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
-        { L"4.2.0", L"31/10/2026", {
+        { L"4.3.0", L"10/11/2026", {
+            L"## Additions",
+            L"Launcher accounts: your playtime is saved in the cloud, so you keep your hours on any PC",
+            L"Profiles: name, picture, banner and cosmetics, plus your linked speedrun.com and Discord accounts",
+            L"Community ranking: launcher players ranked by their speedrun.com personal bests on each chapter",
+            L"Friends: add people by name or friend code and see who's online and what they're playing",
+            L"Duels: race other launcher players in 1v1 up to 6-player rooms and climb the MMR ranks",
+            L"## Bug Fixes",
+            L"Locked chapters no longer show playtime, multiplayer games show theirs even when not installed, and times under a minute show in seconds",
+        } },
+        { L"4.2.0", L"08/11/2026", {
             L"## Additions",
             L"New 100% tracker (beta) for Chapters 1 to 5, read live from the game, with an in-game overlay and an OBS browser source",
             L"New main screen: a side bar with every menu, the selected chapter with a screenshot carousel, and the chapters as cards at the bottom",

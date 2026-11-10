@@ -8,7 +8,7 @@ namespace SpeedrunLauncher::Fonts {
 
 namespace {
 
-std::array<Family, 5> families;
+std::array<Family, static_cast<int>(Font::ProfileFirst) + ProfileFontCount> families;
 
 bool SystemHas(const wchar_t* name) {
     ComPtr<IDWriteFontCollection> system;
@@ -63,6 +63,25 @@ void Initialize(const std::wstring& poppyFontPath) {
     if (LoadPrivate(poppyFontPath, poppy)) families[static_cast<int>(Font::Poppy)] = poppy;
     else families[static_cast<int>(Font::Poppy)] = families[static_cast<int>(Font::Mono)];
 
+    // Account name fonts: each one falls back to something close when it isn't installed
+    const auto profile = [](int index) -> Family& { return families[static_cast<int>(Font::ProfileFirst) + index]; };
+    profile(0) = { FirstInstalled({ L"Segoe UI Variable Display", L"Segoe UI" }), nullptr };
+    profile(1) = families[static_cast<int>(Font::Poppy)];
+    profile(2) = families[static_cast<int>(Font::Mono)];
+    profile(3) = { FirstInstalled({ L"Impact", L"Arial Black", L"Segoe UI" }), nullptr };
+    profile(4) = { FirstInstalled({ L"Georgia", L"Cambria", L"Times New Roman" }), nullptr };
+    profile(5) = { FirstInstalled({ L"Comic Sans MS", L"Segoe Print", L"Segoe UI" }), nullptr };
+    profile(6) = { FirstInstalled({ L"Segoe Script", L"Gabriola", L"Segoe UI" }), nullptr };
+    profile(7) = { FirstInstalled({ L"Segoe Print", L"Comic Sans MS", L"Segoe UI" }), nullptr };
+    profile(8) = { FirstInstalled({ L"Ink Free", L"Segoe Print", L"Segoe UI" }), nullptr };
+    profile(9) = { FirstInstalled({ L"Bahnschrift", L"Segoe UI" }), nullptr };
+    profile(10) = { FirstInstalled({ L"Gabriola", L"Georgia", L"Segoe UI" }), nullptr };
+    profile(11) = { FirstInstalled({ L"Courier New", L"Consolas" }), nullptr };
+}
+
+Font ProfileFont(int index) {
+    if (index < 0 || index >= ProfileFontCount) index = 0;
+    return static_cast<Font>(static_cast<int>(Font::ProfileFirst) + index);
 }
 
 const Family& Get(Font font) { return families[static_cast<int>(font)]; }

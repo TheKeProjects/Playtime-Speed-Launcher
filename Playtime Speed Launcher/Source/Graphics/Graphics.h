@@ -109,6 +109,8 @@ public:
 
     // Text
     void Text(const std::wstring& s, const Rect& r, Color c, const TextStyle& style);
+    // The same filled with any brush (gradients)
+    void Text(const std::wstring& s, const Rect& r, ID2D1Brush* brush, const TextStyle& style);
     TextSize Measure(const std::wstring& s, const TextStyle& style, float maxWidth = 100000.f);
     // Character index under a point (text boxes); `trailing` tells which half was hit.
     int HitTestText(const std::wstring& s, const TextStyle& style, float maxWidth, float x, float y);

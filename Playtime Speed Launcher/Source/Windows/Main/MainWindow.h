@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "App/Launcher.h"
+#include "Services/Account/Profile.h"
 #include "UI/Window.h"
 #include "Windows/Main/MainScreen/ChapterCards.h"
 #include "Windows/Main/MainScreen/ChapterInfoPanel.h"
@@ -37,6 +38,8 @@ class TutorialPopups;
 class KeyClickWizard;
 class ThemePopup;
 class ThemeTransition;
+class AccountOverlay;
+class DuelsOverlay;
 
 // The launcher's main window: the chapter carousel screen plus every in-window overlay.
 // Screen pieces live in MainScreen\, overlays in Overlays\ and Settings\, the background logic
@@ -71,6 +74,9 @@ public:
     void OpenHandMods();
     void OpenLeaderboard();
     void OpenBugReport();
+    void OpenAccount(bool ranking = false);   // the top bar's account badge
+    void OpenDuels();                          // the side rail's duels tile
+    void ChallengeToDuel(const Services::Account::Profile& who);   // opens the duels menu ready to challenge them
     void OpenChangelog();
     void OpenBeginnerTutorials();
     void OpenUpdates();
@@ -133,7 +139,7 @@ private:
     ChapterInfoPanel info{ *this };
     SteamUserBadge steamUser;
     IntroVideo intro;
-    Toasts::ToastSlot gameToast, tutorialToast, coresToast, ue4ssToast;
+    Toasts::ToastSlot gameToast, tutorialToast, coresToast, ue4ssToast, duelToast;
 
     std::unique_ptr<Features::GameWatcher> watcher;
     std::unique_ptr<Features::GlobalHotkeys> hotkeys;
@@ -157,6 +163,8 @@ private:
     std::unique_ptr<KeyClickWizard> keyClickWizard;
     std::unique_ptr<ThemePopup> themePopup;
     std::unique_ptr<ThemeTransition> themeTransition;
+    std::unique_ptr<AccountOverlay> account;
+    std::unique_ptr<DuelsOverlay> duels;
     bool keyClickHotkeyOk = true;
     std::vector<unsigned> recentKeys;   // last key presses in the launcher (secret ↑↑↑↑↑↓↓↓↓↓)
     void CheckSpamCombo(unsigned vk);

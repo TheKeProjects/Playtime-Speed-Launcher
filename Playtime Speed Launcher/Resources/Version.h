@@ -1,9 +1,9 @@
 #pragma once
 
 #define APP_VERSION_MAJOR 4
-#define APP_VERSION_MINOR 2
+#define APP_VERSION_MINOR 3
 #define APP_VERSION_PATCH 0
-#define APP_VERSION_STRING "4.2.0"
+#define APP_VERSION_STRING "4.3.0"
 
 #define APP_PRODUCT     "PlaytimeSpeedLauncher"
 #define APP_AUTHORS     "An Average Developer"

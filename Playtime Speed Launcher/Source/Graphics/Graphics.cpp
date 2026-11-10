@@ -410,6 +410,13 @@ void Graphics::Text(const std::wstring& s, const Rect& r, Color c, const TextSty
     dc->DrawTextLayout(D2D1::Point2F(r.x, r.y), layout, Brush(c), D2D1_DRAW_TEXT_OPTIONS_NONE);   // WPF never draws color emoji
 }
 
+void Graphics::Text(const std::wstring& s, const Rect& r, ID2D1Brush* brush, const TextStyle& style) {
+    if (s.empty() || !brush || r.w <= 0.f) return;
+    IDWriteTextLayout* layout = Layout(s, style, r.w, std::max(r.h, 0.f));
+    if (!layout) return;
+    dc->DrawTextLayout(D2D1::Point2F(r.x, r.y), layout, brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+}
+
 TextSize Graphics::Measure(const std::wstring& s, const TextStyle& style, float maxWidth) {
     if (s.empty()) {
         // Height of an empty line still matters for layout (empty TextBlocks keep their line height)
@@ -604,7 +611,8 @@ void Graphics::GlowText(const std::wstring& s, const Rect& r, const TextStyle& s
     IDWriteTextLayout* layout = Layout(s, style, r.w, r.h);
     if (!layout) return;
     wchar_t header[96];
-    swprintf_s(header, L"text|%.1f|%.1f|%.1f|%.1f|%d|", r.w, r.h, style.size, blurRadius, static_cast<int>(style.weight));
+    swprintf_s(header, L"text|%.1f|%.1f|%.1f|%.1f|%d|%d|%d|", r.w, r.h, style.size, blurRadius, static_cast<int>(style.weight),
+               static_cast<int>(style.font), static_cast<int>(style.align));
     const float pad = blurRadius * 1.5f + 2.f;
     ComPtr<IDWriteTextLayout> keep = layout;
     GlowMask* mask = Mask(std::wstring(header) + s, r.w, r.h, pad, [&](ID2D1DeviceContext* rc, ID2D1Brush* white) {

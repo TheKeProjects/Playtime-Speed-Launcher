@@ -12,8 +12,8 @@ void SteamUserBadge::Load() {
     visible = true;
 }
 
-void SteamUserBadge::Draw(UI::Ui& ui, float right, const Rect& bar) {
-    if (!visible) return;
+float SteamUserBadge::Draw(UI::Ui& ui, float right, const Rect& bar) {
+    if (!visible) return right;
     // Name (11 bold) + 24 px round avatar, 16 px left of the bar's own items
     const float size = 24.f;
     const Rect avatar{ right - 16.f - size, bar.CY() - size * 0.5f, size, size };
@@ -24,6 +24,7 @@ void SteamUserBadge::Draw(UI::Ui& ui, float right, const Rect& bar) {
     const TextStyle style = UI::Mono(11.f, true);
     const float w = ui.g.Measure(persona, style).w + 2.f;
     ui.g.Text(persona, { avatar.x - 8.f - w, bar.y, w, bar.h }, Hex(0x3A6A8A), style);
+    return avatar.x - 8.f - w;
 }
 
 } // namespace SpeedrunLauncher::Main

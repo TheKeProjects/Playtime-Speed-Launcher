@@ -70,6 +70,8 @@ public:
     std::optional<std::wstring> ActiveExePath(const Models::Chapter& chapter) const;
     std::wstring VersionLabel(const Models::Chapter& chapter) const;
     const Models::Chapter* RunningChapter() const;
+    // Playtime ids that are shown and added up: released chapters and the multiplayer games
+    bool CountsPlaytime(int id) const;
     bool AnyGameRunning() const;
     // Thread-safe (also called from the input hook thread): uses the snapshot published by the
     // game watcher, never the vectors above.

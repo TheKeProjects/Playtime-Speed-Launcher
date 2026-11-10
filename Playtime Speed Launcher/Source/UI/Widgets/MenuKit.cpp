@@ -129,6 +129,11 @@ bool FooterButton(Ui& ui, Id id, const Rect& r, const std::wstring& text, Kind k
     ButtonScope b(ui, id, r, style, enabled);
     const Color fg = kind == Kind::Primary ? Rgba(3, 17, 13) : Lerp(kind == Kind::Danger ? Palette::DangerText : Palette::Label, tone, hot);
     const TextStyle ts = Mono(11.f, true);
+    if (text.empty()) {
+        // Icon-only: the glyph centred in the button
+        if (glyph) Glyph(ui, glyph, { r.CX() - 7.f, r.y, 14.f, r.h }, 12.f, fg);
+        return b.Clicked();
+    }
     const float tw = g.Measure(text, ts).w + 1.f;
     const float total = tw + (glyph ? 22.f : 0.f);
     float x = r.CX() - total * 0.5f;

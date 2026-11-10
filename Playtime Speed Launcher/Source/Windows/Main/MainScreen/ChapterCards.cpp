@@ -130,7 +130,8 @@ void ChapterCards::DrawTabs(UI::Ui& ui, const Rect& area) {
     if (current == 1)
         for (const auto& game : l.multiplayers) total += l.playtime.Seconds(game.playtimeId);
     else
-        for (const auto& chapter : l.chapters) total += l.playtime.Seconds(chapter.number);
+        for (const auto& chapter : l.chapters)
+            if (chapter.isAvailable) total += l.playtime.Seconds(chapter.number);
     const std::wstring caption = Loc::Get("shelf_total");
     const std::wstring value = Services::ChapterPlaytimeStore::Format(total);
     const TextStyle captionStyle = UI::Mono(9.f, true);
@@ -157,9 +158,10 @@ void ChapterCards::DrawCards(UI::Ui& ui, const Rect& area) {
             c.banner = Paths::Asset(L"Banners\\" + game.banner);
             c.title = Loc::Get("mp_" + game.key + "_title");
             c.running = i < l.multiplayerRunning.size() && l.multiplayerRunning[i];
-            c.subtitle = c.running              ? Loc::Get("status_playing")
-                         : game.IsInstalled()   ? Services::ChapterPlaytimeStore::Format(l.playtime.Seconds(game.playtimeId))
-                                                : Loc::Get("status_not_found");
+            const double seconds = l.playtime.Seconds(game.playtimeId);
+            c.subtitle = c.running                             ? Loc::Get("status_playing")
+                         : game.IsInstalled() || seconds > 0.0 ? Services::ChapterPlaytimeStore::Format(seconds)
+                                                               : Loc::Get("status_not_found");
             c.available = game.isAvailable;
             c.selected = l.multiplayerPicked && static_cast<int>(i) == l.selectedMultiplayer;
             cards.push_back(std::move(c));
@@ -171,7 +173,9 @@ void ChapterCards::DrawCards(UI::Ui& ui, const Rect& area) {
             c.banner = BannerPath(chapter.number);
             c.title = Loc::Get("ch" + std::to_string(chapter.number) + "_title");
             c.running = i < l.gameRunning.size() && l.gameRunning[i];
-            c.subtitle = c.running ? Loc::Get("status_playing") : Services::ChapterPlaytimeStore::Format(l.playtime.Seconds(chapter.number));
+            c.subtitle = c.running              ? Loc::Get("status_playing")
+                         : !chapter.isAvailable ? L""
+                                                : Services::ChapterPlaytimeStore::Format(l.playtime.Seconds(chapter.number));
             c.available = chapter.isAvailable;
             c.selected = l.chapterPicked && static_cast<int>(i) == l.selected;
             c.font = Font::Poppy;

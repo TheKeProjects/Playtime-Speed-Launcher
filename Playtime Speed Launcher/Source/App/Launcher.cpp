@@ -71,6 +71,14 @@ std::wstring Launcher::VersionLabel(const Models::Chapter& chapter) const {
     return chapter.isAvailable ? Loc::Get("version_not_installed") : Loc::Get("version_none");
 }
 
+bool Launcher::CountsPlaytime(int id) const {
+    for (const auto& chapter : chapters)
+        if (chapter.number == id) return chapter.isAvailable;
+    for (const auto& game : multiplayers)
+        if (game.playtimeId == id) return true;
+    return false;
+}
+
 const Models::Chapter* Launcher::RunningChapter() const {
     for (size_t i = 0; i < chapters.size(); ++i)
         if (gameRunning[i]) return &chapters[i];

@@ -81,6 +81,18 @@ std::string Param(const std::string& body, const std::string& key) {
     return {};
 }
 
+// Sends the browser to `url` (the forwarder page writes this document over itself)
+std::string RedirectHtml(const std::wstring& url) {
+    std::string safe;
+    for (const char c : Text::Narrow(url)) {
+        // Only URL characters (the URL is built by the launcher, this just keeps the HTML well formed)
+        if (c == '"' || c == '<' || c == '>' || c == '\'' || c == '\\' || static_cast<unsigned char>(c) < 0x20) continue;
+        safe += c;
+    }
+    return "<!DOCTYPE html><html><head><meta http-equiv=\"refresh\" content=\"0;url=" + safe +
+           "\"></head><body style=\"background:#0C0805\"><script>location.replace(\"" + safe + "\");</script></body></html>";
+}
+
 void Respond(SOCKET client, int status, const char* html, bool cors) {
     const std::string body = html ? html : "";
     std::string response = "HTTP/1.1 " + std::to_string(status) + (status == 200 ? " OK" : " Not Found") + "\r\n";
@@ -126,18 +138,21 @@ bool ReadRequest(SOCKET client, std::string& method, std::string& path, std::str
     return true;
 }
 
-std::optional<User> FetchUser(const std::string& token) {
+// `avatarUrl` (optional): the user's picture on Discord's CDN, empty when they have none
+std::optional<User> FetchUser(const std::string& token, std::wstring* avatarUrl = nullptr) {
     const Http::Response r = Http::Get(Config::Discord::ApiUserUrl, { { L"Authorization", L"Bearer " + Text::Widen(token) } }, 10000);
     if (!r.Ok()) return std::nullopt;
     const Json::Value doc = Json::Parse(std::string_view(r.body));
     User user{ doc["id"].WStr(), doc["username"].WStr() };
     if (user.id.empty()) return std::nullopt;
+    if (avatarUrl && doc["avatar"].IsString())
+        *avatarUrl = L"https://cdn.discordapp.com/avatars/" + user.id + L"/" + doc["avatar"].WStr() + L".png?size=128";
     return user;
 }
 
 } // namespace
 
-std::optional<User> Authenticate(const Async::Cancel& cancel) {
+bool Authorize(const Async::Cancel& cancel, const std::function<TokenResult(const std::string& accessToken)>& onToken, const std::wstring& deniedUrl) {
     WSADATA wsa{};
     WSAStartup(MAKEWORD(2, 2), &wsa);
     // "localhost" may resolve to 127.0.0.1 or ::1 depending on the browser: listen on both
@@ -163,16 +178,16 @@ std::optional<User> Authenticate(const Async::Cancel& cancel) {
     const auto closeAll = [&] {
         for (SOCKET s : listeners) closesocket(s);
     };
-    if (listeners.empty()) return std::nullopt;
+    if (listeners.empty()) return false;
     const std::wstring url = std::wstring(Config::Discord::OAuthAuthorizeUrl) + L"?client_id=" + kClientId +
                              L"&redirect_uri=" + Text::UrlEncode(std::wstring(Config::Discord::OAuthRedirectUri)) +
                              L"&response_type=token&scope=identify";
     if (!Process::OpenUrl(url)) {
         closeAll();
-        return std::nullopt;
+        return false;
     }
 
-    std::optional<User> result;
+    bool received = false;
     const ULONGLONG deadline = GetTickCount64() + 5 * 60 * 1000;
     while (!cancel.Requested() && GetTickCount64() < deadline) {
         fd_set set;
@@ -195,8 +210,12 @@ std::optional<User> Authenticate(const Async::Cancel& cancel) {
                 Respond(client, 200, kForwarderHtml, false);
             } else if (path == "/token" && method == "POST") {
                 const std::string token = Param(body, "access_token");
-                if (!token.empty()) result = FetchUser(token);
-                Respond(client, 200, result ? kSuccessHtml : kErrorHtml, true);
+                received = !token.empty();
+                TokenResult result;
+                if (received) result = onToken(token);
+                else result.redirectUrl = deniedUrl;
+                const std::string redirect = result.redirectUrl.empty() ? std::string() : RedirectHtml(result.redirectUrl);
+                Respond(client, 200, !redirect.empty() ? redirect.c_str() : result.ok ? kSuccessHtml : kErrorHtml, true);
                 done = true;
             } else {
                 Respond(client, 404, "", false);
@@ -207,6 +226,21 @@ std::optional<User> Authenticate(const Async::Cancel& cancel) {
         if (done) break;
     }
     closeAll();
+    return received;
+}
+
+std::optional<User> Authenticate(const Async::Cancel& cancel) {
+    // The browser ends on the website's Discord page, in its "connected" mode (bug reports, hand mods)
+    const std::wstring page = std::wstring(Config::Links::DiscordLinkedPage) + L"?mode=connect";
+    std::optional<User> result;
+    Authorize(cancel, [&](const std::string& token) {
+        std::wstring avatar;
+        result = FetchUser(token, &avatar);
+        if (!result) return TokenResult{ false, page + L"&status=error&reason=unreachable" };
+        std::wstring url = page + L"&status=ok&name=" + Text::UrlEncode(result->username);
+        if (!avatar.empty()) url += L"&avatar=" + Text::UrlEncode(avatar);
+        return TokenResult{ true, url };
+    }, page + L"&status=error&reason=denied");
     return result;
 }
 

@@ -18,6 +18,9 @@
 #include "Seasonal/SeasonalOverlay.h"
 #include "Seasonal/SeasonalTheme.h"
 #include "Services/Collectibles/InGameOverlay.h"
+#include "Services/Account/AccountService.h"
+#include "Services/Account/DuelsService.h"
+#include "Services/Account/FriendsService.h"
 #include "Services/Audio/SoundEffects.h"
 #include "Services/Community/OnlineUsersService.h"
 #include "Services/Discord/DiscordPresenceService.h"
@@ -33,6 +36,8 @@
 #include "Windows/Dialogs/DialogWindow.h"
 #include "Windows/Main/MainScreen/Bars.h"
 #include "Windows/Main/MainScreen/MainLayout.h"
+#include "Windows/Main/Overlays/Account/AccountOverlay.h"
+#include "Windows/Main/Overlays/Duels/DuelsOverlay.h"
 #include "Windows/Main/Overlays/AddToSteam/AddToSteamOverlay.h"
 #include "Windows/Main/Overlays/BugReport/BugReportOverlay.h"
 #include "Windows/Main/Overlays/EasterEgg/EasterEggOverlay.h"
@@ -84,9 +89,11 @@ MainWindow::MainWindow() {
     keyClickWizard = std::make_unique<KeyClickWizard>(*this);
     themePopup = std::make_unique<ThemePopup>(*this);
     themeTransition = std::make_unique<ThemeTransition>();
+    account = std::make_unique<AccountOverlay>(*this);
+    duels = std::make_unique<DuelsOverlay>(*this);
     // Same stacking order as the overlays in the old MainWindow.xaml (later = on top)
     overlays = { versions.get(), settings.get(), keyClickWizard.get(), updates.get(), liveSplit.get(), saveCard.get(), checkpoint.get(),
-                 bugReport.get(), eggVideo.get(), mods.get(), addToSteam.get(), handMods.get(), tutorials.get(), themePopup.get() };
+                 bugReport.get(), account.get(), duels.get(), eggVideo.get(), mods.get(), addToSteam.get(), handMods.get(), tutorials.get(), themePopup.get() };
 }
 
 MainWindow::~MainWindow() {
@@ -175,6 +182,28 @@ void MainWindow::StartBackgroundWork() {
     liveSplitPoller->Start();
     Services::OnlineUsers::Start([this](int count) { onlineText = std::to_wstring(count) + L" online"; });
     l.playtime.Load([this] { Invalidate(); });
+    // The launcher account: signing in / out switches the hours shown to the account's
+    auto& accountService = Services::Account::AccountService::Get();
+    accountService.onAccountChanged = [] {
+        App::L().playtime.AccountChanged();
+        Services::Account::FriendsService::Get().AccountChanged();
+        Services::Account::DuelsService::Get().AccountChanged();
+    };
+    Services::Account::FriendsService::Get().Initialize();
+    // Duels: challenges, the duel starting and its result show up as toasts
+    Services::Account::DuelsService::Get().onNotify = [this](const std::wstring& title, const std::wstring& text, unsigned color) {
+        Toasts::Spec spec;
+        spec.width = 330.f;
+        spec.duration = 8.0;
+        spec.fadeOut = 0.8;
+        spec.accent = Hex(color);
+        spec.anchor = Toasts::Spec::Anchor::RightMiddle;
+        spec.offsetY = -85.f;   // above the game toasts
+        spec.lines = { { title, 13.f, true, Hex(color), 0.f }, { text, 10.f, false, Rgba(160, 190, 210, 200), 4.f } };
+        duelToast.Show(spec);   // (the duels service plays the sound)
+    };
+    Services::Account::DuelsService::Get().Initialize();
+    accountService.Initialize();
     steamUser.Load();
     const auto& d = Settings::DiscordPresence::Current();
     l.discord->ApplySettings(d.showActivity, d.showVersion, d.showLiveSplit);
@@ -375,6 +404,9 @@ void MainWindow::OpenVersions() { versions->Open(App::L().selected); }
 void MainWindow::OpenHandMods() { handMods->OpenHub(); }
 void MainWindow::OpenLeaderboard() { Standalone::ToggleLeaderboard(); }
 void MainWindow::OpenBugReport() { bugReport->Open(); }
+void MainWindow::OpenAccount(bool ranking) { account->Open(ranking); }
+void MainWindow::OpenDuels() { duels->Open(); }
+void MainWindow::ChallengeToDuel(const Services::Account::Profile& who) { duels->Challenge(who); }
 void MainWindow::OpenChangelog() {
     settings->Close();
     updates->Open(UpdatesOverlay::Page::Changelog);
@@ -586,6 +618,7 @@ void MainWindow::OnClosing(bool& cancel) {
     tutorialToast.Close();
     coresToast.Close();
     ue4ssToast.Close();
+    duelToast.Close();
     liveSplitPoller->Stop();
     Services::OnlineUsers::Stop();
     watcher->Stop();

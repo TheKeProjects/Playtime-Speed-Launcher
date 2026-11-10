@@ -11,6 +11,11 @@ inline constexpr const wchar_t* Chapter = L"SelecChapter.WAV";
 inline constexpr const wchar_t* Grab = L"Grab.WAV";
 inline constexpr const wchar_t* Drag = L"Drag.WAV";
 inline constexpr const wchar_t* Drop = L"Drop.WAV";
+// Duels: won / lost a race, an invitation sent or received, someone joined the room
+inline constexpr const wchar_t* DuelWin = L"DuelWin.WAV";
+inline constexpr const wchar_t* DuelLose = L"DuelLose.WAV";
+inline constexpr const wchar_t* DuelInvite = L"DuelInvite.WAV";
+inline constexpr const wchar_t* DuelJoin = L"DuelJoin.WAV";
 // The on-screen keyboard (key to click wizard): a quiet tactile key, three variants
 void PlayKeyPress();
 

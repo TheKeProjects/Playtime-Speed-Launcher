@@ -1,6 +1,10 @@
-4.2.0
+4.3.0
 ## Novedades
-Nuevo contador del 100% (beta) para los capítulos 1 a 5, leído en vivo del juego, con un overlay en el juego y una fuente de navegador para OBS
-Nueva pantalla principal: una barra lateral con todos los menús, el capítulo seleccionado con un carrusel de capturas y los capítulos como tarjetas abajo
-El tema ahora se cambia desde la barra lateral
-Nuevos fondos de Halloween, Verano y Navidad
+Cuentas del launcher: tu tiempo de juego se guarda en la nube, así conservas tus horas en cualquier PC
+Perfiles: nombre, foto, banner y cosméticos, además de tus cuentas de speedrun.com y Discord vinculadas
+Ranking de la comunidad: los jugadores del launcher clasificados por sus mejores marcas de speedrun.com en cada capítulo
+Amigos: añade gente por nombre o código de amigo y mira quién está conectado y a qué está jugando
+Duelos: compite contra otros jugadores del launcher en 1v1 o en salas de hasta 6 jugadores y sube de rango MMR
+
+## Correcciones
+Los capítulos bloqueados ya no muestran tiempo de juego, los juegos multijugador muestran el suyo aunque no estén instalados y los tiempos de menos de un minuto se muestran en segundos

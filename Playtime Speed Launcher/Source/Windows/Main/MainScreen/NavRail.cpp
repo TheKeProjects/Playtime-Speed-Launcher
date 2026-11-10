@@ -4,11 +4,16 @@
 #include "Graphics/Animation.h"
 #include "Localization/Localization.h"
 #include "Seasonal/SeasonalTheme.h"
+#include "Services/Account/AccountService.h"
+#include "Services/Account/DuelsService.h"
+#include "Services/Account/FriendsService.h"
 #include "Services/Audio/SoundEffects.h"
 #include "UI/Style.h"
 #include "UI/Widgets/Button.h"
 #include "Windows/Main/MainScreen/Bars.h"
+#include "Windows/Main/Common/ProfileDraw.h"
 #include "Windows/Main/MainWindow.h"
+#include "Windows/Main/Overlays/Duels/DuelsKit.h"
 #include "Windows/Main/Overlays/Theme/ThemePopup.h"
 
 namespace SpeedrunLauncher::Main::NavRail {
@@ -18,7 +23,7 @@ namespace {
 constexpr float kTileW = 76.f, kTileH = 64.f, kIcon = 26.f;
 
 // What a tile shows in its icon slot
-enum class IconKind { Glyph, Image, Updates };
+enum class IconKind { Glyph, Image, Updates, Duels };
 
 struct Tile {
     const char* id;
@@ -103,11 +108,60 @@ bool DrawTile(UI::Ui& ui, MainWindow& main, const Tile& tile, const Rect& r, boo
         }
         break;
     case IconKind::Updates: DrawUpdatesIcon(ui, icon, hover, alert, main.Resting(), idle); break;
+    case IconKind::Duels: DuelsKit::SpeedWatchIcon(ui, icon, 17.f, color, hover); break;
     }
     TextStyle label = UI::Mono(8.5f, true).Center();
     label.ellipsis = true;
     g.Text(tile.label, { r.x + 2.f, icon.B() + 5.f, r.w - 4.f, 14.f }, Lerp(idle, Rgba(225, 235, 245), hover * 0.7f), label);
     if (!tile.tooltip.empty()) ui.Tooltip(id, tile.tooltip);
+    return it.clicked;
+}
+
+// The launcher account: its round picture and the custom name (font + effect) once signed in,
+// a person icon and "ACCOUNT" while signed out. Opens the account menu.
+bool DrawAccountTile(UI::Ui& ui, MainWindow& main, const Rect& r) {
+    auto& g = ui.g;
+    const auto& palette = Seasonal::Current();
+    auto& account = Services::Account::AccountService::Get();
+    const bool signedIn = account.SignedIn();
+    const auto& me = account.Me();
+    const UI::Id id = ui.MakeId("nav-account");
+    const UI::Interaction it = ui.Interact(id, r);
+    if (it.hovered) ui.SetCursor(IDC_HAND);
+    if (it.entered) Services::Sfx::Play(Services::Sfx::Hover, true);
+    const float hover = ui.Animate(ui.MakeId("nav-account", 1), it.hovered ? 1.f : 0.f, 16.f);
+    const float press = ui.Animate(ui.MakeId("nav-account", 2), it.held ? 1.f : 0.f, 30.f);
+    if (hover > 0.01f) {
+        g.FillRound(r, 10.f, palette.accent.WithAlpha(0.09f * hover));
+        const float barH = 28.f * hover;
+        g.FillRound({ r.x - 6.f, r.CY() - barH * 0.5f, 3.f, barH }, 1.5f, palette.accent.WithAlpha(hover));
+    }
+    const float lift = -2.f * hover + 1.f * press;
+    const Rect icon{ r.CX() - kIcon * 0.5f, r.y + 9.f + lift, kIcon, kIcon };
+    const Rect labelRect{ r.x + 2.f, icon.B() + 5.f, r.w - 4.f, 14.f };
+    const Color idle = palette.muted;
+    if (signedIn) {
+        const std::wstring name = me.ShownName(Loc::Get("acc_default_name"));
+        // Nothing on the main screen moves while a game runs (a GIF or Prisma would keep it redrawing)
+        const bool still = main.Resting();
+        ProfileDraw::Avatar(ui, me.AvatarUrl(), icon, me, name, 1.5f, Lerp(palette.barBorder, palette.accent, hover), !still);
+        ui.PushClip(labelRect);
+        if (still && me.Effect().animated) ProfileDraw::NameWithEffect(ui, name, labelRect, me, "neon", 10.f, HAlign::Center);
+        else ProfileDraw::Name(ui, name, labelRect, me, 10.f, HAlign::Center);
+        ui.PopClip();
+    } else {
+        UI::Glyph(ui, wchar_t(0xE77B), icon, 19.f, Lerp(idle, palette.accent, hover));
+        TextStyle label = UI::Mono(8.5f, true).Center();
+        label.ellipsis = true;
+        g.Text(Loc::Get("nav_account"), labelRect, Lerp(idle, Rgba(225, 235, 245), hover * 0.7f), label);
+    }
+    // Friend requests waiting: a red count on the corner
+    if (const int pending = signedIn ? Services::Account::FriendsService::Get().PendingCount() : 0; pending > 0) {
+        const Rect badge{ r.R() - 24.f, r.y + 3.f, 18.f, 18.f };
+        g.FillEllipse(badge.CX(), badge.CY(), 9.f, 9.f, Hex(0xCC2200));
+        g.Text(pending > 9 ? L"9+" : std::to_wstring(pending), badge, Colors::White, UI::Mono(8.5f, true).Center());
+    }
+    ui.Tooltip(id, Loc::Get(signedIn ? "acc_badge_tooltip" : "acc_badge_tooltip_out"));
     return it.clicked;
 }
 
@@ -176,6 +230,25 @@ void Draw(UI::Ui& ui, MainWindow& main, const Rect& area) {
     if (DrawTile(ui, main, { "nav-bug", IconKind::Glyph, UI::Glyphs::Bug, nullptr, Loc::Get("nav_bug"), Loc::Get("bug_report_btn"), Hex(0x8855DD) },
                  prev()))
         main.OpenBugReport();
+    if (DrawAccountTile(ui, main, prev())) main.OpenAccount();
+    {
+        // Duels, right above the account: challenges / our turn show a red count, a duel in
+        // progress a pulsing dot
+        auto& duels = Services::Account::DuelsService::Get();
+        const bool signedIn = Services::Account::AccountService::Get().SignedIn();
+        const Rect r = prev();
+        if (DrawTile(ui, main, { "nav-duels", IconKind::Duels, 0, nullptr, Loc::Get("nav_duels"), Loc::Get("nav_duels_tooltip"), Hex(0xFF5A3C) }, r))
+            main.OpenDuels();
+        if (const int alerts = signedIn ? duels.AlertCount() : 0; alerts > 0) {
+            const Rect badge{ r.R() - 24.f, r.y + 3.f, 18.f, 18.f };
+            g.FillEllipse(badge.CX(), badge.CY(), 9.f, 9.f, Hex(0xCC2200));
+            g.Text(alerts > 9 ? L"9+" : std::to_wstring(alerts), badge, Colors::White, UI::Mono(8.5f, true).Center());
+        } else if (signedIn && duels.Active()) {
+            const float pulse = main.Resting() ? 1.f : 0.55f + 0.45f * Anim::EaseInOutSine(Anim::PingPong(ui.Time(), 1.2));
+            g.FillEllipse(r.R() - 15.f, r.y + 12.f, 5.f, 5.f, Hex(0x3DDC84).WithAlpha(pulse));
+            if (!main.Resting()) ui.KeepAnimatingThrottled();
+        }
+    }
     // Divider above the bottom group
     g.FillRect({ area.x + 22.f, y + kTileH + 2.f, area.w - 44.f, 1.f }, palette.barBorder);
 }
