@@ -6,6 +6,10 @@ namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
+        { L"4.3.2", L"14/11/2026", {
+            L"## Additions",
+            L"Escape From Playtime now has old versions: install them from the Store and pick which one PLAY starts; both menus switch between Chapters and Multiplayers",
+        } },
         { L"4.3.1", L"10/11/2026", {
             L"## Additions",
             L"Duels: click any player to open their mini profile, and from there their full profile",

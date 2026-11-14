@@ -29,8 +29,23 @@ using namespace StoreKit;
 
 
 void StoreOverlay::Open(int chapterIndex) {
-    const auto& chapters = App::L().chapters;
-    if (chapterIndex < 0 || chapterIndex >= static_cast<int>(chapters.size()) || !chapters[static_cast<size_t>(chapterIndex)].isAvailable) chapterIndex = 0;
+    const auto games = Games();
+    // Only the section of the game it's opened on (the versions menu's): the chapters, or the multiplayer games
+    multiplayers = chapterIndex >= 0 && chapterIndex < static_cast<int>(games.size()) ? games[static_cast<size_t>(chapterIndex)].Multiplayer()
+                                                                                      : App::L().InMultiplayers();
+    const auto fits = [&](int i) {
+        return i >= 0 && i < static_cast<int>(games.size()) && games[static_cast<size_t>(i)].Multiplayer() == multiplayers &&
+               Listed(games[static_cast<size_t>(i)]);
+    };
+    if (!fits(chapterIndex)) {
+        chapterIndex = -1;
+        for (int i = 0; i < static_cast<int>(games.size()) && chapterIndex < 0; ++i)
+            if (fits(i)) chapterIndex = i;
+        if (chapterIndex < 0) {   // nothing in that tab: the chapters
+            multiplayers = false;
+            chapterIndex = 0;
+        }
+    }
     featured = chapterIndex;
     chapter = -1;
     pageShownAt = Async::Now() + 0.15;   // after the panel's entrance
@@ -60,13 +75,14 @@ void StoreOverlay::ShowProduct(int presetIndex) {
 }
 
 void StoreOverlay::ShowReady(int chapterNumber, const std::wstring& manifestId) {
-    auto& l = App::L();
-    for (size_t ci = 0; ci < l.chapters.size(); ++ci) {
-        if (l.chapters[ci].number != chapterNumber || !l.chapters[ci].isAvailable) continue;
-        const auto& presets = l.chapters[ci].presets;
+    const auto games = Games();
+    for (size_t ci = 0; ci < games.size(); ++ci) {
+        if (games[ci].number != chapterNumber || !games[ci].isAvailable) continue;
+        const auto& presets = games[ci].presets;
         for (size_t pi = 0; pi < presets.size(); ++pi) {
             if (presets[pi].manifestId != manifestId) continue;
             if (!popup.IsOpen()) popup.Open();
+            multiplayers = games[ci].Multiplayer();   // its front page is that game's kind
             if (chapter == static_cast<int>(ci) && product == static_cast<int>(pi)) return;   // already there
             chapter = static_cast<int>(ci);
             product = static_cast<int>(pi);
@@ -86,6 +102,20 @@ void StoreOverlay::GoBack() {
     else popup.Close();
 }
 
+void StoreOverlay::SwitchSection(bool toMultiplayers) {
+    const auto games = Games();
+    int index = -1;
+    for (int i = 0; i < static_cast<int>(games.size()) && index < 0; ++i)
+        if (games[static_cast<size_t>(i)].Multiplayer() == toMultiplayers && Listed(games[static_cast<size_t>(i)])) index = i;
+    if (index < 0) return;
+    multiplayers = toMultiplayers;
+    featured = index;
+    chapter = -1;
+    product = -1;
+    pageShownAt = Async::Now();
+    pageFromX = toMultiplayers ? 40.f : -40.f;
+}
+
 void StoreOverlay::ShowFront() {
     featured = chapter >= 0 ? chapter : featured;
     chapter = -1;
@@ -98,8 +128,7 @@ void StoreOverlay::ShowFront() {
 
 void StoreOverlay::DrawBanner(Ui& ui, const Rect& r, int chapterIndex, bool front) {
     auto& g = ui.g;
-    auto& l = App::L();
-    const auto& ch = l.chapters[static_cast<size_t>(chapterIndex)];
+    const auto ch = Games()[static_cast<size_t>(chapterIndex)];
 
     g.Shadow(r.Offset(0.f, 8.f), 12.f, 16.f, Argb(0x70000000));
     g.PushRoundClip(r, 12.f);
@@ -120,7 +149,7 @@ void StoreOverlay::DrawBanner(Ui& ui, const Rect& r, int chapterIndex, bool fron
     const float x = r.x + 28.f, w = r.w * 0.5f;
     float y = r.y + 24.f;
     {
-        const std::wstring tag = front ? Loc::Get("store_featured") : Loc::Fmt("store_chapter", ch.number);
+        const std::wstring tag = front ? Loc::Get("store_featured") : GameTag(ch);
         const TextStyle tagStyle = Mono(9.f, true).Center();
         const float tw = g.Measure(tag, tagStyle).w + 18.f;
         g.FillRound({ x, y, tw, 20.f }, 10.f, Palette::Teal.WithAlpha(0.18f));
@@ -130,13 +159,13 @@ void StoreOverlay::DrawBanner(Ui& ui, const Rect& r, int chapterIndex, bool fron
     }
     const TextStyle titleStyle = Mono(24.f, true).Ellipsis();
     const float titleH = g.Measure(L"Ag", titleStyle).h;
-    const std::wstring title = ChapterTitle(ch);
+    const std::wstring title = GameTitle(ch);
     g.GlowText(title, { x, y, w, titleH }, titleStyle, Palette::Teal, 12.f, 0.35f);
     g.Text(title, { x, y, w, titleH }, kTitle, titleStyle);
     y += titleH + 4.f;
 
     std::wstring line = VersionsCount(ch.presets.size());
-    if (front) line = Loc::Fmt("store_chapter", ch.number) + L"  \x00B7  " + line;
+    if (front) line = GameTag(ch) + L"  \x00B7  " + line;
     g.Text(line, { x, y, w, 18.f }, kDimText, Mono(11.f).Ellipsis());
 
     if (!front) return;
@@ -156,7 +185,7 @@ void StoreOverlay::DrawBanner(Ui& ui, const Rect& r, int chapterIndex, bool fron
 
 float StoreOverlay::DrawFront(Ui& ui, float x, float y, float w) {
     auto& g = ui.g;
-    auto& l = App::L();
+    const auto games = Games();
     const float top = y;
     int reveal = 0;
     {
@@ -164,45 +193,53 @@ float StoreOverlay::DrawFront(Ui& ui, float x, float y, float w) {
         DrawBanner(ui, { x, y, w, 210.f }, featured, true);
     }
     y += 210.f + 26.f;
-    {
-        StaggerItem in(ui, pageShownAt, reveal++, pageFromX);
-        y += SectionTitle(ui, x, y, w, Loc::Get("store_chapters"), Loc::Get("store_chapters_hint"));
-    }
 
     const float tileW = (w - kGap * (kColumns - 1.f)) / kColumns, coverH = tileW * kCoverAspect;
     const float nameH = g.Measure(L"Ag", Mono(12.f).SemiBold()).h, subH = g.Measure(L"Ag", Mono(10.f)).h;
     const float rowH = coverH + 10.f + nameH + 2.f + subH + 22.f;
-    int position = 0;
-    for (size_t i = 0; i < l.chapters.size(); ++i) {
-        const auto& ch = l.chapters[i];
-        if (!Listed(ch)) continue;
-        const int col = position % static_cast<int>(kColumns), row = position / static_cast<int>(kColumns);
-        ++position;
-        const Rect slot{ x + col * (tileW + kGap), y + row * rowH, tileW, coverH };
-        StaggerItem in(ui, pageShownAt, reveal++, 0.f, 26.f, 0.06);
-        const Tile t = CoverTile(ui, ui.MakeId("store-chapter", static_cast<int64_t>(i)), slot, CoverPath(ch.number));
-        if (static_cast<int>(i) == featured) Badge(ui, t.cover, Loc::Get("store_featured"), Palette::Teal, Rgba(3, 17, 13));
-        // BROWSE hint rising over the art on hover
-        if (t.hover > 0.01f) {
-            const std::wstring hint = Loc::Get("store_browse") + L"  \x203A";
-            const Rect h{ t.cover.x, t.cover.B() - 36.f - 8.f * (1.f - t.hover), t.cover.w, 26.f };
-            g.Text(hint, h, Palette::Teal.Fade(t.hover), Mono(10.f, true).Center());
+    // Only the section of the main screen's tab: CHAPTERS, or MULTIPLAYER (the games with old versions)
+    for (int section = 0; section < 2; ++section) {
+        const bool multiplayer = section == 1;
+        if (multiplayer != multiplayers) continue;
+        std::vector<size_t> listed;
+        for (size_t i = 0; i < games.size(); ++i)
+            if (games[i].Multiplayer() == multiplayer && Listed(games[i])) listed.push_back(i);
+        if (listed.empty()) continue;
+        {
+            StaggerItem in(ui, pageShownAt, reveal++, pageFromX);
+            y += multiplayer ? SectionTitle(ui, x, y, w, Loc::Get("store_multiplayers"), Loc::Get("store_multiplayers_hint"))
+                             : SectionTitle(ui, x, y, w, Loc::Get("store_chapters"), Loc::Get("store_chapters_hint"));
         }
-        const float ty = slot.B() + 10.f;
-        g.Text(ChapterTitle(ch), { slot.x + 2.f, ty, slot.w - 4.f, nameH }, t.hover > 0.5f ? Palette::Teal : kTitle, Mono(12.f).SemiBold().Ellipsis());
-        g.Text(Loc::Fmt("store_chapter", ch.number) + L"  \x00B7  " + VersionsCount(ch.presets.size()),
-               { slot.x + 2.f, ty + nameH + 2.f, slot.w - 4.f, subH }, kDimText, Mono(10.f).Ellipsis());
-        if (t.it.clicked) ShowChapter(static_cast<int>(i));
+        int position = 0;
+        for (const size_t i : listed) {
+            const auto& ch = games[i];
+            const int col = position % static_cast<int>(kColumns), row = position / static_cast<int>(kColumns);
+            ++position;
+            const Rect slot{ x + col * (tileW + kGap), y + row * rowH, tileW, coverH };
+            StaggerItem in(ui, pageShownAt, reveal++, 0.f, 26.f, 0.06);
+            const Tile t = CoverTile(ui, ui.MakeId("store-chapter", static_cast<int64_t>(i)), slot, CoverPath(ch.number));
+            if (static_cast<int>(i) == featured) Badge(ui, t.cover, Loc::Get("store_featured"), Palette::Teal, Rgba(3, 17, 13));
+            // BROWSE hint rising over the art on hover
+            if (t.hover > 0.01f) {
+                const std::wstring hint = Loc::Get("store_browse") + L"  \x203A";
+                const Rect h{ t.cover.x, t.cover.B() - 36.f - 8.f * (1.f - t.hover), t.cover.w, 26.f };
+                g.Text(hint, h, Palette::Teal.Fade(t.hover), Mono(10.f, true).Center());
+            }
+            const float ty = slot.B() + 10.f;
+            g.Text(GameTitle(ch), { slot.x + 2.f, ty, slot.w - 4.f, nameH }, t.hover > 0.5f ? Palette::Teal : kTitle, Mono(12.f).SemiBold().Ellipsis());
+            g.Text(GameTag(ch) + L"  \x00B7  " + VersionsCount(ch.presets.size()),
+                   { slot.x + 2.f, ty + nameH + 2.f, slot.w - 4.f, subH }, kDimText, Mono(10.f).Ellipsis());
+            if (t.it.clicked) ShowChapter(static_cast<int>(i));
+        }
+        const int rows = (position + static_cast<int>(kColumns) - 1) / static_cast<int>(kColumns);
+        y += rows * rowH;
     }
-    const int rows = (position + static_cast<int>(kColumns) - 1) / static_cast<int>(kColumns);
-    y += rows * rowH;
     return y - top;
 }
 
 float StoreOverlay::DrawChapter(Ui& ui, float x, float y, float w) {
     auto& g = ui.g;
-    auto& l = App::L();
-    const auto& ch = l.chapters[static_cast<size_t>(chapter)];
+    const auto ch = Games()[static_cast<size_t>(chapter)];
     const float top = y;
     int reveal = 0;
     {
@@ -282,8 +319,7 @@ float StoreOverlay::DrawChapter(Ui& ui, float x, float y, float w) {
 
 float StoreOverlay::DrawProduct(Ui& ui, float x, float y, float w) {
     auto& g = ui.g;
-    auto& l = App::L();
-    const auto& ch = l.chapters[static_cast<size_t>(chapter)];
+    const auto ch = Games()[static_cast<size_t>(chapter)];
     const auto preset = ch.presets[static_cast<size_t>(product)];   // copy: installing can refresh the chapter list
     const bool downloading = installer.IsDownloading(preset.manifestId);
     const float top = y;
@@ -312,7 +348,7 @@ float StoreOverlay::DrawProduct(Ui& ui, float x, float y, float w) {
     float ry = y;
     {
         StaggerItem in(ui, pageShownAt, reveal++, 30.f);
-        const std::wstring tag = Loc::Fmt("store_chapter", ch.number) + L"  \x00B7  " + ChapterTitle(ch);
+        const std::wstring tag = ch.Multiplayer() ? GameTitle(ch) : GameTag(ch) + L"  \x00B7  " + GameTitle(ch);
         const TextStyle tagStyle = Mono(9.f, true).Center();
         const float tw = g.Measure(tag, tagStyle).w + 18.f;
         g.FillRound({ rx, ry, tw, 20.f }, 10.f, Palette::Teal.WithAlpha(0.18f));
@@ -909,12 +945,12 @@ void StoreOverlay::DrawHeader(Ui& ui, const Rect& header) {
         const Interaction it = ui.Interact(ui.MakeId("store-home"), titleRect);
         if (it.hovered) ui.SetCursor(IDC_HAND);
         g.Text(title, titleRect, it.hovered ? kTitle : Palette::Teal, titleStyle);
-        const auto& ch = App::L().chapters[static_cast<size_t>(chapter)];
+        const auto ch = Games()[static_cast<size_t>(chapter)];
         const TextStyle crumbStyle = Mono(12.f, true);
         float cx = titleRect.R() + 12.f;
         g.Text(L"\x203A", { cx, row.y, 12.f, row.h }, kDimText, crumbStyle);
         cx += 22.f;
-        const std::wstring chapterCrumb = Loc::Fmt("store_chapter", ch.number);
+        const std::wstring chapterCrumb = GameCrumb(ch);
         const float cw = g.Measure(chapterCrumb, crumbStyle).w + 2.f;
         if (product >= 0) {
             // The chapter crumb goes back to the chapter page
@@ -935,17 +971,23 @@ void StoreOverlay::DrawHeader(Ui& ui, const Rect& header) {
         g.GlowText(title, titleRect, titleStyle, Palette::Teal, 10.f, 0.45f);
         g.Text(title, titleRect, Palette::Teal, titleStyle);
     }
+    // CHAPTERS | MULTIPLAYER (left of the close button)
+    if (HasMultiplayers()) {
+        const float sw = SectionSwitchWidth(ui);
+        bool mp = multiplayers;
+        if (SectionSwitch(ui, ui.MakeId("store-section"), { row.R() - 30.f - 14.f - sw, row.CY() - 15.f, sw, 30.f }, mp)) SwitchSection(mp);
+    }
     if (TextButton(ui, ui.MakeId("store-close"), { row.R() - 30.f, row.CY() - 15.f, 30.f, 30.f }, L"\x2715", Mono(12.f, true).WithFont(Font::Ui).Center(),
                    Palette::Dim, { Palette::ButtonBg, Palette::ButtonBorder, 1.f, 6.f, { 0.f }, 0.f, 30.f }))
         popup.Close();
 }
 
 void StoreOverlay::Draw(Ui& ui, const Rect& screen) {
-    auto& l = App::L();
-    if (l.chapters.empty()) return;
-    featured = std::clamp(featured, 0, static_cast<int>(l.chapters.size()) - 1);
-    if (chapter >= static_cast<int>(l.chapters.size())) chapter = -1;
-    if (chapter < 0 || product >= static_cast<int>(l.chapters[static_cast<size_t>(chapter)].presets.size())) product = -1;
+    const auto games = Games();
+    if (games.empty()) return;
+    featured = std::clamp(featured, 0, static_cast<int>(games.size()) - 1);
+    if (chapter >= static_cast<int>(games.size())) chapter = -1;
+    if (chapter < 0 || product >= static_cast<int>(games[static_cast<size_t>(chapter)].presets.size())) product = -1;
     if (popup.IsOpen() && ui.KeyPressed(VK_ESCAPE)) GoBack();
 
     PanelStyle style;

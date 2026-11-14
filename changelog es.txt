@@ -1,15 +1,3 @@
-4.3.1
+4.3.2
 ## Novedades
-Duelos: haz clic en cualquier jugador para abrir su miniperfil y, desde ahí, su perfil completo
-El perfil completo ahora muestra el marco de perfil del jugador
-Amigos: nueva página Todos los usuarios con todas las cuentas del launcher, conectadas y desconectadas
-Chat: habla con los jugadores de tu sala de duelo y envía mensajes privados a tus amigos
-Duelos: el ranking ahora es mensual y el ganador de cada mes consigue un título de campeón que todos pueden ver
-Duelos: rendirse en 2 duelos seguidos impide rendirse durante 1 hora
-Insignias: de campeón, pionero, colaborador y developer, todas visibles en la pestaña Insignias del perfil; elige en el editor la que sale junto a tu nombre
-Editor de perfil: un botón de vista previa para ver tu perfil como lo ven los demás
-Nueva decoración de avatar GrabPack 67
-Notificaciones de duelos: más opciones, como tu turno de banear, que un rival termine o solo invitaciones de amigos
-
-## Correcciones
-Los textos y etiquetas sobre las placas de nombre ahora se leen bien en los rankings, amigos y listas de duelos
+Escape From Playtime ya tiene versiones antiguas: instálalas desde la Tienda y elige cuál abre JUGAR; ambos menús cambian entre Capítulos y Multijugador

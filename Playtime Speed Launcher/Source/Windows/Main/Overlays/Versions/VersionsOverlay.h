@@ -45,6 +45,7 @@ private:
     void DrawDeleteConfirm(UI::Ui& ui, const Rect& panel);
     void Select(const std::optional<std::wstring>& exePath);
     void SwitchChapter(int delta);
+    void SwitchSection(bool toMultiplayers);   // CHAPTERS | MULTIPLAYER switch
     void SwitchTo(int index, int direction);   // direction: -1 the page comes from the left, 1 from the right
     void Reveal(float fromX);   // the page slides in again (after opening / switching chapter)
 
@@ -52,6 +53,7 @@ private:
     std::unique_ptr<PresetInstaller> installer;
     std::unique_ptr<StoreOverlay> store;
     int chapterIndex = 0;
+    bool multiplayers = false;      // the switcher shows the multiplayer games (else the chapters)
     double revealAt = -10.0;
     float revealFromX = 40.f;
     double switchedAt = -10.0;      // chapter changed: the page slides over and the banner art settles

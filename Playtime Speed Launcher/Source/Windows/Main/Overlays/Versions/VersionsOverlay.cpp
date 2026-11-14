@@ -100,12 +100,7 @@ bool RecycleFolder(const std::wstring& folder) {
 VersionsOverlay::VersionsOverlay(MainWindow& window)
     : Overlay(window), installer(std::make_unique<PresetInstaller>(window)), store(std::make_unique<StoreOverlay>(window, *installer)) {
     installer->onInstalled = [this] { main.RefreshInfo(); };
-    const auto chapterIndexOf = [](int chapterNumber) {
-        const auto& chapters = App::L().chapters;
-        for (size_t i = 0; i < chapters.size(); ++i)
-            if (chapters[i].number == chapterNumber) return static_cast<int>(i);
-        return -1;
-    };
+    const auto chapterIndexOf = [](int chapterNumber) { return GameIndexOf(chapterNumber); };   // chapter or multiplayer game
     // Downloaded: the store shows that version's page to name it and pick its folder
     installer->onReady = [this, chapterIndexOf](int chapterNumber, const std::wstring& manifestId) {
         const int index = chapterIndexOf(chapterNumber);
@@ -119,15 +114,17 @@ VersionsOverlay::VersionsOverlay(MainWindow& window)
         const int index = chapterIndexOf(chapterNumber);
         if (index < 0) return;
         chapterIndex = index;
+        multiplayers = Games()[static_cast<size_t>(index)].Multiplayer();
         if (!popup.IsOpen()) Open(index);
         store->Close();   // the panel plays its entrance again as the store goes away
     };
 }
 
 void VersionsOverlay::Open(int index) {
-    const auto& chapters = App::L().chapters;
-    if (index < 0 || index >= static_cast<int>(chapters.size()) || !chapters[static_cast<size_t>(index)].isAvailable) return;   // not out yet
+    const auto games = Games();
+    if (index < 0 || index >= static_cast<int>(games.size()) || !games[static_cast<size_t>(index)].isAvailable) return;   // not out yet
     chapterIndex = index;
+    multiplayers = games[static_cast<size_t>(index)].Multiplayer();   // the section it was opened from
     popup.Open();
     Reveal(40.f);
     revealAt += 0.1;   // after the panel's entrance
@@ -140,16 +137,27 @@ void VersionsOverlay::Reveal(float fromX) {
 }
 
 void VersionsOverlay::SwitchChapter(int delta) {
-    // Next / previous released chapter (wrapping around; chapters that aren't out are skipped)
-    const auto& chapters = App::L().chapters;
+    // Next / previous released chapter / game (wrapping around; chapters that aren't out are skipped)
+    const auto chapters = Games();
     const int count = static_cast<int>(chapters.size());
     if (count == 0) return;
     int index = chapterIndex;
     for (int step = 0; step < count; ++step) {
         index = (index + (delta < 0 ? -1 : 1) + count) % count;
-        if (chapters[static_cast<size_t>(index)].isAvailable) break;
+        const auto& c = chapters[static_cast<size_t>(index)];
+        if (c.isAvailable && c.Multiplayer() == multiplayers) break;   // only this section's
     }
     SwitchTo(index, delta);
+}
+
+void VersionsOverlay::SwitchSection(bool toMultiplayers) {
+    if (toMultiplayers == multiplayers) return;
+    // The game picked on the main screen in that tab, else the first one
+    auto& l = App::L();
+    const int index = FirstGameOf(toMultiplayers, GameIndexOf(toMultiplayers ? l.SelectedMultiplayer().playtimeId : l.Selected().number));
+    if (index < 0) return;
+    multiplayers = toMultiplayers;
+    SwitchTo(index, toMultiplayers ? 1 : -1);
 }
 
 void VersionsOverlay::SwitchTo(int index, int direction) {
@@ -166,7 +174,7 @@ void VersionsOverlay::SwitchTo(int index, int direction) {
 }
 
 void VersionsOverlay::Select(const std::optional<std::wstring>& exePath) {
-    App::L().store.SetSelected(App::L().chapters[static_cast<size_t>(chapterIndex)].number, exePath);
+    App::L().store.SetSelected(Games()[static_cast<size_t>(chapterIndex)].number, exePath);
     main.RefreshInfo();
 }
 
@@ -174,7 +182,7 @@ void VersionsOverlay::AddManually() {
     auto& l = App::L();
     const std::wstring exe = System::PickFile(main.Hwnd(), L"", { { L"Executables", L"*.exe" } });
     if (exe.empty()) return;
-    l.store.AddCustom(l.chapters[static_cast<size_t>(chapterIndex)].number, Files::FileNameWithoutExtension(exe), exe);
+    l.store.AddCustom(Games()[static_cast<size_t>(chapterIndex)].number, Files::FileNameWithoutExtension(exe), exe);
     main.RefreshInfo();
 }
 
@@ -182,7 +190,7 @@ void VersionsOverlay::AddManually() {
 
 void VersionsOverlay::DrawBanner(Ui& ui, const Rect& r, const std::wstring& inUse, size_t count) {
     auto& g = ui.g;
-    const auto& ch = App::L().chapters[static_cast<size_t>(chapterIndex)];
+    const auto ch = Games()[static_cast<size_t>(chapterIndex)];
 
     g.Shadow(r.Offset(0.f, 8.f), 12.f, 16.f, Argb(0x70000000));
     g.PushRoundClip(r, 12.f);
@@ -207,7 +215,7 @@ void VersionsOverlay::DrawBanner(Ui& ui, const Rect& r, const std::wstring& inUs
     const float x = r.x + 28.f, w = r.w * 0.5f;
     float y = r.y + 24.f;
     {
-        const std::wstring tag = Loc::Fmt("store_chapter", ch.number);
+        const std::wstring tag = GameTag(ch);
         const TextStyle tagStyle = Mono(9.f, true).Center();
         const float tw = g.Measure(tag, tagStyle).w + 18.f;
         g.FillRound({ x, y, tw, 20.f }, 10.f, Palette::Teal.WithAlpha(0.18f));
@@ -217,7 +225,7 @@ void VersionsOverlay::DrawBanner(Ui& ui, const Rect& r, const std::wstring& inUs
     }
     const TextStyle titleStyle = Mono(24.f, true).Ellipsis();
     const float titleH = g.Measure(L"Ag", titleStyle).h;
-    const std::wstring title = ChapterTitle(ch);
+    const std::wstring title = GameTitle(ch);
     g.GlowText(title, { x, y, w, titleH }, titleStyle, Palette::Teal, 12.f, 0.35f);
     g.Text(title, { x, y, w, titleH }, kTitle, titleStyle);
     y += titleH + 4.f;
@@ -259,8 +267,7 @@ void VersionsOverlay::DrawBanner(Ui& ui, const Rect& r, const std::wstring& inUs
 
 void VersionsOverlay::DrawTile(Ui& ui, const Rect& slot, const Entry& entry, int index, int reveal, bool floating) {
     auto& g = ui.g;
-    auto& l = App::L();
-    const int chapterNumber = l.chapters[static_cast<size_t>(chapterIndex)].number;
+    const int chapterNumber = Games()[static_cast<size_t>(chapterIndex)].number;
     StaggerItem in(ui, revealAt, reveal, revealFromX, 0.f, 0.05);
 
     const Id tileId = ui.MakeId("version-tile", index);
@@ -348,7 +355,7 @@ void VersionsOverlay::DrawAddTile(Ui& ui, const Rect& slot, int reveal) {
 float VersionsOverlay::DrawTiles(Ui& ui, float x, float y, float w) {
     auto& g = ui.g;
     auto& l = App::L();
-    const auto& ch = l.chapters[static_cast<size_t>(chapterIndex)];
+    const auto ch = Games()[static_cast<size_t>(chapterIndex)];
     const auto sel = l.store.SelectedPath(ch.number);
     const float top = y;
 
@@ -359,9 +366,15 @@ float VersionsOverlay::DrawTiles(Ui& ui, float x, float y, float w) {
         e.name = Loc::Get("auto_name");
         e.isAuto = true;
         e.selected = !sel;
-        if (!l.epic.IsEnabled()) {
+        if (ch.Multiplayer()) {
+            // Multiplayer games: Steam only
             e.subtitle = Loc::Get("auto_subtitle");
-            e.exePath = ch.gameExePath.value_or(L"");
+            for (const auto& mp : l.multiplayers)
+                if (mp.playtimeId == ch.number) e.exePath = mp.gameExePath.value_or(L"");
+            e.logo = Paths::Asset(L"Images\\Steam.jpg");
+        } else if (!l.epic.IsEnabled()) {
+            e.subtitle = Loc::Get("auto_subtitle");
+            if (const auto* chapter = l.ChapterByNumber(ch.number)) e.exePath = chapter->gameExePath.value_or(L"");
             e.logo = Paths::Asset(L"Images\\Steam.jpg");
         } else {
             e.subtitle = Loc::Get("version_auto_epic");
@@ -534,7 +547,7 @@ float VersionsOverlay::DrawTiles(Ui& ui, float x, float y, float w) {
 void VersionsOverlay::AskDelete(const Entry& entry) {
     auto& l = App::L();
     PendingDelete p;
-    p.chapterNumber = l.chapters[static_cast<size_t>(chapterIndex)].number;
+    p.chapterNumber = Games()[static_cast<size_t>(chapterIndex)].number;
     p.name = entry.name;
     p.exePath = entry.exePath;
     p.folder = InstallRoot(entry.exePath);
@@ -545,8 +558,8 @@ void VersionsOverlay::AskDelete(const Entry& entry) {
     } else if (lower.find(L"\\steamapps\\") != std::wstring::npos || lower.find(L"\\epic games\\") != std::wstring::npos) {
         p.blockedReason = Loc::Get("versions_delete_blocked_steam");   // the store's own copy of the game
     } else {
-        // Another registered installation inside this folder (any chapter): leave the files alone
-        for (const auto& ch : l.chapters)
+        // Another registered installation inside this folder (any chapter / game): leave the files alone
+        for (const auto& ch : Games())
             for (const auto& c : l.store.Customs(ch.number))
                 if (!Text::Equals(c.exePath, entry.exePath, true) && StartsWithFolder(c.exePath, p.folder)) p.blockedReason = Loc::Get("versions_delete_blocked_shared");
     }
@@ -670,7 +683,7 @@ void VersionsOverlay::EditInstall(const Entry& entry) {
     auto state = std::make_shared<State>();
     state->name = entry.name;
     state->icon = entry.icon;
-    const int chapterNumber = App::L().chapters[static_cast<size_t>(chapterIndex)].number;
+    const int chapterNumber = Games()[static_cast<size_t>(chapterIndex)].number;
     Dialogs::Options o;
     o.title = Loc::Get("edit_install_title");
     o.primary = Loc::Get("save_btn");
@@ -711,17 +724,18 @@ void VersionsOverlay::DrawHeader(Ui& ui, const Rect& header) {
 
     // Chapter switcher (centre): ‹ [1][2][3][4][5] › — one chip per chapter with its cover; the
     // current one opens up to show its name, the others are dimmed thumbnails with their number
-    auto& l = App::L();
-    const int count = static_cast<int>(l.chapters.size());
+    const auto games = Games();
+    const int count = static_cast<int>(games.size());
     const float chipH = 34.f, thumb = 26.f, gap = 6.f, arrowS = 30.f;
     const TextStyle chipText = Mono(10.5f, true);
     const auto chipLabel = [&](int i) {
-        const auto& c = l.chapters[static_cast<size_t>(i)];
-        return Loc::Fmt("store_chapter", c.number) + L"  \x00B7  " + ChapterTitle(c);
+        const auto& c = games[static_cast<size_t>(i)];
+        return c.Multiplayer() ? GameTitle(c) : GameTag(c) + L"  \x00B7  " + GameTitle(c);
     };
     std::vector<float> widths(static_cast<size_t>(count));
     float total = 0.f;
-    const auto shown = [&](int i) { return l.chapters[static_cast<size_t>(i)].isAvailable; };   // not-yet-released chapters get no chip
+    // Only this section's (chapters / multiplayer games); not-yet-released chapters get no chip
+    const auto shown = [&](int i) { return games[static_cast<size_t>(i)].isAvailable && games[static_cast<size_t>(i)].Multiplayer() == multiplayers; };
     for (int i = 0; i < count; ++i) {
         if (!shown(i)) continue;
         const float open = 4.f + thumb + 10.f + g.Measure(chipLabel(i), chipText).w + 16.f;
@@ -730,7 +744,9 @@ void VersionsOverlay::DrawHeader(Ui& ui, const Rect& header) {
     }
     const float barW = arrowS + 10.f + total + 10.f + arrowS;
     const float cy = row.CY();
-    float x = row.CX() - barW * 0.5f;
+    // Centred between the title and the CHAPTERS | MULTIPLAYER switch (when there's one)
+    const float left = titleRect.R() + 16.f, right = row.R() - 30.f - 14.f - (HasMultiplayers() ? SectionSwitchWidth(ui) + 16.f : 0.f);
+    float x = std::max(left, std::min(row.CX(), (left + right) * 0.5f) - barW * 0.5f);
     const auto arrowButton = [&](const char* name, float ax, wchar_t glyph, int delta) {
         const Rect r{ ax, cy - arrowS * 0.5f, arrowS, arrowS };
         const Id id = ui.MakeId(name);
@@ -744,7 +760,7 @@ void VersionsOverlay::DrawHeader(Ui& ui, const Rect& header) {
     x += arrowS + 10.f;
     for (int i = 0; i < count; ++i) {
         if (!shown(i)) continue;
-        const auto& c = l.chapters[static_cast<size_t>(i)];
+        const auto& c = games[static_cast<size_t>(i)];
         const bool current = i == chapterIndex;
         const Rect r{ x, cy - chipH * 0.5f, widths[static_cast<size_t>(i)], chipH };
         const Id id = ui.MakeId("versions-chip", i);
@@ -763,7 +779,7 @@ void VersionsOverlay::DrawHeader(Ui& ui, const Rect& header) {
         const float dim = (1.f - sel) * (1.f - 0.6f * hover);
         if (dim > 0.01f) {
             g.FillRound(th, thumb * 0.5f, Rgba(0, 0, 0, static_cast<int>(150 * dim)));
-            g.Text(std::to_wstring(c.number), th, Rgba(255, 255, 255, static_cast<int>(235 * dim)), Mono(11.f, true).Center());
+            g.Text(GameShort(c), th, Rgba(255, 255, 255, static_cast<int>(235 * dim)), Mono(c.Multiplayer() ? 7.5f : 11.f, true).Center());
         }
         g.StrokeRound(th.Inset(0.5f), thumb * 0.5f - 0.5f, Palette::Teal.WithAlpha(0.3f + 0.7f * std::max(sel, hover)), 1.f);
         if (r.w > thumb + 16.f) {   // the name, revealed as the chip opens
@@ -775,6 +791,13 @@ void VersionsOverlay::DrawHeader(Ui& ui, const Rect& header) {
         x += r.w + gap;
     }
     arrowButton("versions-next", x - gap + 10.f, 0xE76C, 1);   // chevron right
+
+    // CHAPTERS | MULTIPLAYER (left of the close button)
+    if (HasMultiplayers()) {
+        const float sw = SectionSwitchWidth(ui);
+        bool mp = multiplayers;
+        if (SectionSwitch(ui, ui.MakeId("versions-section"), { row.R() - 30.f - 14.f - sw, row.CY() - 15.f, sw, 30.f }, mp)) SwitchSection(mp);
+    }
 
     if (TextButton(ui, ui.MakeId("versions-close-x"), { row.R() - 30.f, row.CY() - 15.f, 30.f, 30.f }, L"\x2715", Mono(12.f, true).WithFont(Font::Ui).Center(),
                    Palette::Dim, { Palette::ButtonBg, Palette::ButtonBorder, 1.f, 6.f, { 0.f }, 0.f, 30.f }))
@@ -794,13 +817,14 @@ void VersionsOverlay::Draw(Ui& ui, const Rect& screen) {
 }
 
 void VersionsOverlay::DrawPanel(Ui& ui, const Rect& screen) {
-    auto& l = App::L();
-    if (l.chapters.empty()) return;
-    chapterIndex = std::clamp(chapterIndex, 0, static_cast<int>(l.chapters.size()) - 1);
-    if (!l.chapters[static_cast<size_t>(chapterIndex)].isAvailable) {
-        // Never show a chapter that isn't out yet
-        for (size_t i = 0; i < l.chapters.size(); ++i)
-            if (l.chapters[i].isAvailable) {
+    const auto games = Games();
+    if (games.empty()) return;
+    chapterIndex = std::clamp(chapterIndex, 0, static_cast<int>(games.size()) - 1);
+    if (!games[static_cast<size_t>(chapterIndex)].isAvailable || games[static_cast<size_t>(chapterIndex)].Multiplayer() != multiplayers) {
+        // Never show a chapter that isn't out yet (nor one of the other section)
+        if (FirstGameOf(multiplayers) < 0) multiplayers = !multiplayers;
+        for (size_t i = 0; i < games.size(); ++i)
+            if (games[i].isAvailable && games[i].Multiplayer() == multiplayers) {
                 chapterIndex = static_cast<int>(i);
                 break;
             }

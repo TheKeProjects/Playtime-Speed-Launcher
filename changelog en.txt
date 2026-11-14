@@ -1,15 +1,3 @@
-4.3.1
+4.3.2
 ## Additions
-Duels: click any player to open their mini profile, and from there their full profile
-The full profile now shows the player's profile frame
-Friends: new All Users page with every launcher account, online and offline
-Chat: talk with the players in your duel lobby, and send private messages to your friends
-Duels: the ranking is now monthly, and each month's winner gets a champion title everyone can see
-Duels: forfeiting 2 duels in a row blocks forfeiting for 1 hour
-Badges: champion, pioneer, contributor and developer badges, all shown in the profile's Badges tab; pick the one next to your name in the editor
-Profile editor: a Preview button to see your profile as others see it
-New GrabPack 67 avatar decoration
-Duel notifications: more options, like your turn to ban, a rival finishing or friend invites only
-
-## Bug Fixes
-Texts and labels over nameplates are now readable in the rankings, friends and duel lists
+Escape From Playtime now has old versions: install them from the Store and pick which one PLAY starts; both menus switch between Chapters and Multiplayers

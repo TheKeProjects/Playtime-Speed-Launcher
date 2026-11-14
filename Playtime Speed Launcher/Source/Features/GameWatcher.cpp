@@ -58,7 +58,8 @@ void GameWatcher::Tick() {
     for (size_t i = 0; i < l.multiplayers.size(); ++i) {
         const auto& game = l.multiplayers[i];
         std::vector<uint32_t> pids;
-        if (game.gameExePath) pids = Process::FindByName(processes, Files::FileNameWithoutExtension(*game.gameExePath));
+        // The copy PLAY starts (an old version from the store, or the Steam install)
+        if (const auto exe = l.ActiveExePath(game); exe && !exe->empty()) pids = Process::FindByName(processes, Files::FileNameWithoutExtension(*exe));
         const bool running = !pids.empty();
         l.multiplayerPid[i] = running ? pids[0] : 0;
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 #include "Models/Chapter.h"
 #include "UI/Ui.h"
 #include "UI/Widgets/TextBox.h"
@@ -12,17 +13,42 @@ inline constexpr float kPad = 24.f, kGap = 18.f, kColumns = 5.f, kCoverAspect = 
 inline constexpr Color kTitle = Rgba(225, 232, 240), kDimText = Rgba(110, 140, 165);
 inline constexpr Color kAmber = Rgba(255, 176, 32);
 
+// What the VERSIONS menu and the STORE list: every chapter, then the multiplayer games that have
+// old versions (Escape From Playtime). `number` is the key of its installations in the
+// installations store: the chapter number, or the multiplayer game's playtimeId (101, 102, ...).
+struct Game {
+    int number = 0;
+    std::string mpKey;                                   // multiplayer: "efp"; empty for a chapter
+    bool isAvailable = true;
+    std::vector<Models::ChapterPreset> presets;
+    bool Multiplayer() const { return !mpKey.empty(); }
+};
+std::vector<Game> Games();
+int GameIndexOf(int number);                                   // index in Games(), -1 = none
+
 std::wstring ChapterTitle(const Models::Chapter& ch);         // in the launcher's language
+std::wstring GameTitle(const Game& game);                      // chapter / multiplayer game name
+std::wstring GameTag(const Game& game);                        // "CHAPTER 3" / "MULTIPLAYER"
+std::wstring GameCrumb(const Game& game);                      // "CHAPTER 3" / "ESCAPE FROM PLAYTIME"
+std::wstring GameShort(const Game& game);                      // "3" / "EFP" (dimmed switcher chip)
 std::wstring VersionsCount(size_t n);                          // "1 version" / "4 versions"
-bool Listed(const Models::Chapter& ch);                        // shown on the store's front page
+bool Listed(const Game& game);                                 // shown on the store's front page
+bool HasMultiplayers();                                        // any multiplayer game with versions (the switch below is shown)
+// First released game of that kind (chapter / multiplayer), preferring `preferred`; -1 = none
+int FirstGameOf(bool multiplayer, int preferred = -1);
+// "CHAPTERS | MULTIPLAYER" switch (VERSIONS and STORE headers); true when it was changed this frame
+float SectionSwitchWidth(UI::Ui& ui);
+bool SectionSwitch(UI::Ui& ui, UI::Id id, const Rect& r, bool& multiplayers);
 // Store art (Assets\Store\...), each falling back to the next when its file isn't there:
 //   CoverPath         Chapters\Chapter<N>.jpg → the chapter card art
-//   BannerPath        Banners\Chapter <N>.png / .jpg → the cover
-//   VersionCoverPath  Versions\Chapter <N>\<version name>.png / .jpg → the cover
+//                     multiplayer: Multiplayers\<ART>.jpg → Assets\Banners\Multiplayers\<ART>.jpg
+//   BannerPath        Banners\Chapter <N>.png / .jpg (multiplayer: Banners\<ART>.png / .jpg) → the cover
+//   VersionCoverPath  Versions\Chapter <N>\<version name>.png / .jpg (multiplayer: Versions\<ART>\...) → the cover
 //                     (name as shown, or with "Parche" / "Patch", minus characters files can't have)
-std::wstring CoverPath(int chapterNumber);
-std::wstring BannerPath(int chapterNumber);
-std::wstring VersionCoverPath(int chapterNumber, const std::wstring& versionName);
+// <ART> is the multiplayer game's banner name ("EFP"); `number` as in Game::number.
+std::wstring CoverPath(int number);
+std::wstring BannerPath(int number);
+std::wstring VersionCoverPath(int number, const std::wstring& versionName);
 // Image filling r (cropped, never stretched), zoomed around its centre by `zoom`. Banners pass a
 // bigger `maxSide` so the wide art stays sharp.
 void DrawCoverImage(UI::Ui& ui, const std::wstring& path, const Rect& r, float zoom, unsigned maxSide = 768);

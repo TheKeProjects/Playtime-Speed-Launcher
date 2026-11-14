@@ -60,6 +60,11 @@ std::optional<std::wstring> Launcher::ActiveExePath(const Models::Chapter& chapt
     return chapter.gameExePath;
 }
 
+std::optional<std::wstring> Launcher::ActiveExePath(const Models::MultiplayerGame& game) const {
+    if (auto selectedPath = store.SelectedPath(game.playtimeId)) return selectedPath;
+    return game.gameExePath;
+}
+
 std::wstring Launcher::VersionLabel(const Models::Chapter& chapter) const {
     if (auto selectedPath = store.SelectedPath(chapter.number)) {
         for (const auto& custom : store.Customs(chapter.number))

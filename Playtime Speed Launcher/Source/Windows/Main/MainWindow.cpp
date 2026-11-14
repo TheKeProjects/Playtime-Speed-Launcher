@@ -53,6 +53,7 @@
 #include "Windows/Main/Overlays/Theme/ThemePopup.h"
 #include "Windows/Main/Overlays/Tutorials/TutorialPopups.h"
 #include "Windows/Main/Overlays/Updates/UpdatesOverlay.h"
+#include "Windows/Main/Overlays/Versions/StoreKit.h"
 #include "Windows/Main/Overlays/Versions/VersionsOverlay.h"
 #include "Windows/Main/Settings/SettingsOverlay.h"
 #include "Windows/Main/Overlays/KeyClick/KeyClickWizard.h"
@@ -299,12 +300,13 @@ void MainWindow::PlaySelected() {
     if (!l.HasSelection()) return;
     if (l.InMultiplayers()) {
         const auto& game = l.SelectedMultiplayer();
-        const auto& exe = game.gameExePath;
+        const auto exe = l.ActiveExePath(game);
         if (!exe || !Files::Exists(*exe) || !Process::FindByName(Files::FileNameWithoutExtension(*exe)).empty()) return;
         l.discord->SetMultiplayerRunning(Loc::Get("mp_" + game.key + "_title"));
         if (Settings::Overlays::Current().fpsEnabled) l.fps.Prepare({ Files::FileNameWithoutExtension(*exe) });
-        // Through Steam: started straight from the Shipping exe the game can't reach the Steam API (no online)
-        if (game.steamAppId > 0) Process::OpenUrl(L"steam://rungameid/" + std::to_wstring(game.steamAppId));
+        // Through Steam: started straight from the Shipping exe the game can't reach the Steam API (no online).
+        // An old version from the store is started from its own exe (Steam would run the current one).
+        if (game.steamAppId > 0 && !l.UsesOldVersion(game)) Process::OpenUrl(L"steam://rungameid/" + std::to_wstring(game.steamAppId));
         else Process::Open(*exe, L"", Files::DirectoryName(*exe));
         return;
     }
@@ -417,7 +419,11 @@ void MainWindow::ToggleKeyClick() {
                    { Loc::Get("keyclick_section"), 10.f, false, Rgba(160, 190, 210, 120), 4.f } };
     coresToast.Show(spec);
 }
-void MainWindow::OpenVersions() { versions->Open(App::L().selected); }
+void MainWindow::OpenVersions() {
+    auto& l = App::L();
+    if (l.InMultiplayers()) versions->Open(StoreKit::GameIndexOf(l.SelectedMultiplayer().playtimeId));
+    else versions->Open(StoreKit::GameIndexOf(l.Selected().number));
+}
 void MainWindow::OpenHandMods() { handMods->OpenHub(); }
 void MainWindow::OpenLeaderboard() { Standalone::ToggleLeaderboard(); }
 void MainWindow::OpenBugReport() { bugReport->Open(); }

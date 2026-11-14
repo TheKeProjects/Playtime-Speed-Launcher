@@ -68,6 +68,9 @@ public:
 
     // The exe to launch: manual selection → Epic (when enabled) → Steam auto-detect.
     std::optional<std::wstring> ActiveExePath(const Models::Chapter& chapter) const;
+    // Multiplayer game: the version picked in the versions menu → its Steam install
+    std::optional<std::wstring> ActiveExePath(const Models::MultiplayerGame& game) const;
+    bool UsesOldVersion(const Models::MultiplayerGame& game) const { return store.SelectedPath(game.playtimeId).has_value(); }
     std::wstring VersionLabel(const Models::Chapter& chapter) const;
     const Models::Chapter* RunningChapter() const;
     // Playtime ids that are shown and added up: released chapters and the multiplayer games

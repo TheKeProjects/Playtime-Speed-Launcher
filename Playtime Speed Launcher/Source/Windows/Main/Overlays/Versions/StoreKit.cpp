@@ -1,8 +1,10 @@
 #include "Windows/Main/Overlays/Versions/StoreKit.h"
 #include <algorithm>
 #include <cwchar>
+#include <cwctype>
 #include <unordered_map>
 #include <vector>
+#include "App/Launcher.h"
 #include "App/Paths.h"
 #include "Core/Files.h"
 #include "Core/Text.h"
@@ -16,6 +18,91 @@ using namespace UI;
 
 // Chapter name in the launcher's language (the chapter data itself is in Spanish)
 std::wstring ChapterTitle(const Models::Chapter& ch) { return Loc::Get("ch" + std::to_string(ch.number) + "_title"); }
+
+std::vector<Game> Games() {
+    const auto& l = App::L();
+    std::vector<Game> games;
+    games.reserve(l.chapters.size() + l.multiplayers.size());
+    for (const auto& ch : l.chapters) games.push_back({ ch.number, "", ch.isAvailable, ch.presets });
+    for (const auto& mp : l.multiplayers)
+        if (!mp.presets.empty()) games.push_back({ mp.playtimeId, mp.key, mp.isAvailable, mp.presets });
+    return games;
+}
+
+int GameIndexOf(int number) {
+    const auto games = Games();
+    for (size_t i = 0; i < games.size(); ++i)
+        if (games[i].number == number) return static_cast<int>(i);
+    return -1;
+}
+
+std::wstring GameTitle(const Game& game) {
+    if (game.Multiplayer()) return Loc::Get("mp_" + game.mpKey + "_title");
+    return Loc::Get("ch" + std::to_string(game.number) + "_title");
+}
+
+std::wstring GameTag(const Game& game) {
+    return game.Multiplayer() ? Loc::Get("store_multiplayer_tag") : Loc::Fmt("store_chapter", game.number);
+}
+
+bool HasMultiplayers() {
+    for (const auto& game : Games())
+        if (game.Multiplayer() && game.isAvailable) return true;
+    return false;
+}
+
+int FirstGameOf(bool multiplayer, int preferred) {
+    const auto games = Games();
+    const auto fits = [&](int i) {
+        return i >= 0 && i < static_cast<int>(games.size()) && games[static_cast<size_t>(i)].Multiplayer() == multiplayer &&
+               games[static_cast<size_t>(i)].isAvailable;
+    };
+    if (fits(preferred)) return preferred;
+    for (int i = 0; i < static_cast<int>(games.size()); ++i)
+        if (fits(i)) return i;
+    return -1;
+}
+
+float SectionSwitchWidth(Ui& ui) {
+    const TextStyle style = Mono(9.5f, true);
+    const float widest = std::max(ui.g.Measure(Loc::Get("store_chapters"), style).w, ui.g.Measure(Loc::Get("store_multiplayers"), style).w);
+    return (widest + 28.f) * 2.f + 6.f;
+}
+
+bool SectionSwitch(Ui& ui, Id id, const Rect& r, bool& multiplayers) {
+    auto& g = ui.g;
+    const float segW = (r.w - 6.f) * 0.5f;
+    g.Border(r, r.h * 0.5f, Rgba(9, 20, 30, 190), Palette::Teal.WithAlpha(0.35f), 1.f);
+    // The lit half slides to the picked section
+    const float knob = ui.Animate(HashId(id, 1), multiplayers ? 1.f : 0.f, 16.f);
+    const Rect k{ r.x + 3.f + knob * segW, r.y + 3.f, segW, r.h - 6.f };
+    g.GlowRound(k, k.h * 0.5f, Palette::Teal, 10.f, 0.4f);
+    g.FillRound(k, k.h * 0.5f, Palette::Teal);
+    bool changed = false;
+    const char* keys[2] = { "store_chapters", "store_multiplayers" };
+    for (int i = 0; i < 2; ++i) {
+        const Rect seg{ r.x + 3.f + i * segW, r.y + 3.f, segW, r.h - 6.f };
+        const bool on = (i == 1) == multiplayers;
+        const Interaction it = ui.Interact(HashId(id, 10 + i), seg);
+        if (it.hovered && !on) ui.SetCursor(IDC_HAND);
+        if (it.clicked && !on) {
+            multiplayers = i == 1;
+            changed = true;
+        }
+        const Color text = on ? Rgba(3, 17, 13) : it.hovered ? kTitle : kDimText;
+        g.Text(Loc::Get(keys[i]), seg, text, Mono(9.5f, true).Center());
+    }
+    return changed;
+}
+
+std::wstring GameCrumb(const Game& game) { return game.Multiplayer() ? GameTitle(game) : GameTag(game); }
+
+std::wstring GameShort(const Game& game) {
+    if (!game.Multiplayer()) return std::to_wstring(game.number);
+    std::wstring s(game.mpKey.begin(), game.mpKey.end());   // ASCII key
+    for (auto& c : s) c = static_cast<wchar_t>(std::towupper(c));
+    return s;
+}
 
 std::wstring VersionsCount(size_t n) {
     return n == 1 ? Loc::Get("store_versions_one") : Loc::Fmt("store_versions_count", static_cast<int>(n));
@@ -52,13 +139,28 @@ std::wstring FileSafe(const std::wstring& name) {
 
 } // namespace
 
-// Chapters on the front page: the ones with a store cover or something to install
-bool Listed(const Models::Chapter& ch) {
-    if (!ch.isAvailable) return false;   // not out yet (chapter 6)
-    return !ch.presets.empty() || CoverPath(ch.number).find(L"\\Store\\") != std::wstring::npos;
+// Games on the front page: the ones with a store cover or something to install
+bool Listed(const Game& game) {
+    if (!game.isAvailable) return false;   // not out yet (chapter 6)
+    if (game.Multiplayer()) return !game.presets.empty();
+    return !game.presets.empty() || CoverPath(game.number).find(L"\\Store\\") != std::wstring::npos;
 }
 
+namespace {
+
+// "EFP" for Escape From Playtime (its banner's name); empty for a chapter
+std::wstring MultiplayerArt(int number) {
+    for (const auto& mp : App::L().multiplayers)
+        if (mp.playtimeId == number) return Files::FileNameWithoutExtension(mp.banner);
+    return L"";
+}
+
+} // namespace
+
 std::wstring CoverPath(int chapterNumber) {
+    if (const std::wstring art = MultiplayerArt(chapterNumber); !art.empty())
+        return FirstExisting(L"cover|" + art, { StoreAsset(L"Multiplayers\\" + art + L".jpg"), StoreAsset(L"Multiplayers\\" + art + L".png") },
+                             Paths::Asset(L"Banners\\Multiplayers\\" + art + L".jpg"));
     const std::wstring n = std::to_wstring(chapterNumber);
     return FirstExisting(L"cover|" + n, { StoreAsset(L"Chapters\\Chapter" + n + L".jpg"), StoreAsset(L"Chapters\\Chapter" + n + L".png"),
                                           StoreAsset(L"Chapter" + n + L".jpg") },
@@ -66,6 +168,9 @@ std::wstring CoverPath(int chapterNumber) {
 }
 
 std::wstring BannerPath(int chapterNumber) {
+    if (const std::wstring art = MultiplayerArt(chapterNumber); !art.empty())
+        return FirstExisting(L"banner|" + art, { StoreAsset(L"Banners\\" + art + L".png"), StoreAsset(L"Banners\\" + art + L".jpg") },
+                             CoverPath(chapterNumber));
     const std::wstring n = std::to_wstring(chapterNumber);
     return FirstExisting(L"banner|" + n, { StoreAsset(L"Banners\\Chapter " + n + L".png"), StoreAsset(L"Banners\\Chapter " + n + L".jpg"),
                                            StoreAsset(L"Banners\\Chapter" + n + L".png"), StoreAsset(L"Banners\\Chapter" + n + L".jpg") },
@@ -74,12 +179,14 @@ std::wstring BannerPath(int chapterNumber) {
 
 std::wstring VersionCoverPath(int chapterNumber, const std::wstring& versionName) {
     const std::wstring n = std::to_wstring(chapterNumber);
+    const std::wstring art = MultiplayerArt(chapterNumber);
+    const std::wstring folder = art.empty() ? L"Chapter " + n : art;
     std::vector<std::wstring> names{ FileSafe(versionName), FileSafe(Text::Replace(versionName, L"Parche", L"Patch")),
                                      FileSafe(Text::Replace(versionName, L"Patch", L"Parche")) };
     std::vector<std::wstring> candidates;
     for (const auto& name : names) {
         if (name.empty()) continue;
-        for (const wchar_t* ext : { L".png", L".jpg", L".jpeg" }) candidates.push_back(StoreAsset(L"Versions\\Chapter " + n + L"\\" + name + ext));
+        for (const wchar_t* ext : { L".png", L".jpg", L".jpeg" }) candidates.push_back(StoreAsset(L"Versions\\" + folder + L"\\" + name + ext));
     }
     return FirstExisting(L"version|" + n + L"|" + versionName, candidates, CoverPath(chapterNumber));
 }

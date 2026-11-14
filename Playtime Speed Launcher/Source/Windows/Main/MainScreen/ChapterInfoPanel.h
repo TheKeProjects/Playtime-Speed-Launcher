@@ -49,6 +49,7 @@ private:
     bool canPlay = false;
     bool running = false;
     bool multiplayer = false;
+    bool mpVersions = false;          // multiplayer game with old versions (Escape From Playtime): VERSION button
     bool picked = false;              // false until a card of the current tab is clicked
     int variant = 0;                  // seasonal poster decorations: stable per chapter / game
     Font titleFont = Font::Mono;      // chapters: the Poppy Playtime font; multiplayer games: the launcher's

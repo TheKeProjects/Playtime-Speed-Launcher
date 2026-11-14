@@ -53,6 +53,7 @@ private:
     void DrawBanner(UI::Ui& ui, const Rect& r, int chapterIndex, bool front);
     void ShowChapter(int index);
     void ShowFront();
+    void SwitchSection(bool toMultiplayers);   // CHAPTERS | MULTIPLAYER: that section's front page
     void ShowProduct(int presetIndex);
     void GoBack();   // product → chapter → front page → closed
 
@@ -60,6 +61,7 @@ private:
     PresetInstaller& installer;
     UI::Popup popup;
     int featured = 0;
+    bool multiplayers = false;   // front page lists the multiplayer games (opened from that tab), else the chapters
     int chapter = -1;            // index of the open chapter page, -1 = front page
     int product = -1;            // preset index of the open product page (inside `chapter`), -1 = none
     int method = 0;              // product page: 0 = AUTO, 1 = MANUAL

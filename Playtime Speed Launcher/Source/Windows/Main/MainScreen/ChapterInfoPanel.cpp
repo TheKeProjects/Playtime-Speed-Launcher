@@ -75,6 +75,7 @@ std::wstring WithoutSymbol(const std::wstring& s) {
 void ChapterInfoPanel::Refresh() {
     auto& l = App::L();
     multiplayer = l.InMultiplayers();
+    mpVersions = false;
     picked = l.HasSelection();
     if (!picked) {
         // Nothing picked yet in this tab: the hero only asks to pick a card
@@ -87,7 +88,7 @@ void ChapterInfoPanel::Refresh() {
         return;
     }
     if (multiplayer) {
-        // Multiplayer games: Steam only, no versions
+        // Multiplayer games: Steam, or an old version from the store (only the ones that have them)
         const auto& game = l.SelectedMultiplayer();
         title = Loc::Get("mp_" + game.key + "_title");
         description = Loc::Get("mp_" + game.key + "_desc");
@@ -97,9 +98,20 @@ void ChapterInfoPanel::Refresh() {
         screenshots = ScreenshotsIn(L"Multiplayers\\" + Files::FileNameWithoutExtension(game.banner));
         variant = 100 + l.selectedMultiplayer;
         titleFont = bodyFont = Font::Mono;
+        mpVersions = !game.presets.empty() || !l.store.Customs(game.playtimeId).empty();
         version.clear();
-        canPlay = game.IsInstalled();
-        running = canPlay && !Process::FindByName(Files::FileNameWithoutExtension(*game.gameExePath)).empty();
+        if (mpVersions) {
+            if (auto selected = l.store.SelectedPath(game.playtimeId)) {
+                version = Files::FileNameWithoutExtension(*selected);
+                for (const auto& custom : l.store.Customs(game.playtimeId))
+                    if (custom.exePath == *selected) version = custom.name;
+            } else {
+                version = game.IsInstalled() ? Loc::Get("version_auto_steam") : Loc::Get("version_not_installed");
+            }
+        }
+        const auto exe = l.ActiveExePath(game);
+        canPlay = exe && !exe->empty() && Files::Exists(*exe);
+        running = canPlay && !Process::FindByName(Files::FileNameWithoutExtension(*exe)).empty();
         state = running ? State::Playing : canPlay ? State::Installed : game.isAvailable ? State::NotFound : State::ComingSoon;
     } else {
         const auto& ch = l.Selected();
@@ -486,7 +498,7 @@ void ChapterInfoPanel::DrawContent(UI::Ui& ui, float x, float y, float width) {
     }
 
     // ── Version picker · Steam / Epic ──
-    if (!multiplayer) {
+    if (!multiplayer || mpVersions) {
         DrawVersionRow(ui, x, y);
         y += kRowH + 22.f;
     }
@@ -513,7 +525,7 @@ void ChapterInfoPanel::DrawVersionRow(UI::Ui& ui, float x, float y) {
     const TextStyle valueStyle = UI::Mono(12.f, true);
 
     // Version: "VERSION  Patch 1.3  ⌄" (chapters that aren't out yet have none to pick)
-    if (l.Selected().isAvailable) {
+    if (multiplayer || l.Selected().isAvailable) {
         const std::wstring label = WithoutSymbol(Loc::Get("version_prefix"));
         const std::wstring cleanLabel = label.size() && label.back() == L':' ? label.substr(0, label.size() - 1) : label;
         const float lw = g.Measure(cleanLabel, labelStyle).w, vw = g.Measure(version, valueStyle).w;
@@ -530,7 +542,8 @@ void ChapterInfoPanel::DrawVersionRow(UI::Ui& ui, float x, float y) {
         x += w + 10.f;
     }
 
-    // Steam | Epic segmented switch
+    // Steam | Epic segmented switch (chapters only: the multiplayer games are on Steam)
+    if (multiplayer) return;
     const bool epic = l.epic.IsEnabled();
     const TextStyle segStyle = UI::Mono(10.f, true).Center();
     const float segW = 64.f;
