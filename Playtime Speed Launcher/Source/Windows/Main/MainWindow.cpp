@@ -47,6 +47,7 @@
 #include "Windows/Main/Overlays/Epic/EpicLocator.h"
 #include "Windows/Main/Overlays/HandMods/HandModsOverlay.h"
 #include "Windows/Main/Overlays/LiveSplit/LiveSplitOverlay.h"
+#include "Windows/Main/Overlays/Mods/CustomNameOverlay.h"
 #include "Windows/Main/Overlays/Mods/ModPopups.h"
 #include "Windows/Main/Overlays/SaveCard/CheckpointOverlay.h"
 #include "Windows/Main/Overlays/SaveCard/SaveCardOverlay.h"
@@ -87,6 +88,7 @@ MainWindow::MainWindow() {
     bugReport = std::make_unique<BugReportOverlay>(*this);
     eggVideo = std::make_unique<EasterEggOverlay>(*this);
     mods = std::make_unique<ModPopups>(*this);
+    customName = std::make_unique<CustomNameOverlay>(*this);
     addToSteam = std::make_unique<AddToSteamOverlay>(*this);
     handMods = std::make_unique<HandModsOverlay>(*this);
     tutorials = std::make_unique<TutorialPopups>(*this);
@@ -98,7 +100,7 @@ MainWindow::MainWindow() {
     profileTop = std::make_unique<ProfileOnTop>(*this, *account);
     // Same stacking order as the overlays in the old MainWindow.xaml (later = on top)
     overlays = { versions.get(), settings.get(), keyClickWizard.get(), updates.get(), liveSplit.get(), saveCard.get(), checkpoint.get(),
-                 bugReport.get(), account.get(), duels.get(), profileTop.get(), eggVideo.get(), mods.get(), addToSteam.get(), handMods.get(), tutorials.get(), themePopup.get() };
+                 bugReport.get(), account.get(), duels.get(), profileTop.get(), eggVideo.get(), mods.get(), customName.get(), addToSteam.get(), handMods.get(), tutorials.get(), themePopup.get() };
 }
 
 MainWindow::~MainWindow() {
@@ -457,6 +459,7 @@ void MainWindow::OpenSaveCard(int chapter) {
 void MainWindow::OpenUe4ss(int chapter) { mods->OpenUe4ss(chapter); }
 void MainWindow::OpenLoadManip(int chapter) { mods->OpenLoadManip(chapter); }
 void MainWindow::OpenFullBright(int chapter) { mods->OpenFullBright(chapter); }
+void MainWindow::OpenCustomName() { customName->Open(); }
 void MainWindow::OpenAddToSteam() { addToSteam->Open(); }
 
 void MainWindow::ShowError(const std::wstring& message) {

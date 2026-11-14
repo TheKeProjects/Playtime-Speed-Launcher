@@ -6,6 +6,10 @@ namespace SpeedrunLauncher::Services::Changelog {
 
 const std::vector<Entry>& Entries() {
     static const std::vector<Entry> entries = {
+        { L"4.3.3", L"14/11/2026", {
+            L"## Additions",
+            L"Escape From Playtime old versions: Custom Name mod to pick your in-game name, with styles and animations",
+        } },
         { L"4.3.2", L"14/11/2026", {
             L"## Additions",
             L"Escape From Playtime now has old versions: install them from the Store and pick which one PLAY starts; both menus switch between Chapters and Multiplayers",

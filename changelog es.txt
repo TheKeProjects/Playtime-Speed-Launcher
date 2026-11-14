@@ -1,3 +1,3 @@
-4.3.2
+4.3.3
 ## Novedades
-Escape From Playtime ya tiene versiones antiguas: instálalas desde la Tienda y elige cuál abre JUGAR; ambos menús cambian entre Capítulos y Multijugador
+Versiones antiguas de Escape From Playtime: mod Custom Name para elegir tu nombre en el juego, con estilos y animaciones

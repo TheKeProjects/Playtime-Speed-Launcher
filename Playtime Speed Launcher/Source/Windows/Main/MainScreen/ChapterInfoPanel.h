@@ -36,6 +36,7 @@ private:
     void DrawVersionRow(UI::Ui& ui, float x, float y);
     void DrawPlay(UI::Ui& ui, float x, float y);
     void DrawTools(UI::Ui& ui, float x, float y);
+    void DrawMultiplayerTools(UI::Ui& ui, float x, float y);   // Escape From Playtime old versions: CUSTOM NAME
 
     MainWindow& main;
     std::wstring title, description, status, version, eyebrow, banner;
@@ -50,6 +51,8 @@ private:
     bool running = false;
     bool multiplayer = false;
     bool mpVersions = false;          // multiplayer game with old versions (Escape From Playtime): VERSION button
+    bool customNameTool = false;      // an old Escape From Playtime version is picked: CUSTOM NAME tool
+    bool customNameOn = false;        // ...and the mod is in it
     bool picked = false;              // false until a card of the current tab is clicked
     int variant = 0;                  // seasonal poster decorations: stable per chapter / game
     Font titleFont = Font::Mono;      // chapters: the Poppy Playtime font; multiplayer games: the launcher's

@@ -1,4 +1,5 @@
 #include "Windows/Main/MainScreen/ChapterInfoPanel.h"
+#include "Services/GameFiles/CustomNameFiles.h"
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -76,6 +77,7 @@ void ChapterInfoPanel::Refresh() {
     auto& l = App::L();
     multiplayer = l.InMultiplayers();
     mpVersions = false;
+    customNameTool = customNameOn = false;
     picked = l.HasSelection();
     if (!picked) {
         // Nothing picked yet in this tab: the hero only asks to pick a card
@@ -111,6 +113,12 @@ void ChapterInfoPanel::Refresh() {
         }
         const auto exe = l.ActiveExePath(game);
         canPlay = exe && !exe->empty() && Files::Exists(*exe);
+        // Old versions name you "<PC NAME>-<CODE>": the Custom Name mod is offered for them
+        if (canPlay && !game.presets.empty() && l.UsesOldVersion(game)) {
+            customNameTool = true;
+            const auto win64 = Services::CustomNameFiles::Win64ForExe(*exe);
+            customNameOn = win64 && Services::CustomNameFiles::IsInstalled(*win64);
+        }
         running = canPlay && !Process::FindByName(Files::FileNameWithoutExtension(*exe)).empty();
         state = running ? State::Playing : canPlay ? State::Installed : game.isAvailable ? State::NotFound : State::ComingSoon;
     } else {
@@ -430,9 +438,9 @@ float ChapterInfoPanel::ContentHeight(UI::Ui& ui, float width) {
     h += g.Measure(title, TitleStyle(titleFont), width).h + 16.f;    // title
     h += kChipH + 18.f;                                     // chips
     h += std::min(g.Measure(description, DescriptionStyle(bodyFont), width).h, lineH * kDescriptionLines) + 26.f;
-    if (!multiplayer) h += kRowH + 22.f;                    // version · platform
+    if (!multiplayer || mpVersions) h += kRowH + 22.f;      // version · platform
     h += kPlayH;                                            // PLAY
-    if (!multiplayer) h += 26.f + 14.f + 8.f + kToolH;      // tools
+    if (!multiplayer || customNameTool) h += 26.f + 14.f + 8.f + kToolH;   // tools
     return h;
 }
 
@@ -514,6 +522,12 @@ void ChapterInfoPanel::DrawContent(UI::Ui& ui, float x, float y, float width) {
         g.Text(Loc::Get("hero_tools"), { x + 20.f, y, width - 20.f, 14.f }, palette.muted, UI::Mono(10.f, true));
         y += 14.f + 8.f;
         DrawTools(ui, x, y);
+    } else if (customNameTool) {
+        y += 26.f;
+        g.FillRound({ x, y + 6.f, 12.f, 2.f }, 1.f, palette.muted.WithAlpha(0.7f));
+        g.Text(Loc::Get("hero_tools"), { x + 20.f, y, width - 20.f, 14.f }, palette.muted, UI::Mono(10.f, true));
+        y += 14.f + 8.f;
+        DrawMultiplayerTools(ui, x, y);
     }
 }
 
@@ -653,6 +667,29 @@ void ChapterInfoPanel::DrawTools(UI::Ui& ui, float x, float y) {
     const bool hasManip = number == 1 || number == 4 || number == 5;
     if (hasManip && tool("manip", L"LOAD MANIP", Icon::Manip, mods.loadManip, true)) main.OpenLoadManip(number);
     if (hasManip && tool("fullbright", L"FULLBRIGHT", Icon::None, mods.fullBright, true)) main.OpenFullBright(number);
+}
+
+void ChapterInfoPanel::DrawMultiplayerTools(UI::Ui& ui, float x, float y) {
+    auto& g = ui.g;
+    const auto& palette = Seasonal::Current();
+    const TextStyle text = UI::Mono(10.f, true);
+    const std::wstring label = L"CUSTOM NAME";
+    const float lw = g.Measure(label, text).w;
+    const float w = 14.f + 14.f + 7.f + lw + 8.f + 6.f + 14.f;
+    if (!customNameOn) g.PushOpacity(0.45f);
+    bool clicked = false;
+    {
+        UI::ButtonScope b(ui, ui.MakeId("customname"), { x, y, w, kToolH },
+                          { Rgba(9, 20, 30, 200), palette.accent.WithAlpha(0.4f), 1.f, 8.f, { 0.f }, 0.f, kToolH });
+        UI::Glyph(ui, UI::Glyphs::People, { x + 14.f, y, 14.f, kToolH }, 12.f, palette.accent);
+        const float tx = x + 14.f + 14.f + 7.f;
+        g.Text(label, { tx, y, lw + 2.f, kToolH }, Rgba(215, 228, 238), text);
+        g.FillEllipse(tx + lw + 8.f + 3.f, y + kToolH * 0.5f, 3.f, 3.f, customNameOn ? Hex(0x22CC88) : palette.muted);
+        ui.Tooltip(ui.MakeId("customname"), L"Change the name the old versions give you (your PC name and a code)");
+        clicked = b.Clicked();
+    }
+    if (!customNameOn) g.PopLayer();
+    if (clicked) main.OpenCustomName();
 }
 
 } // namespace SpeedrunLauncher::Main

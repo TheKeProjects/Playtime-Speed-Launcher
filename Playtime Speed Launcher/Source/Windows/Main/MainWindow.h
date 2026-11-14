@@ -32,6 +32,7 @@ class CheckpointOverlay;
 class BugReportOverlay;
 class EasterEggOverlay;
 class ModPopups;
+class CustomNameOverlay;
 class AddToSteamOverlay;
 class HandModsOverlay;
 class TutorialPopups;
@@ -90,6 +91,7 @@ public:
     void OpenUe4ss(int chapter);
     void OpenLoadManip(int chapter);
     void OpenFullBright(int chapter);
+    void OpenCustomName();             // Escape From Playtime old versions: the in-game name
     void OpenAddToSteam();
     void OpenKeyClickWizard(int bindingIndex = -1);   // Settings → Controls → Key to click
     // (Re-)registers the key-to-click on/off shortcut; false when another app already owns it
@@ -162,6 +164,7 @@ private:
     std::unique_ptr<BugReportOverlay> bugReport;
     std::unique_ptr<EasterEggOverlay> eggVideo;
     std::unique_ptr<ModPopups> mods;
+    std::unique_ptr<CustomNameOverlay> customName;
     std::unique_ptr<AddToSteamOverlay> addToSteam;
     std::unique_ptr<HandModsOverlay> handMods;
     std::unique_ptr<TutorialPopups> tutorials;

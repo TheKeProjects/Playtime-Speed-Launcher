@@ -1,3 +1,7 @@
+4.3.3 | 14/11/2026
+## Additions
+- Escape From Playtime old versions: Custom Name mod to pick your in-game name, with styles and animations
+
 4.3.2 | 14/11/2026
 ## Additions
 - Escape From Playtime now has old versions: install them from the Store and pick which one PLAY starts; both menus switch between Chapters and Multiplayers
